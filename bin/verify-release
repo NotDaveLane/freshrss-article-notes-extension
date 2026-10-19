@@ -1,0 +1,54 @@
+#!/usr/bin/env bash
+# Checks that a release zip installs on a clean FreshRSS exactly as README.md describes: starts a stock
+# freshrss/freshrss:${FRESHRSS_VERSION:-1.30.1} container (no dev image, no bind mount) on the dev stack's network,
+# unpacks the zip into its extensions/ directory, subscribes its admin to the local fixture feed, then a Playwright
+# spec (tests/e2e/release/) enables ArticleNotes as the administrator, sets an API password, adds a note in the UI
+# and fetches it through the API. The container is removed afterwards.
+#   bin/verify-release           dist/ArticleNotes-<version in metadata.json>.zip (build it with bin/package)
+#   bin/verify-release <zip>     another zip
+# Prerequisite: docker compose up --build -d --wait (for the fixtures service and the e2e image).
+set -uo pipefail
+source "$(dirname "${BASH_SOURCE[0]}")/lib-common.sh"
+require_stack
+
+version="$(sed -n 's/.*"version": *"\([^"]*\)".*/\1/p' xExtension-ArticleNotes/metadata.json)"
+zip="${1:-dist/ArticleNotes-$version.zip}"
+[ -f "$zip" ] || { echo "error: $zip not found (build it with bin/package)" >&2; exit 2; }
+
+name="articlenotes-release-check-$$"
+admin_password="release-$(head -c 12 /dev/urandom | od -An -tx1 | tr -d ' \n')"
+network="$(docker inspect -f '{{range $net, $v := .NetworkSettings.Networks}}{{$net}}{{"\n"}}{{end}}' \
+	"$(docker compose ps -q fixtures)" | head -n 1)"
+cleanup() { docker rm -f "$name" >/dev/null 2>&1; }
+trap cleanup EXIT
+in_container() { docker exec -u www-data "$name" "$@"; }
+
+echo "Starting a clean freshrss/freshrss:${FRESHRSS_VERSION:-1.30.1} ($name)"
+docker run -d --name "$name" --network "$network" -e TZ=UTC -e CRON_MIN= \
+	-e FRESHRSS_INSTALL="--api-enabled --base-url http://$name --db-type sqlite --default-user admin --language en" \
+	-e FRESHRSS_USER="--user admin --password $admin_password --language en --no-default-feeds" \
+	"freshrss/freshrss:${FRESHRSS_VERSION:-1.30.1}" >/dev/null || exit 1
+i=0
+until in_container php -r 'exit(is_file("data/users/admin/config.php") && @file_get_contents("http://localhost/i/") !== false ? 0 : 1);'; do
+	i=$((i + 1))
+	[ "$i" -gt 120 ] && { echo 'error: FreshRSS did not start' >&2; docker logs "$name" | tail -n 20 >&2; exit 1; }
+	sleep 1
+done
+
+echo "Installing $zip into extensions/"
+docker cp "$zip" "$name:/tmp/release.zip" || exit 1
+docker exec "$name" php -r '$zip = new ZipArchive();
+	exit($zip->open("/tmp/release.zip") === true && $zip->extractTo("/var/www/FreshRSS/extensions") ? 0 : 1);' || exit 1
+docker exec "$name" test -f /var/www/FreshRSS/extensions/xExtension-ArticleNotes/metadata.json || exit 1
+
+echo 'Subscribing the admin to the local fixture feed'
+docker cp docker/allow-fixtures.php "$name:/tmp/allow-fixtures.php" || exit 1
+docker cp tests/fixtures/fixture-feed.opml "$name:/tmp/fixture-feed.opml" || exit 1
+docker exec "$name" chmod a+r /tmp/allow-fixtures.php /tmp/fixture-feed.opml
+in_container php /tmp/allow-fixtures.php >/dev/null || exit 1
+in_container php cli/import-for-user.php --user admin --filename /tmp/fixture-feed.opml >/dev/null 2>&1 || exit 1
+in_container php cli/actualize-user.php --user admin >/dev/null 2>&1 || exit 1
+
+docker compose run --rm --no-deps -T -e BASE_URL="http://$name" -e RELEASE_ADMIN_PASSWORD="$admin_password" \
+	-e RELEASE_VERSION="$version" e2e \
+	sh -c 'npm ci --no-audit --no-fund --loglevel=error && npx playwright test --config release.config.ts'
