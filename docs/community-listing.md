@@ -2,7 +2,7 @@
 
 Draft for listing ArticleNotes in [FreshRSS/Extensions](https://github.com/FreshRSS/Extensions), the source of
 FreshRSS's in-app list of community extensions. Not submitted yet: open the pull request once the repository is public
-and `v1.0.0` (with `ArticleNotes-1.0.0.zip` attached) is published.
+and `v1.1.0` (with `ArticleNotes-1.1.0.zip` attached) is published.
 
 ## `repositories.json`
 
@@ -17,7 +17,7 @@ keeping the file's existing style (tabs, `}, {` separators):
 }
 ```
 
-The generated entry then takes its name (`ArticleNotes`), author, description, version (`1.0.0`), entrypoint and type
+The generated entry then takes its name (`ArticleNotes`), author, description, version (`1.1.0`), entrypoint and type
 (`system`) from `xExtension-ArticleNotes/metadata.json`.
 
 ## README "Third-party extensions" bullet
