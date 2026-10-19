@@ -56,31 +56,30 @@ final class NoteService {
 		if (mb_strlen($text, 'UTF-8') > self::MAX_LENGTH) {
 			throw new NoteException('A note is limited to ' . self::MAX_LENGTH . ' characters', NoteException::TOO_LONG);
 		}
-		$entry = $this->ensureReady() ? \FreshRSS_Factory::createEntryDao($this->user)->searchById($entryId) : null;
-		if ($entry === null) {
+		$article = $this->ensureReady() ? ArticleSnapshot::load($this->user, $entryId) : null;
+		if ($article === null) {
 			throw new NoteException('Unknown article', NoteException::UNKNOWN_ENTRY);
 		}
-		$feed = \FreshRSS_Factory::createFeedDao($this->user)->searchById($entry->feedId());
 
 		$dao = $this->dao();
-		$existing = $dao->find($entry->id(), true);
-		$created = $dao->find($entry->id()) === null;
+		$existing = $dao->find($article->entryId, true);
+		$created = $dao->find($article->entryId) === null;
 		// Strictly after the previous version, so a note's (id, updated_at) pair, its ETag, changes with every save.
 		$updatedAt = max($this->now(), $existing === null ? 0 : $existing->updatedAt + 1);
 		$dao->upsert(new Note(
-			0, $entry->id(), $text, 0, $updatedAt, null,
-			$entry->guid(), $entry->link(true), $entry->title(), implode(', ', $entry->authors()), (int)$entry->date(true),
-			$entry->feedId(), $feed === null ? '' : $feed->name(true), $feed === null ? '' : $feed->url(false),
-			false, null, UrlNormalizer::forEntry($entry->link(true), $entry->guid()) ?? '',
+			0, $article->entryId, $text, 0, $updatedAt, null,
+			$article->guid, $article->link, $article->title, $article->author, $article->date,
+			$article->feedId, $article->feedName, $article->feedUrl,
+			false, null, $article->normalizedUrl,
 		));
-		$note = $dao->find($entry->id());
+		$note = $dao->find($article->entryId);
 		if ($note === null) {
 			throw new \RuntimeException('Note vanished after saving');
 		}
 		foreach ($this->savedListeners as $listener) {
 			$listener($note, $created);
 		}
-		return $dao->find($entry->id()) ?? $note;	// listeners may have updated it (label bookkeeping)
+		return $dao->find($article->entryId) ?? $note;	// listeners may have updated it (label bookkeeping)
 	}
 
 	/** The live page note at a URL (any form of it), or null. */
@@ -205,6 +204,11 @@ final class NoteService {
 	/** The URL index of this user's articles. */
 	public function urlIndex(): UrlIndex {
 		return new UrlIndex($this->dao()->pdo());
+	}
+
+	/** The user's database connection (after migrating the schema). */
+	public function pdo(): \Minz_Pdo {
+		return $this->dao()->pdo();
 	}
 
 	public function count(): int {

@@ -16,6 +16,8 @@ fetch and analyze them later.
   sidebar and FreshRSS keeps them when it archives old articles — see [Configuration](#configuration).
 - **A JSON [API](#api)** to fetch and sync your notes (deletions included), find the article behind any page URL, and
   create, update and delete notes from other tools such as a browser extension, with your FreshRSS API password.
+- **Highlights** through the API: passages selected on an article or any web page, with an optional note and colour —
+  see [Highlights](#highlights).
 - Per-user data, SQLite / MySQL / MariaDB / PostgreSQL, English interface; licensed AGPL-3.0-or-later like FreshRSS.
 
 | The note under its article | Annotated articles in the sidebar | Per-user settings |
@@ -145,7 +147,9 @@ Every response, errors included, is JSON (`application/json; charset=UTF-8`, `Ca
 like `{"error": {"code": "not_found", "message": "…"}}` with the codes `invalid_parameter`, `invalid_json` and `invalid_body`
 (400), `unauthorized` (401), `not_found` (404), `method_not_allowed` (405), `url_is_article` (409),
 `precondition_failed` (412), `payload_too_large` (413), `unsupported_media_type` (415), `note_too_long` and
-`title_too_long` (422) and `internal_error` (500).
+`title_too_long` (422) and `internal_error` (500). Highlights add `uuid_conflict` (409), `invalid_selector`,
+`invalid_source`, `invalid_color`, `invalid_target`, `invalid_url`, `invalid_uuid`, `selector_immutable` and
+`too_many_highlights` (400/422, see [Highlights](#highlights)).
 
 - `GET v1/status` — a cheap credentials check:
   `{"extension": "ArticleNotes", "version": "1.0.0", "api_version": 1, "user": "alice", "note_count": 12}`
@@ -166,6 +170,7 @@ like `{"error": {"code": "not_found", "message": "…"}}` with the codes `invali
 - `DELETE v1/notes/<entry_id>` — delete the note (`204`; `404` when there is none).
 - `GET`, `PUT` and `DELETE v1/page-notes?url=<page url>` — the note of a web page that is not an article; see
   [Page notes](#page-notes).
+- `POST v1/highlights`, `GET`/`PATCH`/`DELETE v1/highlights/<uuid>` and `GET v1/highlights` — see [Highlights](#highlights).
 
 ### The note object
 
@@ -324,6 +329,51 @@ curl -u alice:my-api-password -X DELETE -G …/v1/page-notes --data-urlencode 'u
 - Page notes never get the "Annotated" label. If an article with that URL shows up later, both notes stay; a
   [lookup](#looking-up-a-page) returns the article (with its note) in `matches` and the page note in `page_note`.
 - `GET v1/notes` lists page notes with the article notes (`kind`: `"page"`, tombstones included).
+
+### Highlights
+
+A highlight is a passage of text the user selected on a FreshRSS article (`"source": "freshrss"`) or on any web page
+(`"source": "page"`), with an optional note and colour. An article or page can have up to 1,000. The server stores the
+`selector` and never anchors it: clients find the passage again from `quote` (and `position` when it is still valid).
+
+```sh
+# Create (201). "uuid" is optional: send a UUID v4 so a retry returns the same highlight (200) instead of a duplicate.
+# Target it with "entry_id" (a FreshRSS article) or "url" (an article with that URL, else a page).
+curl -u alice:my-api-password -X POST -H 'Content-Type: application/json' \
+  -d '{"uuid": "3f1c9a52-8d3e-4c8e-9a53-5e8f0b6f7a10", "url": "https://example.org/pricing", "source": "page",
+       "title": "Example pricing", "color": "green", "note": "Compare with the competitor.",
+       "selector": {"quote": {"exact": "Starts at 9 euros", "prefix": "Plans: ", "suffix": " per month"},
+                    "position": {"start": 120, "end": 137}}}' \
+  https://freshrss.example.net/api/misc.php/ArticleNotes/v1/highlights
+
+# Read one (ETag header), change its note and/or colour (the selector is immutable: delete and recreate to move it).
+curl -u alice:my-api-password …/v1/highlights/3f1c9a52-8d3e-4c8e-9a53-5e8f0b6f7a10
+curl -u alice:my-api-password -X PATCH -H 'Content-Type: application/json' -H 'If-Match: "12-1760900000"' \
+  -d '{"note": "Updated.", "color": "blue"}' …/v1/highlights/3f1c9a52-8d3e-4c8e-9a53-5e8f0b6f7a10
+curl -u alice:my-api-password -X DELETE …/v1/highlights/3f1c9a52-8d3e-4c8e-9a53-5e8f0b6f7a10
+
+# The live highlights of an article or page, in document order (by position.start, else creation).
+curl -u alice:my-api-password -G …/v1/highlights --data-urlencode 'url=https://example.org/pricing'
+curl -u alice:my-api-password -G …/v1/highlights -d entry_id=1760891234567890
+
+# Sync everything changed since a time, tombstones included, with the paging of v1/notes.
+curl -u alice:my-api-password -G …/v1/highlights -d since=1760900000 -d limit=100
+```
+
+- A highlight is `{"id", "uuid", "kind": "highlight", "entry_id", "greader_item_id", "url", "normalized_url", "title",
+  "source", "selector", "color", "note", "created_at", "created_at_iso", "updated_at", "updated_at_iso", "deleted_at",
+  "deleted_at_iso", "label_applied", "article"}`; `entry_id`, `greader_item_id` and `article` are null for a page. Colours:
+  `yellow` (default), `green`, `blue`, `pink`, `purple`. `exact` is 1–2,000 characters, `prefix` and `suffix` at most 64.
+  Notes are at most 20,000 characters, stored as entered and always shown escaped.
+- Reading one or listing answers `{"highlight": {…}}` / `{"highlights": […]}`; `since` / `limit` / `continuation` /
+  `include_deleted` work as for `v1/notes` (`{"highlights", "continuation", "server_time"}`). Deleting keeps a tombstone.
+- `POST` is idempotent by `uuid`: the same uuid on the same target returns the existing highlight with `200`; the same
+  uuid on another target, or of a deleted highlight, is `409 uuid_conflict`. `PATCH` and `DELETE` honour `If-Match`
+  (`412`). A target at its limit is `422 too_many_highlights`.
+- A `url` that is one of your articles attaches the highlight to that article. [Lookups](#looking-up-a-page) list
+  `highlights` on each match and `page_highlights` for highlights on the URL itself.
+- The "Annotated" label is applied with an article's first note or highlight and removed (only if ArticleNotes put it
+  there) when the article has neither any more.
 
 ## Upgrading
 
