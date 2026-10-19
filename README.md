@@ -16,8 +16,9 @@ fetch and analyze them later.
   sidebar and FreshRSS keeps them when it archives old articles — see [Configuration](#configuration).
 - **A JSON [API](#api)** to fetch and sync your notes (deletions included), find the article behind any page URL, and
   create, update and delete notes from other tools such as a browser extension, with your FreshRSS API password.
-- **Highlights** through the API: passages selected on an article or any web page, with an optional note and colour —
-  see [Highlights](#highlights).
+- **Highlights**: select text in an article to highlight it in one of five colours, with an optional note; they come
+  back when you return to the article — see [Using highlights](#using-highlights). Also available through the API: passages
+  selected on an article or any web page — see [Highlights](#highlights).
 - Per-user data, SQLite / MySQL / MariaDB / PostgreSQL, English interface; licensed AGPL-3.0-or-later like FreshRSS.
 
 | The note under its article | Annotated articles in the sidebar | Per-user settings |
@@ -87,6 +88,28 @@ Open an article and click **Note** in its action bar (next to the read, favourit
 and global views). Type your note and press **Save**; **Cancel** (or Escape) closes the editor, and **Delete** removes an
 existing note. Notes are plain text of up to 20,000 characters, shown under the article in a "Your note" block with the
 time of the last update; HTML and Markdown are never rendered. Saving an empty note deletes it.
+
+## Using highlights
+
+![A highlight with a note in an article](docs/screenshots/highlights.png)
+
+Select text inside an article's content: a small toolbar appears next to the selection (below it on touch screens, so it
+does not fight the browser's own selection menu). **Highlight** marks the passage in yellow with one click, the colour
+buttons mark it yellow, green, blue, pink or purple, and **Add note** highlights it and opens a note field. Passages of up to
+2,000 characters can be highlighted; selections in FreshRSS's own interface or in your article note get no toolbar.
+
+- Highlights are drawn again whenever you open the article — in the normal, reading and global views, and for articles that
+  arrive with infinite scroll. A highlight with a note is underlined with a dashed line, so it does not depend on colour.
+- **Click or tap a highlight** (or focus it with Tab and press Enter) to open its popover: edit the note, change the
+  colour, or **Delete** it. Escape closes the popover and returns focus to the highlight.
+- Below the article, the **Annotations** panel lists your article note and all highlights in reading order, with the quote,
+  colour and note of each and a **Jump to** button that scrolls to the highlight and focuses it. It is also the way to reach
+  every highlight with a keyboard or a screen reader.
+- If the article text changed so that a passage can no longer be found, the highlight is kept and listed in the panel as
+  **Passage not found**: you can still read its quote and note, edit it or delete it.
+- Highlights made on the original web page (for example by a browser extension using the [API](#highlights)) are drawn in
+  FreshRSS too when their text is found in the article.
+- The "Annotated" label is applied with the first note or highlight of an article, as for notes.
 
 ## Configuration
 

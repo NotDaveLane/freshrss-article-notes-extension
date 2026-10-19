@@ -51,3 +51,35 @@ test('README screenshots', async ({ page }) => {
 	await annotated.getByRole('button', { name: 'Delete' }).click();
 	await expect(annotated.locator('.articlenotes-note')).toHaveCount(0);
 });
+
+test('highlight screenshot', async ({ page }) => {
+	await signIn(page, admin);
+	await page.goto('/i/?state=3');
+	// The first article whose content has a sentence to highlight (the dev feeds' articles are mostly links).
+	const article = page.locator('.flux', { has: page.locator('.content .text') }).first();
+	await open(article);
+	const quote = await article.locator('.content .text').evaluate((root) => {
+		const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
+		for (let node = walker.nextNode(); node; node = walker.nextNode()) {
+			const text = (node as Text).data;
+			const start = text.search(/\S/);
+			if (text.trim().length >= 12 && start !== -1) {
+				const end = Math.min(text.length, start + 40);
+				window.getSelection()!.setBaseAndExtent(node, start, node, end);
+				return text.slice(start, end).trim();
+			}
+		}
+		return null;
+	});
+	test.skip(quote === null, 'no article with text in the dev feeds');
+	await page.getByRole('button', { name: 'Add note' }).click();
+	await page.getByLabel('Note on this highlight').fill('Check this claim against the release notes.');
+	await page.getByRole('button', { name: 'Save' }).click();
+	await expect(article.locator('mark.articlenotes-hl')).not.toHaveCount(0);
+	await article.screenshot({ path: `${dir}/highlights.png` });
+
+	// Leave the dev data as it was.
+	await article.locator('mark.articlenotes-hl').first().click();
+	await page.getByRole('dialog').getByRole('button', { name: 'Delete' }).click();
+	await expect(article.locator('mark.articlenotes-hl')).toHaveCount(0);
+});

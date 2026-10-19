@@ -85,4 +85,25 @@ final class NoteDisplayTest extends TestCase {
 		self::assertIsArray($config['i18n']);
 		self::assertSame('Note', $config['i18n']['action']);
 	}
+
+	public function testJsVarsExposeTheHighlightUi(): void {
+		$config = $this->extension->jsVars([])['ArticleNotes'];
+		self::assertIsArray($config);
+		self::assertIsString($config['highlightsUrl']);
+		self::assertStringContainsString('a=highlights', $config['highlightsUrl']);
+		self::assertIsString($config['highlightCreateUrl']);
+		self::assertIsString($config['highlightUpdateUrl']);
+		self::assertIsString($config['highlightDeleteUrl']);
+		self::assertIsString($config['anchoringUrl']);
+		self::assertStringContainsString('anchoring.js', $config['anchoringUrl']);
+		self::assertStringNotContainsString('&amp;', $config['anchoringUrl']);
+		self::assertSame(['yellow', 'green', 'blue', 'pink', 'purple'], $config['colors']);
+		self::assertSame(2000, $config['maxQuoteLength']);
+		self::assertIsArray($config['i18n']);
+		foreach (['highlight', 'addNote', 'tooLong', 'panelTitle', 'orphan', 'jumpTo', 'noteIndicator', 'colorYellow', 'colorPurple',
+			'popoverTitle', 'highlightFailed', 'close'] as $key) {
+			self::assertIsString($config['i18n'][$key] ?? null, $key);
+			self::assertNotSame('', $config['i18n'][$key], $key);
+		}
+	}
 }
