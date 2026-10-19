@@ -17,12 +17,14 @@ final class Api {
 
 	/**
 	 * @param \Closure():NoteService $noteService the note service of the user authenticated by {@see handle()}
+	 * @param \Closure():HighlightService $highlightService the highlight service of that user
 	 * @param (\Closure():int)|null $clock current Unix time (default: time())
 	 */
 	public function __construct(
 		private readonly string $extensionName,
 		private readonly string $extensionVersion,
 		private readonly \Closure $noteService,
+		private readonly \Closure $highlightService,
 		private readonly ?\Closure $clock = null,
 	) {
 	}
@@ -41,6 +43,14 @@ final class Api {
 			$read = fn (): ApiResponse => $this->onePageNote($request->query);
 			$routes['PUT'] = fn (): ApiResponse => $this->putPageNote($request);
 			$routes['DELETE'] = fn (): ApiResponse => $this->deletePageNote($request);
+		} elseif ($path === 'v1/highlights') {
+			$read = fn (): ApiResponse => $this->listHighlights($request->query);
+			$routes['POST'] = fn (): ApiResponse => $this->createHighlight($request);
+		} elseif (preg_match('#^v1/highlights/([0-9a-fA-F-]{1,64})$#', $path, $matches) === 1) {
+			$uuid = $matches[1];
+			$read = fn (): ApiResponse => $this->oneHighlight($uuid);
+			$routes['PATCH'] = fn (): ApiResponse => $this->patchHighlight($uuid, $request);
+			$routes['DELETE'] = fn (): ApiResponse => $this->deleteHighlight($uuid, $request);
 		} elseif (preg_match('#^v1/notes/(\d{1,20})$#', $path, $matches) === 1) {
 			$entryId = $matches[1];
 			$read = fn (): ApiResponse => $this->oneNote($entryId);
@@ -71,6 +81,8 @@ final class Api {
 			return ApiResponse::error(400, 'invalid_parameter', $exception->getMessage());
 		} catch (ApiException $exception) {
 			return ApiResponse::error($exception->status, $exception->errorCode, $exception->getMessage());
+		} catch (HighlightException $exception) {
+			return ApiResponse::error($exception->status(), $exception->errorCode, $exception->getMessage());
 		} catch (\Throwable $exception) {
 			\Minz_Log::error('ArticleNotes API failure for user ' . (\Minz_User::name() ?? '') . ': ' . $exception->getMessage());
 			return ApiResponse::error(500, 'internal_error', 'The request cannot be served right now.');
@@ -168,7 +180,7 @@ final class Api {
 		$text = self::noteText($request);
 		$service = $this->service();
 		$current = $service->get($entryId);
-		if (self::preconditionFails($request->ifMatch, $current)) {
+		if (self::preconditionFails($request->ifMatch, self::etagOf($current))) {
 			return self::preconditionFailed();
 		}
 		try {
@@ -190,7 +202,7 @@ final class Api {
 		if ($current === null) {
 			return ApiResponse::error(404, 'not_found', 'There is no note on this article.');
 		}
-		if (self::preconditionFails($request->ifMatch, $current)) {
+		if (self::preconditionFails($request->ifMatch, self::etagOf($current))) {
 			return self::preconditionFailed();
 		}
 		$service->delete($entryId);
@@ -217,6 +229,20 @@ final class Api {
 	 * @throws ApiException a body that is not JSON (415, 413, 400)
 	 */
 	private static function noteBody(ApiRequest $request): array {
+		$body = self::jsonBody($request);
+		if (!isset($body['note']) || !is_string($body['note'])) {
+			throw new ApiException(400, 'invalid_body', 'The body must be a JSON object with a "note" string.');
+		}
+		return $body;
+	}
+
+	/**
+	 * The decoded JSON object of a write request.
+	 *
+	 * @return array<string,mixed>
+	 * @throws ApiException a body that is not a JSON object (415, 413, 400)
+	 */
+	private static function jsonBody(ApiRequest $request): array {
 		$mediaType = strtolower(trim(explode(';', $request->contentType, 2)[0]));
 		if ($mediaType !== 'application/json') {
 			throw new ApiException(415, 'unsupported_media_type', 'Send the body as application/json.');
@@ -229,8 +255,8 @@ final class Api {
 		} catch (\JsonException) {
 			throw new ApiException(400, 'invalid_json', 'The request body is not valid JSON.');
 		}
-		if (!is_array($body) || !isset($body['note']) || !is_string($body['note'])) {
-			throw new ApiException(400, 'invalid_body', 'The body must be a JSON object with a "note" string.');
+		if (!is_array($body) || ($body !== [] && array_is_list($body))) {
+			throw new ApiException(400, 'invalid_body', 'The body must be a JSON object.');
 		}
 		return array_combine(array_map('strval', array_keys($body)), $body);
 	}
@@ -266,7 +292,7 @@ final class Api {
 		}
 		$service = $this->service();
 		$current = $service->getPageNote($request->query['url'] ?? '');
-		if (self::preconditionFails($request->ifMatch, $current)) {
+		if (self::preconditionFails($request->ifMatch, self::etagOf($current))) {
 			return self::preconditionFailed();
 		}
 		try {
@@ -293,7 +319,7 @@ final class Api {
 		if ($current === null) {
 			return ApiResponse::error(404, 'not_found', 'There is no page note on this URL.');
 		}
-		if (self::preconditionFails($request->ifMatch, $current)) {
+		if (self::preconditionFails($request->ifMatch, self::etagOf($current))) {
 			return self::preconditionFailed();
 		}
 		$service->deletePageNote($request->query['url'] ?? '');
@@ -304,21 +330,25 @@ final class Api {
 		return '"' . $note->id . '-' . $note->updatedAt . '"';
 	}
 
+	private static function etagOf(?Note $note): ?string {
+		return $note === null ? null : self::etag($note);
+	}
+
 	/**
-	 * Whether an `If-Match` header is present and does not match the live note (`*` matches any note). Web servers
+	 * Whether an `If-Match` header is present and does not match the live note or highlight (`*` matches any). Web servers
 	 * that compress responses (Apache's mod_deflate) turn the ETag into a weak one or add a `-gzip` suffix, and the
 	 * client sends back what it received: both forms are accepted.
 	 */
-	private static function preconditionFails(?string $ifMatch, ?Note $current): bool {
+	private static function preconditionFails(?string $ifMatch, ?string $currentEtag): bool {
 		if ($ifMatch === null) {
 			return false;
 		}
-		if ($current === null) {
+		if ($currentEtag === null) {
 			return true;
 		}
 		foreach (explode(',', $ifMatch) as $candidate) {
 			$candidate = preg_replace('/^W\/|-(?:gzip|br|deflate|zstd)(?="$)/', '', trim($candidate)) ?? '';
-			if ($candidate === '*' || $candidate === self::etag($current)) {
+			if ($candidate === '*' || $candidate === $currentEtag) {
 				return false;
 			}
 		}
@@ -344,10 +374,12 @@ final class Api {
 		$result = (new UrlLookup($service))->find($normalized);
 		$existing = array_flip($service->existingEntryIds(array_map(static fn (UrlMatch $match): string => $match->entryId, $result['matches'])));
 		$pageNote = $service->getPageNote($normalized);
+		$highlights = $this->highlights();
 		return ApiResponse::ok([
 			'url' => $url,
 			'normalized_url' => $normalized,
 			'page_note' => $pageNote === null ? null : self::noteJson($pageNote, false),
+			'page_highlights' => array_map(static fn (Highlight $highlight): array => $highlight->toArray(false), $highlights->forPage($normalized)),
 			'index_complete' => $result['index_complete'],
 			'matches' => array_map(static fn (UrlMatch $match): array => [
 				'entry_id' => $match->entryId,
@@ -357,11 +389,13 @@ final class Api {
 				'published_at' => $match->publishedAt,
 				'feed' => ['id' => $match->feedId, 'name' => $match->feedName, 'url' => $match->feedUrl],
 				'note' => $match->note === null ? null : self::noteJson($match->note, isset($existing[$match->entryId])),
+				'highlights' => array_map(static fn (Highlight $highlight): array => $highlight->toArray(isset($existing[$match->entryId])),
+					$highlights->forEntry($match->entryId)),
 			], $result['matches']),
 		]);
 	}
 
-	private static function greaderItemId(string $entryId): string {
+	public static function greaderItemId(string $entryId): string {
 		return self::GREADER_ITEM_PREFIX . str_pad(dechex((int)$entryId), 16, '0', STR_PAD_LEFT);
 	}
 
@@ -474,8 +508,138 @@ final class Api {
 		];
 	}
 
-	private static function iso(int $timestamp): string {
+	public static function iso(int $timestamp): string {
 		return gmdate(DATE_ATOM, $timestamp);
+	}
+
+	/** @param array<string,string> $query */
+	private function listHighlights(array $query): ApiResponse {
+		if (isset($query['entry_id']) || isset($query['url'])) {
+			return $this->highlightsOfTarget($query);
+		}
+		$serverTime = $this->now();
+		$limit = self::intParameter($query, 'limit', 1, self::MAX_LIMIT) ?? self::DEFAULT_LIMIT;
+		$since = self::intParameter($query, 'since', 0, PHP_INT_MAX);
+		$includeDeleted = self::intParameter($query, 'include_deleted', 0, 1);
+		$position = [$since ?? 0, 0, $includeDeleted === null ? $since !== null : $includeDeleted === 1];
+		if (isset($query['continuation'])) {
+			$position = self::decodeContinuation($query['continuation']);
+		}
+		[$since, $afterId, $withDeleted] = $position;
+
+		$service = $this->highlights();
+		$highlights = $service->changedSince($since, $limit + 1, $afterId, $withDeleted);
+		$continuation = null;
+		if (count($highlights) > $limit) {
+			$highlights = array_slice($highlights, 0, $limit);
+			$last = $highlights[$limit - 1];
+			$continuation = self::encodeContinuation($last->updatedAt, $last->id, $withDeleted);
+		}
+		return ApiResponse::ok([
+			'highlights' => $this->highlightsJson($highlights),
+			'continuation' => $continuation,
+			'server_time' => $serverTime,
+		]);
+	}
+
+	/**
+	 * The live highlights of an article (`entry_id`) or of what a URL stands for (`url`), in document order.
+	 *
+	 * @param array<string,string> $query
+	 */
+	private function highlightsOfTarget(array $query): ApiResponse {
+		if (isset($query['entry_id']) && isset($query['url'])) {
+			throw new InvalidParameterException('Give "entry_id" or "url", not both.');
+		}
+		$service = $this->highlights();
+		if (isset($query['entry_id'])) {
+			if (preg_match('/^[1-9]\d{0,19}$/', $query['entry_id']) !== 1) {
+				throw new InvalidParameterException('"entry_id" must be an article id.');
+			}
+			$highlights = $service->forEntry($query['entry_id']);
+		} else {
+			$highlights = $service->forUrl($query['url'] ?? '');
+		}
+		return ApiResponse::ok(['highlights' => $this->highlightsJson($highlights)]);
+	}
+
+	/**
+	 * @param list<Highlight> $highlights
+	 * @return list<array<string,mixed>>
+	 */
+	private function highlightsJson(array $highlights): array {
+		$existing = array_flip($this->highlights()->existingEntryIds(array_values(array_filter(
+			array_map(static fn (Highlight $highlight): ?string => $highlight->entryId, $highlights),
+			static fn (?string $id): bool => $id !== null,
+		))));
+		$json = [];
+		foreach ($highlights as $highlight) {
+			$json[] = $highlight->toArray(isset($existing[$highlight->entryId ?? '']));
+		}
+		return $json;
+	}
+
+	private function oneHighlight(string $uuid): ApiResponse {
+		$service = $this->highlights();
+		$highlight = $service->get($uuid);
+		if ($highlight === null) {
+			return ApiResponse::error(404, 'not_found', 'There is no such highlight.');
+		}
+		return $this->highlightResponse(200, $highlight);
+	}
+
+	private function createHighlight(ApiRequest $request): ApiResponse {
+		$body = self::jsonBody($request);
+		$result = $this->highlights()->create($body);
+		return $this->highlightResponse($result['created'] ? 201 : 200, $result['highlight']);
+	}
+
+	private function patchHighlight(string $uuid, ApiRequest $request): ApiResponse {
+		$body = self::jsonBody($request);
+		if (array_key_exists('selector', $body)) {
+			throw new HighlightException(HighlightException::SELECTOR_IMMUTABLE,
+				'The selector cannot change: delete the highlight and create a new one.');
+		}
+		$note = $body['note'] ?? null;
+		$color = $body['color'] ?? null;
+		if (($note === null && $color === null) || ($note !== null && !is_string($note)) || ($color !== null && !is_string($color))) {
+			throw new ApiException(400, 'invalid_body', 'The body must be a JSON object with a "note" and/or a "color" string.');
+		}
+		$service = $this->highlights();
+		$current = $service->get($uuid);
+		if ($current === null) {
+			return ApiResponse::error(404, 'not_found', 'There is no such highlight.');
+		}
+		if (self::preconditionFails($request->ifMatch, $current->etag())) {
+			return self::highlightPreconditionFailed();
+		}
+		return $this->highlightResponse(200, $service->update($uuid, $note, $color));
+	}
+
+	private function deleteHighlight(string $uuid, ApiRequest $request): ApiResponse {
+		$service = $this->highlights();
+		$current = $service->get($uuid);
+		if ($current === null) {
+			return ApiResponse::error(404, 'not_found', 'There is no such highlight.');
+		}
+		if (self::preconditionFails($request->ifMatch, $current->etag())) {
+			return self::highlightPreconditionFailed();
+		}
+		$service->delete($uuid);
+		return ApiResponse::noContent();
+	}
+
+	private static function highlightPreconditionFailed(): ApiResponse {
+		return ApiResponse::error(412, 'precondition_failed', 'The highlight changed since the version in If-Match.');
+	}
+
+	private function highlightResponse(int $status, Highlight $highlight): ApiResponse {
+		$exists = $highlight->entryId !== null && $this->highlights()->existingEntryIds([$highlight->entryId]) !== [];
+		return ApiResponse::withStatus($status, ['highlight' => $highlight->toArray($exists)], ['ETag' => $highlight->etag()]);
+	}
+
+	private function highlights(): HighlightService {
+		return ($this->highlightService)();
 	}
 
 	private function service(): NoteService {
