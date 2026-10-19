@@ -1,0 +1,84 @@
+#!/usr/bin/env bash
+# Checks that upgrading an install keeps its data: starts a stock freshrss/freshrss:${FRESHRSS_VERSION:-1.30.1} container with the
+# previous release in extensions/ (default: ArticleNotes 1.0.0, from git), lets a Playwright spec (tests/e2e/release/upgrade.spec.ts)
+# enable it and write a note, replaces it with the new release zip, and lets the spec check that the migrations ran, the note
+# is intact, the API answers and highlights work. The container is removed afterwards.
+#   bin/verify-upgrade                  from OLD_REV (default v1.0.0, else the 1.0.0 release commit 109d3c6) to dist/ArticleNotes-<version>.zip
+#   bin/verify-upgrade <zip>            to another zip
+# Prerequisite: docker compose up --build -d --wait (for the fixtures service and the e2e image); bin/package for the zip.
+set -uo pipefail
+source "$(dirname "${BASH_SOURCE[0]}")/lib-common.sh"
+require_stack
+
+version="$(sed -n 's/.*"version": *"\([^"]*\)".*/\1/p' xExtension-ArticleNotes/metadata.json)"
+zip="${1:-dist/ArticleNotes-$version.zip}"
+[ -f "$zip" ] || { echo "error: $zip not found (build it with bin/package)" >&2; exit 2; }
+old_rev="${OLD_REV:-}"
+if [ -z "$old_rev" ]; then
+	if git rev-parse -q --verify v1.0.0 >/dev/null; then old_rev=v1.0.0; else old_rev=109d3c6; fi
+fi
+old_version="$(git show "$old_rev:xExtension-ArticleNotes/metadata.json" | sed -n 's/.*"version": *"\([^"]*\)".*/\1/p')"
+[ -n "$old_version" ] || { echo "error: cannot read the version at $old_rev" >&2; exit 2; }
+
+work="$(mktemp -d)"
+name="articlenotes-upgrade-check-$$"
+admin_password="release-$(head -c 12 /dev/urandom | od -An -tx1 | tr -d ' \n')"
+api_password="api-$(head -c 12 /dev/urandom | od -An -tx1 | tr -d ' \n')"
+network="$(docker inspect -f '{{range $net, $v := .NetworkSettings.Networks}}{{$net}}{{"\n"}}{{end}}' \
+	"$(docker compose ps -q fixtures)" | head -n 1)"
+cleanup() { docker rm -f "$name" >/dev/null 2>&1; rm -rf "$work"; }
+trap cleanup EXIT
+in_container() { docker exec -u www-data "$name" "$@"; }
+
+install_zip() {	# install_zip <zip>: replaces extensions/xExtension-ArticleNotes with the zip's
+	docker cp "$1" "$name:/tmp/release.zip" || return 1
+	docker exec "$name" rm -rf /var/www/FreshRSS/extensions/xExtension-ArticleNotes || return 1
+	docker exec "$name" php -r '$zip = new ZipArchive();
+		exit($zip->open("/tmp/release.zip") === true && $zip->extractTo("/var/www/FreshRSS/extensions") ? 0 : 1);' || return 1
+	docker exec "$name" test -f /var/www/FreshRSS/extensions/xExtension-ArticleNotes/metadata.json
+}
+
+phase() {	# phase <before|after>: runs that part of the spec
+	docker compose run --rm --no-deps -T -e BASE_URL="http://$name" -e RELEASE_ADMIN_PASSWORD="$admin_password" \
+		-e RELEASE_API_PASSWORD="$api_password" -e RELEASE_VERSION="$version" -e OLD_VERSION="$old_version" -e UPGRADE_PHASE="$1" e2e \
+		sh -c 'npm ci --no-audit --no-fund --loglevel=error && npx playwright test --config release.config.ts upgrade.spec.ts'
+}
+
+echo "Building the $old_version zip from $old_rev"
+git archive --format=zip -o "$work/old.zip" "$old_rev" xExtension-ArticleNotes || exit 1
+
+echo "Starting a clean freshrss/freshrss:${FRESHRSS_VERSION:-1.30.1} ($name)"
+docker run -d --name "$name" --network "$network" -e TZ=UTC -e CRON_MIN= \
+	-e FRESHRSS_INSTALL="--api-enabled --base-url http://$name --db-type sqlite --default-user admin --language en" \
+	-e FRESHRSS_USER="--user admin --password $admin_password --language en --no-default-feeds" \
+	"freshrss/freshrss:${FRESHRSS_VERSION:-1.30.1}" >/dev/null || exit 1
+i=0
+until in_container php -r 'exit(is_file("data/users/admin/config.php") && @file_get_contents("http://localhost/i/") !== false ? 0 : 1);'; do
+	i=$((i + 1))
+	[ "$i" -gt 120 ] && { echo 'error: FreshRSS did not start' >&2; docker logs "$name" | tail -n 20 >&2; exit 1; }
+	sleep 1
+done
+
+echo "Installing ArticleNotes $old_version"
+install_zip "$work/old.zip" || exit 1
+echo 'Subscribing the admin to the local fixture feed'
+docker cp docker/allow-fixtures.php "$name:/tmp/allow-fixtures.php" || exit 1
+docker cp tests/fixtures/fixture-feed.opml "$name:/tmp/fixture-feed.opml" || exit 1
+docker exec "$name" chmod a+r /tmp/allow-fixtures.php /tmp/fixture-feed.opml
+in_container php /tmp/allow-fixtures.php >/dev/null || exit 1
+in_container php cli/import-for-user.php --user admin --filename /tmp/fixture-feed.opml >/dev/null 2>&1 || exit 1
+in_container php cli/actualize-user.php --user admin >/dev/null 2>&1 || exit 1
+
+echo "== before: $old_version =="
+phase before || exit 1
+
+echo "== upgrading to $version =="
+install_zip "$zip" || exit 1
+sleep 3	# let OPcache notice the new files
+phase after || exit 1
+
+# The migrations recorded their progress in the user's extension configuration.
+schema="$(in_container php -r '$c = include "data/users/admin/config.php"; echo $c["extensions"]["ArticleNotes"]["schema_version"] ?? "none";')"
+echo "schema_version after the upgrade: $schema"
+[ "$schema" -ge 7 ] 2>/dev/null || { echo 'error: the schema was not migrated' >&2; exit 1; }
+echo 'bin/verify-upgrade: OK'

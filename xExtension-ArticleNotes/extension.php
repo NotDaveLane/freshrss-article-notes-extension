@@ -2,11 +2,14 @@
 
 declare(strict_types=1);
 
+require_once __DIR__ . '/AnnotatedTarget.php';
+require_once __DIR__ . '/AnnotatedTargets.php';
 require_once __DIR__ . '/Api.php';
 require_once __DIR__ . '/ApiException.php';
 require_once __DIR__ . '/ApiRequest.php';
 require_once __DIR__ . '/ApiResponse.php';
 require_once __DIR__ . '/ArticleSnapshot.php';
+require_once __DIR__ . '/Cors.php';
 require_once __DIR__ . '/Highlight.php';
 require_once __DIR__ . '/HighlightDAO.php';
 require_once __DIR__ . '/HighlightException.php';
@@ -38,6 +41,7 @@ final class ArticleNotesExtension extends Minz_Extension {
 	/** Articles indexed per user maintenance run. */
 	private const MAINTENANCE_INDEX_BATCH = 2000;
 	private const SCHEMA_VERSION_KEY = 'schema_version';
+	private const ALLOWED_ORIGINS_KEY = 'allowed_origins';
 
 	/** @var array<string,bool> per-request memo: user => migrated successfully */
 	private array $migrated = [];
@@ -158,10 +162,106 @@ final class ArticleNotesExtension extends Minz_Extension {
 		$this->api()->handle($request)->send($request->method !== 'HEAD');
 	}
 
-	/** The read-only notes API; it authenticates the user itself. */
+	/** The notes API; it authenticates the user itself. */
 	public function api(): ArticleNotes\Api {
 		return new ArticleNotes\Api($this->getName(), $this->getVersion(), fn (): ArticleNotes\NoteService => $this->noteService(),
-			fn (): ArticleNotes\HighlightService => $this->highlightService());
+			fn (): ArticleNotes\HighlightService => $this->highlightService(), allowedOrigins: $this->allowedOrigins(...),
+			openApi: $this->openApiDocument(...));
+	}
+
+	/**
+	 * The OpenAPI description (`openapi.json`, generated from `docs/openapi.yaml` by `bin/openapi`), with this instance's API
+	 * URL as its server.
+	 *
+	 * @return array<string,mixed>
+	 */
+	public function openApiDocument(): array {
+		$json = file_get_contents(__DIR__ . '/openapi.json');
+		$document = $json === false ? null : json_decode($json, false, 512, JSON_THROW_ON_ERROR);
+		if (!$document instanceof stdClass) {
+			throw new RuntimeException('openapi.json is missing or invalid');
+		}
+		/** @var array<string,mixed> $document */
+		$document = get_object_vars($document);
+		$document['servers'] = [['url' => rtrim(self::apiUrl(), '/')]];
+		return $document;
+	}
+
+	/**
+	 * The client origins allowed by the administrator's CORS setting (none by default).
+	 *
+	 * @return list<string>
+	 */
+	public function allowedOrigins(): array {
+		$stored = $this->getSystemConfigurationValue(self::ALLOWED_ORIGINS_KEY);
+		return is_array($stored) ? array_values(array_filter($stored, is_string(...))) : [];
+	}
+
+	/** The allowed origins as the text of the setting: one per line. */
+	public function allowedOriginsText(): string {
+		return implode("\n", $this->allowedOrigins());
+	}
+
+	/**
+	 * Validates and stores the allowed client origins (one per line). Nothing is stored when a line is not an exact origin.
+	 *
+	 * @return list<string> the lines refused (wildcards, paths, unknown schemes…); empty when the list was stored
+	 */
+	public function saveAllowedOrigins(string $text): array {
+		$parsed = ArticleNotes\Cors::parse($text);
+		if ($parsed['invalid'] === []) {
+			$this->setSystemValue(self::ALLOWED_ORIGINS_KEY, $parsed['origins']);
+		}
+		return $parsed['invalid'];
+	}
+
+	/**
+	 * The notification for refused origin lines. FreshRSS prints notifications as HTML, and the lines are what the
+	 * administrator typed: they are escaped here.
+	 *
+	 * @param list<string> $invalid
+	 */
+	public function invalidOriginsMessage(array $invalid): string {
+		$escaped = array_map(static fn (string $line): string => htmlspecialchars($line, ENT_QUOTES, 'UTF-8'), $invalid);
+		return _t('ext.article_notes.cors.invalid', implode(', ', $escaped));
+	}
+
+	/**
+	 * Stores one value of the extension's system configuration, on every supported FreshRSS version.
+	 *
+	 * @param non-empty-string $key
+	 */
+	private function setSystemValue(string $key, mixed $value): void {
+		if (is_callable([$this, 'setSystemConfigurationValue'])) {	// FreshRSS 1.26+
+			$this->setSystemConfigurationValue($key, $value);
+		} else {
+			$this->setSystemValueLegacy($key, $value);
+		}
+	}
+
+	/** {@see setSystemValue()} for FreshRSS versions without `setSystemConfigurationValue()`. */
+	private function setSystemValueLegacy(string $key, mixed $value): void {
+		$configuration = $this->getSystemConfiguration();
+		$configuration[$key] = $value;
+		$this->setSystemConfiguration($configuration);
+	}
+
+	/**
+	 * Handles the administrator's configure page (Configuration → Extensions → ArticleNotes): the allowed client origins.
+	 * FreshRSS shows `configure.phtml` to administrators only, and checks the CSRF token of the POST.
+	 */
+	#[\Override]
+	public function handleConfigureAction(): void {
+		parent::handleConfigureAction();
+		if (!Minz_Request::isPost()) {
+			return;
+		}
+		$invalid = $this->saveAllowedOrigins(Minz_Request::paramString('allowed_origins', true));
+		$back = ['c' => 'extension', 'a' => 'configure', 'params' => ['e' => $this->getName()]];
+		if ($invalid === []) {
+			Minz_Request::good(_t('ext.article_notes.cors.saved'), $back);
+		}
+		Minz_Request::bad($this->invalidOriginsMessage($invalid), $back);
 	}
 
 	/** Appends the user's note, when there is one, to the article content. */

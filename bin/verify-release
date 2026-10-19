@@ -51,4 +51,4 @@ in_container php cli/actualize-user.php --user admin >/dev/null 2>&1 || exit 1
 
 docker compose run --rm --no-deps -T -e BASE_URL="http://$name" -e RELEASE_ADMIN_PASSWORD="$admin_password" \
 	-e RELEASE_VERSION="$version" e2e \
-	sh -c 'npm ci --no-audit --no-fund --loglevel=error && npx playwright test --config release.config.ts'
+	sh -c 'npm ci --no-audit --no-fund --loglevel=error && npx playwright test --config release.config.ts install.spec.ts'

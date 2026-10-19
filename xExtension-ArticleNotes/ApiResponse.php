@@ -25,6 +25,10 @@ final class ApiResponse {
 		return new self($status, $body, $headers + self::defaultHeaders());
 	}
 
+	public function withHeader(string $name, string $value): self {
+		return new self($this->status, $this->body, [$name => $value] + $this->headers);
+	}
+
 	/** @param array<string,string> $headers */
 	public static function noContent(array $headers = []): self {
 		return new self(204, [], $headers + ['Cache-Control' => 'no-store']);

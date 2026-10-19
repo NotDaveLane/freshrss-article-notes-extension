@@ -6,7 +6,7 @@ namespace ArticleNotes;
 
 /**
  * An API request: method, path below the extension (e.g. `v1/notes`), query string, `Authorization` header and, for
- * writes, the body (read up to {@see MAX_BODY_BYTES} + 1 bytes), its `Content-Type` and `If-Match` headers.
+ * writes, the body (read up to {@see MAX_BODY_BYTES} + 1 bytes), its `Content-Type` and `If-Match` headers, and the `Origin` header of a cross-origin request.
  */
 final class ApiRequest {
 	public const MAX_BODY_BYTES = 65536;
@@ -21,6 +21,7 @@ final class ApiRequest {
 		public readonly string $body = '',
 		public readonly string $contentType = '',
 		public readonly ?string $ifMatch = null,
+		public readonly ?string $origin = null,
 	) {
 	}
 
@@ -49,8 +50,10 @@ final class ApiRequest {
 		}
 
 		$ifMatch = $_SERVER['HTTP_IF_MATCH'] ?? null;
+		$origin = $_SERVER['HTTP_ORIGIN'] ?? null;
 		return new self($method, $path, $query, self::authorizationHeader(), self::bodyFromInput($method),
-			is_string($_SERVER['CONTENT_TYPE'] ?? null) ? $_SERVER['CONTENT_TYPE'] : '', is_string($ifMatch) ? $ifMatch : null);
+			is_string($_SERVER['CONTENT_TYPE'] ?? null) ? $_SERVER['CONTENT_TYPE'] : '', is_string($ifMatch) ? $ifMatch : null,
+			is_string($origin) ? $origin : null);
 	}
 
 	/** The request body of a `PUT`, `POST` or `PATCH`, at most {@see MAX_BODY_BYTES} + 1 bytes: one more than allowed means too large. */

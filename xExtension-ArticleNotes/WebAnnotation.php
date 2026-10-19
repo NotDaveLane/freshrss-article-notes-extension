@@ -9,7 +9,7 @@ namespace ArticleNotes;
  * note or highlight, the annotated URL as the target's `source`, `TextQuoteSelector` / `TextPositionSelector` for highlights.
  */
 final class WebAnnotation {
-	public const CONTEXT = 'http://www.w3.org/ns/anna.jsonld';
+	public const CONTEXT = 'http://www.w3.org/ns/anno.jsonld';
 
 	/**
 	 * An article note or a page note.

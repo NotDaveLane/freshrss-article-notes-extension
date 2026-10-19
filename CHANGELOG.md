@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.1.0] - 2026-10-19
+
 ### Added
 
 - API: `GET v1/lookup?url=` finds the articles (and notes on purged articles) behind a web page URL, for third-party clients
@@ -52,6 +54,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   capability).
 - Migration `0007`: highlights keep their selected text in a `quote` column, searchable by the Notes page.
 
+- Client support (`client-support` OpenSpec capability):
+  - CORS for web-page clients: the administrator setting "Allowed client origins" (Configuration → Extensions → ArticleNotes),
+    one exact origin per line (`https://…`, `moz-extension://<uuid>`, `chrome-extension://<id>`; wildcards are refused). Empty
+    by default, which sends no CORS header at all. Listed origins get `OPTIONS` preflight answers and
+    `Access-Control-Allow-Origin`, `Vary: Origin` and `Access-Control-Expose-Headers: ETag`; credentials are never allowed.
+  - `GET v1/annotated`: every article and page the user annotated in one call (counts, highlight colours, first and last
+    annotation time, the note), newest first, with `since` / `removed` for sync, paging and `kind` / `feed_id` filters.
+  - `GET v1/annotations?format=w3c`: notes and highlights as W3C Web Annotation JSON-LD, paged and filterable like the native
+    lists.
+  - An OpenAPI 3.1 description of the whole API in `docs/openapi.yaml`, served without authentication at `v1/openapi.json`
+    (`bin/openapi` regenerates the served copy); CI validates it and checks that it describes exactly the routes the API handles.
+  - Reference client `examples/notes-client.mjs` and example page `examples/highlight-page.html`, tested in CI; README
+    "Building a client".
+  - `bin/verify-upgrade` checks that upgrading a 1.0.0 install keeps its notes and runs the migrations.
+
+
 ### Changed
 
 - The "Annotated" label now follows article notes and highlights together: it is applied with an article's first note or
@@ -64,6 +82,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- The W3C Web Annotation JSON-LD context URL was misspelled (`anna.jsonld`); it is now the real
+  `http://www.w3.org/ns/anno.jsonld`, in the Notes page export too.
 - The extension's pages (settings) no longer print "Warning: Undefined property: Minz_View::$rss_title" above FreshRSS's
   header: the controller now renders with FreshRSS's view (`FreshRSS_ActionController`). The test suite now fails on PHP
   warnings, notices and deprecations: in every end-to-end response, in FreshRSS's log after the end-to-end run

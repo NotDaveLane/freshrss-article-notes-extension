@@ -22,6 +22,11 @@ fetch and analyze them later.
 - **A Notes page** listing everything you annotated — article notes, page notes and highlights — grouped by article or
   page, with search, filters, in-place editing and export to Markdown or W3C Web Annotation JSON — see
   [The Notes page](#the-notes-page).
+- **Built for third-party clients**: [`v1/annotated`](#annotated-targets) lists everything you annotated in one call,
+  [`v1/annotations`](#w3c-web-annotation-export) exports it as W3C Web Annotation JSON-LD, an [OpenAPI 3.1
+  description](#openapi) documents the whole API, [CORS](#cors-web-page-clients) can be enabled for web-page clients, and a
+  [reference client](#reference-client) plus a [guide to building a browser extension](#building-a-client) show how to
+  look up, display, create and edit notes and highlights for the page being viewed.
 - Per-user data, SQLite / MySQL / MariaDB / PostgreSQL, English interface; licensed AGPL-3.0-or-later like FreshRSS.
 
 | The note under its article | Annotated articles in the sidebar | Per-user settings |
@@ -47,10 +52,10 @@ into `extensions/`; the zip contains just `xExtension-ArticleNotes/`:
 
 ```sh
 cd /path/to/FreshRSS/extensions
-unzip ~/Downloads/ArticleNotes-1.0.0.zip      # creates xExtension-ArticleNotes/
+unzip ~/Downloads/ArticleNotes-1.1.0.zip      # creates xExtension-ArticleNotes/
 ```
 
-**b) Git.** Clone the repository (optionally check out a release tag such as `v1.0.0`) and copy the extension directory
+**b) Git.** Clone the repository (optionally check out a release tag such as `v1.1.0`) and copy the extension directory
 (the rest of the repository is development tooling):
 
 ```sh
@@ -149,6 +154,9 @@ Turning the label off or renaming it affects notes you add from then on; already
 Labelled articles are kept by FreshRSS's default archiving setting "keep labelled articles" (Configuration → Archiving),
 so annotated articles are not purged. The page also shows your API endpoint, `<FreshRSS base URL>/api/misc.php/ArticleNotes/`.
 
+Administrators also have one setting, on the extension's own page (Configuration → Extensions → ArticleNotes → the gear
+icon): **Allowed client origins**, for [web-page clients](#cors-web-page-clients). It is empty by default.
+
 ## API
 
 ArticleNotes serves each user's notes as JSON on FreshRSS's extension API endpoint:
@@ -157,8 +165,9 @@ ArticleNotes serves each user's notes as JSON on FreshRSS's extension API endpoi
 https://freshrss.example.net/api/misc.php/ArticleNotes/v1/...
 ```
 
-(`/api/misc.php/v1/...?ext=ArticleNotes` works too.) Every path accepts `GET` and `HEAD`; `v1/notes/<entry_id>` also
-accepts `PUT` and `DELETE`. Any other method answers `405` with an `Allow` header.
+(`/api/misc.php/v1/...?ext=ArticleNotes` works too.) Every path accepts `GET` and `HEAD`; the paths that write also accept
+`PUT`, `POST`, `PATCH` or `DELETE`, as listed below. Any other method answers `405` with an `Allow` header. The whole
+API is described by an [OpenAPI document](#openapi).
 
 ### Authentication
 
@@ -200,7 +209,7 @@ like `{"error": {"code": "not_found", "message": "…"}}` with the codes `invali
 `too_many_highlights` (400/422, see [Highlights](#highlights)).
 
 - `GET v1/status` — a cheap credentials check:
-  `{"extension": "ArticleNotes", "version": "1.0.0", "api_version": 1, "user": "alice", "note_count": 12}`
+  `{"extension": "ArticleNotes", "version": "1.1.0", "api_version": 1, "user": "alice", "note_count": 12}`
   (`note_count` counts live notes).
 - `GET v1/notes` — your notes, oldest change first (ordered by `updated_at`, then `id`):
   `{"notes": [ … ], "continuation": "…" or null, "server_time": 1760900000}`. Parameters:
@@ -219,6 +228,10 @@ like `{"error": {"code": "not_found", "message": "…"}}` with the codes `invali
 - `GET`, `PUT` and `DELETE v1/page-notes?url=<page url>` — the note of a web page that is not an article; see
   [Page notes](#page-notes).
 - `POST v1/highlights`, `GET`/`PATCH`/`DELETE v1/highlights/<uuid>` and `GET v1/highlights` — see [Highlights](#highlights).
+- `GET v1/annotated` — every article and page you annotated, one entry each; see [Annotated targets](#annotated-targets).
+- `GET v1/annotations?format=w3c` — notes and highlights as W3C Web Annotation JSON-LD; see
+  [W3C Web Annotation export](#w3c-web-annotation-export).
+- `GET v1/openapi.json` — the [OpenAPI description](#openapi) of all this; the only path that needs no credentials.
 
 ### The note object
 
@@ -423,6 +436,187 @@ curl -u alice:my-api-password -G …/v1/highlights -d since=1760900000 -d limit=
 - The "Annotated" label is applied with an article's first note or highlight and removed (only if ArticleNotes put it
   there) when the article has neither any more.
 
+### Annotated targets
+
+`GET v1/annotated` answers "what did the user annotate?" in one call, whatever the "Annotated" label says: one entry per
+article or page that has a live article note, page note or highlight.
+
+```sh
+curl -u alice:my-api-password -G https://freshrss.example.net/api/misc.php/ArticleNotes/v1/annotated \
+  -d since=1760900000 -d kind=article -d limit=50
+```
+
+```json
+{
+  "targets": [
+    {
+      "kind": "article",
+      "entry_id": "1760891234567890",
+      "greader_item_id": "tag:google.com,2005:reader/item/00064185708646d2",
+      "url": "https://example.org/post/42",
+      "normalized_url": "https://example.org/post/42",
+      "title": "An interesting post",
+      "article": {"guid": "…", "url": "…", "title": "…", "author": "Jane Doe", "published_at": 1760880000,
+                  "feed": {"id": 3, "name": "Example blog", "url": "https://example.org/feed.xml"}, "exists": true},
+      "note": {"id": 7, "kind": "article", "note": "Worth re-reading.", "…": "…"},
+      "highlight_count": 3,
+      "highlight_colors": ["yellow", "pink"],
+      "first_annotated_at": 1760891300, "first_annotated_at_iso": "2025-10-19T16:28:20+00:00",
+      "last_annotated_at": 1760895000, "last_annotated_at_iso": "2025-10-19T17:30:00+00:00"
+    }
+  ],
+  "removed": [{"kind": "page", "entry_id": null, "greader_item_id": null, "url": "https://example.org/old", "normalized_url": "https://example.org/old"}],
+  "continuation": null,
+  "server_time": 1760900100
+}
+```
+
+- `kind` is `article` or `page`; `article` is `null` and `entry_id` / `greader_item_id` are `null` for a page. `note` is the
+  [note object](#the-note-object) of the article note or page note, or `null`; `highlight_count` and `highlight_colors`
+  (distinct, in the palette's order) count live highlights only.
+- `last_annotated_at` is the latest `updated_at` among the target's live note and highlights, `first_annotated_at` the
+  earliest `created_at`. Targets come most recently annotated first (then by article id, then by page, both descending).
+- `limit` (1–500, default 100) and `continuation` page like `v1/notes`; `kind` (`article` or `page`) and `feed_id` (articles of
+  one FreshRSS feed) filter, and the `continuation` keeps the filters.
+- `since` (Unix time) returns the targets with an annotation created, edited or **deleted** at or after it, and a `removed`
+  list (on the first page) of the targets that changed but have no live annotation any more, so a client can drop them. Store
+  `server_time` for the next `since`. Without `since` there is no `removed`.
+- It is one grouped query over notes and highlights plus a fixed number of lookups for the page of results, however many
+  targets you have.
+
+### W3C Web Annotation export
+
+`GET v1/annotations?format=w3c` returns notes and highlights as [W3C Web Annotation](https://www.w3.org/TR/annotation-model/)
+JSON-LD (`Content-Type: application/ld+json`), the same mapping as the Notes page export: an `AnnotationCollection` whose
+`first` page holds one `Annotation` per note or highlight (`motivation` `commenting` / `highlighting`, a `TextualBody`, the
+page URL as the target `source`, `TextQuoteSelector` and `TextPositionSelector`). The `id` of an annotation is
+`urn:uuid:<uuid>` for a highlight and `urn:articlenotes:note:<id>` for a note.
+
+```sh
+curl -u alice:my-api-password -G …/v1/annotations -d format=w3c -d since=1760900000 -d limit=100
+curl -u alice:my-api-password -G …/v1/annotations -d format=w3c --data-urlencode 'url=https://example.org/pricing'
+```
+
+- Without `entry_id` / `url` it lists what changed at or after `since` (default: everything), oldest change first, with
+  `limit` (1–500, default 100) and `continuation` as for `v1/notes`; the extra members `continuation` and `server_time` sit
+  next to `first` in the collection. Only live annotations are exported: the W3C model has no deletions, so use the native
+  endpoints to sync them.
+- `entry_id` (an article) or `url` (a page, or the article with that URL) exports everything on that one target.
+
+### OpenAPI
+
+[`docs/openapi.yaml`](docs/openapi.yaml) is an OpenAPI 3.1 description of the whole `v1` API: authentication, every endpoint,
+the note, highlight and annotated-target schemas, errors, and the `ETag` / `If-Match` rules. Your instance serves it as JSON,
+without authentication, at `<FreshRSS base URL>/api/misc.php/ArticleNotes/v1/openapi.json` (with your API URL as its
+`servers` entry), so you can feed it to a code generator or an API explorer. CI validates it against the OpenAPI 3.1 schema
+and fails when a route is not described (or a described route does not exist).
+
+### CORS (web-page clients)
+
+Browsers only let a web page call the API when the server says so. **Browser extensions with host permissions for your
+FreshRSS address do not need CORS at all**; it is for pages and extension pages that call the API from another origin.
+
+An administrator lists the allowed origins under Configuration → Extensions → ArticleNotes → **Allowed client origins**, one
+per line: exact origins such as `https://notes.example.com`, `http://localhost:8000`, `moz-extension://<uuid>` or
+`chrome-extension://<id>`. Wildcards (`*`), paths and other schemes are refused and nothing is saved. The list is empty by
+default, and then no CORS header is ever sent.
+
+For a request from a listed origin the API answers `OPTIONS` preflights with `204` (no credentials needed) and
+`Access-Control-Allow-Methods`, `Access-Control-Allow-Headers: Authorization, Content-Type, If-Match` and
+`Access-Control-Max-Age: 600`, and adds `Access-Control-Allow-Origin` (the request's origin), `Vary: Origin` and
+`Access-Control-Expose-Headers: ETag` to every response. Other origins get no CORS header. `Access-Control-Allow-Credentials`
+is never sent: credentials are in the `Authorization` header. Note that a page that is allowed to call the API still needs
+the user's API password, which the page must obtain from the user and keep safe.
+
+## Building a client
+
+This is for someone writing a Firefox or Chromium extension that shows and edits notes and highlights for the page in the
+current tab. The flow, with the [reference client](#reference-client) and the [anchoring library](#anchoring-library):
+
+1. **On tab change** (`tabs.onUpdated` with `status: "complete"`, `tabs.onActivated`), debounce, then `GET v1/lookup?url=<tab URL>`.
+   Skip URLs that are not `http(s)`. The server normalizes the URL (fragment, tracking parameters, `www.`, scheme), so send
+   it as is.
+2. **Show what is known.** If `matches` is not empty, the page is one of the user's FreshRSS articles: `matches[0].note`
+   and `matches[0].highlights` are the article note and highlights (use `entry_id` for writes). Otherwise `page_note` and
+   `page_highlights` are the page's. Always render notes and quotes as text (`textContent`), never as HTML.
+3. **Anchor the highlights in the page.** In a content script, pick the page's main content (`document.querySelector('article')`,
+   else `main`, else `document.body`) and call `anchor(highlight.selector, root)` from the anchoring library for the
+   highlights with `source: "page"` (positions only mean something within one source; highlights made in FreshRSS's rendering
+   have `source: "freshrss"` and are best-effort: try them too, and ignore the ones that do not anchor). Draw each with
+   `highlight(range, {id, color})` right after anchoring it. A highlight that does not anchor is **orphaned**: keep it, list
+   its quote with "passage not found", never delete it silently.
+4. **Create highlights** from the user's selection: `describe(selection.getRangeAt(0), root)` gives the `selector`; send
+   `POST v1/highlights` with a **client-generated `uuid`** (`crypto.randomUUID()`), `source: "page"`, the tab `url` and
+   `title`. If the request fails or times out, retry with the same body: the same `uuid` returns the stored highlight
+   (`200`) instead of creating a duplicate. Queue the request while offline.
+5. **Save notes with `If-Match`.** Keep the `ETag` from every `GET`/`PUT`/`PATCH` of a note or highlight and send it back as
+   `If-Match`. On **`412 precondition_failed`** someone else changed it (another device, FreshRSS itself): refetch, show
+   the new text, let the user merge, and save again. For an article use `PUT v1/notes/<entry_id>`, for a page
+   `PUT v1/page-notes?url=` (a URL that is an article answers `409 url_is_article`).
+6. **Stay in sync** with `GET v1/notes?since=` and `GET v1/highlights?since=` (tombstones included), or list the user's
+   annotated pages with [`v1/annotated`](#annotated-targets), for a "my notes" popup or to badge the toolbar icon.
+
+### Authentication and storage
+
+Use the user's FreshRSS **API password** (Configuration → Profile → "API password") with HTTP Basic, as in the
+[Authentication](#authentication) section. Ask the user for the FreshRSS address, user name and API password once, check
+them with `GET v1/status`, and store them in the extension's **local storage** (`browser.storage.local`; not `sync`,
+which would copy the password to the browser vendor's servers). Require HTTPS for the FreshRSS address; plain `http` is only
+acceptable for `localhost`. Be aware of the password's reach: the API password also grants access to FreshRSS's Google Reader
+and Fever APIs for the whole account, not just to ArticleNotes, so tell the user, and never log or sync it. A Google Reader
+token (`GoogleLogin auth=…`) works too, but expires when the API password changes.
+
+### Firefox and Chromium specifics
+
+- **Host permissions.** Declare the FreshRSS origin in `host_permissions` (Manifest V3; `permissions` in Manifest V2), e.g.
+  `"host_permissions": ["https://freshrss.example.net/*"]`, and make the API calls from the background script (or
+  event page). Extensions with host permissions bypass CORS: **no administrator setup is needed**. Firefox MV3 treats
+  host permissions as optional for the user: request them with `permissions.request()` if they are not granted.
+- **When CORS is needed.** Calling the API from a content script (it runs with the *page's* origin, so CORS applies to
+  the page, not to your extension), from a web page, or from an extension page without host permission. Prefer message
+  passing: the content script asks the background script to call the API. Otherwise the administrator adds the page's
+  origin, or `moz-extension://<your extension's internal UUID>` / `chrome-extension://<id>`, under "Allowed client origins".
+  The Firefox internal UUID differs per browser profile, which is why host permissions are the better route there.
+- **Debounce lookups** on tab updates (a few hundred milliseconds): single-page apps fire many `onUpdated` events, and each
+  lookup is a request. Remember the result per normalized URL for the life of the tab, and refresh it when the user edits.
+- **Anchor against the page's main content**, not `document.body`, where you can: use `article`, then `main`, then `body`.
+  Menus, cookie banners and comment widgets change between visits and shift positions; the anchoring library prefers the
+  quote and its context over the position for that reason. Give your own injected UI the attribute `data-articlenotes-ui`
+  so it is left out of the text model.
+- **Performance**: anchor after the page settled (`document_idle`, or a `MutationObserver` for pages that render late) and
+  anchor highlights one by one: drawing moves text nodes.
+
+### Reference client
+
+[`examples/notes-client.mjs`](examples/notes-client.mjs) is a small, dependency-free ES module for browsers and Node 18+
+that wraps the API: `status()`, `lookup(url)`, article notes (`getNote`, `saveNote(entryId, text, etag)`, `deleteNote`), page
+notes (`getPageNote`, `savePageNote`, `deletePageNote`), highlights (`listHighlights`, `getHighlight`, `createHighlight`
+with a generated uuid, `updateHighlight`, `deleteHighlight`), and the syncs `listChangedSince('notes' | 'highlights', since)`
+and `listAnnotated({since, kind, feedId})`, which follow `continuation` for you. Failures throw `ApiError` (`status`,
+`code`); a `412` throws `PreconditionFailedError`.
+
+```js
+import { NotesClient, PreconditionFailedError } from './notes-client.mjs';
+
+const client = new NotesClient({ baseUrl: 'https://freshrss.example.net', user: 'alice', apiPassword });
+const found = await client.lookup(location.href);
+const entryId = found.matches[0]?.entry_id;
+let current = await client.getNote(entryId);
+try {
+	current = await client.saveNote(entryId, 'My note', current?.etag);
+} catch (error) {
+	if (!(error instanceof PreconditionFailedError)) throw error;
+	current = await client.getNote(entryId);	// changed elsewhere: refetch, merge, save again
+}
+```
+
+[`examples/highlight-page.html`](examples/highlight-page.html) is a static page that does what a content script does: it
+connects with the form, looks itself up, anchors the stored highlights in its own text with the anchoring library, lets you
+select text and store it as a highlight, and redraws everything after a reload; highlights whose passage is gone are listed
+as "not found". Serve the three files (the page, `notes-client.mjs`, and `anchoring.js` from
+`xExtension-ArticleNotes/static/`) from one directory over http(s), for example `python3 -m http.server 8000`, add that origin
+(`http://localhost:8000`) to "Allowed client origins", and open it. Both are tested against the dev instance in CI.
+
 ## Anchoring library
 
 `xExtension-ArticleNotes/static/anchoring.js` is the small JavaScript library that ArticleNotes uses to turn a text
@@ -469,6 +663,11 @@ The selector mirrors the [W3C Web Annotation](https://www.w3.org/TR/annotation-m
 (`quote`) and `TextPositionSelector` (`position`).
 
 ## Upgrading
+
+**To 1.1.0** (from 1.0.0): nothing else is needed. The first time each user's storage is used (or at the next feed refresh) the
+extension adds its tables for page notes and highlights (migrations `0004`–`0007`); notes stay as they are, and the API
+answers as before with new endpoints added (`v1/annotated`, `v1/annotations`, `v1/openapi.json`, highlights and page notes) and
+new keys in note objects. CORS stays off until an administrator lists origins.
 
 Replace the `xExtension-ArticleNotes/` directory with the new release (unpack the new zip over it, `git pull` and copy
 again, or update your bind mount's source). Nothing else is needed: the extension keeps a schema version per user and
@@ -550,7 +749,8 @@ bin/ci --compat      # the matrix: bin/ci --all-dbs on FreshRSS 1.27.1 and 1.30.
 `bin/ci --compat` does not need (or touch) the dev stack; set `COMPAT_VERSIONS` (e.g. `COMPAT_VERSIONS="1.27.1"`) to pick
 versions. It lints on the default version only, as FreshRSS's APIs and coding standard differ between versions.
 
-Single runs: `bin/phpunit tests/Unit/MetadataTest.php`, `TEST_DB=postgres bin/phpunit --testsuite integration`,
+`bin/openapi` regenerates the copy of `docs/openapi.yaml` that the API serves (`xExtension-ArticleNotes/openapi.json`; a test
+fails when it is stale). Single runs: `bin/phpunit tests/Unit/MetadataTest.php`, `TEST_DB=postgres bin/phpunit --testsuite integration`,
 `FRESHRSS_VERSION=1.27.1 bin/phpunit`, `bin/e2e specs/full-journey.spec.ts`, `bin/lint`. End-to-end tests use throwaway
 users subscribed to the local fixture feed, never the live feeds.
 
@@ -566,7 +766,8 @@ Maintainers:
 1. Bump `version` in `xExtension-ArticleNotes/metadata.json` and move the `[Unreleased]` entries of `CHANGELOG.md` under a
    new `## [X.Y.Z] - YYYY-MM-DD` heading (a test fails if the two disagree).
 2. Run `bin/ci --compat`, commit, and tag `vX.Y.Z`.
-3. `bin/package` builds `dist/ArticleNotes-X.Y.Z.zip` (only `xExtension-ArticleNotes/`); `bin/verify-release` installs
+3. Run `bin/openapi` if `docs/openapi.yaml` changed (its `info.version` must equal the release version), then
+   `bin/package` builds `dist/ArticleNotes-X.Y.Z.zip` (only `xExtension-ArticleNotes/`); `bin/verify-release` installs
    that zip into a clean `freshrss/freshrss` container, enables it as the administrator, adds a note and fetches it
    through the API. Attach the zip to the release.
 
