@@ -16,7 +16,7 @@ final class VersionGuardTest extends TestCase {
 		$property = new ReflectionProperty(Minz_ExtensionManager::class, 'hook_list');
 		$lists = $property->getValue();
 		self::assertIsArray($lists);
-		$entry = $lists[Minz_HookType::ApiMisc->value] ?? null;
+		$entry = $lists['api_misc'] ?? null;
 		return is_array($entry) && is_array($entry['list'] ?? null) ? count($entry['list']) : 0;
 	}
 

@@ -40,13 +40,17 @@ final class ArticleNotesExtension extends Minz_Extension {
 		return version_compare($version, self::MIN_FRESHRSS_VERSION, '>=');
 	}
 
+	/**
+	 * Hooks are registered by name: FreshRSS 1.27 has no `Minz_HookType` enum, and newer versions map the
+	 * names to its cases.
+	 */
 	public function registerHooks(string $freshrssVersion): void {
-		$this->registerHook(Minz_HookType::FreshrssUserMaintenance, [$this, 'ensureSchema']);
-		$this->registerHook(Minz_HookType::EntryBeforeDisplay, [$this, 'appendNote']);
-		$this->registerHook(Minz_HookType::JsVars, [$this, 'jsVars']);
-		$this->registerHook(Minz_HookType::MenuConfigurationEntry, [$this, 'menuEntry']);
+		$this->registerHook('freshrss_user_maintenance', [$this, 'ensureSchema']);
+		$this->registerHook('entry_before_display', [$this, 'appendNote']);
+		$this->registerHook('js_vars', [$this, 'jsVars']);
+		$this->registerHook('menu_configuration_entry', [$this, 'menuEntry']);
 		if (self::isSupportedFreshRss($freshrssVersion)) {
-			$this->registerHook(Minz_HookType::ApiMisc, [$this, 'handleApi']);
+			$this->registerHook('api_misc', [$this, 'handleApi']);
 		} else {
 			Minz_Log::warning('ArticleNotes requires FreshRSS ' . self::MIN_FRESHRSS_VERSION . ' or newer (running '
 				. $freshrssVersion . '): the API endpoint is disabled.');
@@ -65,10 +69,28 @@ final class ArticleNotesExtension extends Minz_Extension {
 	public function settings(): ArticleNotes\Settings {
 		return new ArticleNotes\Settings(
 			fn (string $key): mixed => $this->getUserConfigurationValue($key),
-			function (string $key, mixed $value): void {
-				$this->setUserConfigurationValue($key, $value);
-			},
+			$this->setUserValue(...),
 		);
+	}
+
+	/**
+	 * Stores one value of the current user's extension configuration, on every supported FreshRSS version.
+	 *
+	 * @param non-empty-string $key
+	 */
+	private function setUserValue(string $key, mixed $value): void {
+		if (is_callable([$this, 'setUserConfigurationValue'])) {	// recent FreshRSS
+			$this->setUserConfigurationValue($key, $value);
+		} else {
+			$this->setUserValueLegacy($key, $value);
+		}
+	}
+
+	/** {@see setUserValue()} for FreshRSS versions without `setUserConfigurationValue()` (1.27, 1.28). */
+	private function setUserValueLegacy(string $key, mixed $value): void {
+		$configuration = $this->getUserConfiguration();
+		$configuration[$key] = $value;
+		$this->setUserConfiguration($configuration);
 	}
 
 	/** The URL of the notes API of this instance. */
@@ -167,20 +189,21 @@ final class ArticleNotesExtension extends Minz_Extension {
 		return new ArticleNotes\Migrator(
 			__DIR__ . '/Migrations',
 			(new ArticleNotes\Storage($user))->pdo(),
-			fn (): int => $this->getUserConfigurationInt(self::SCHEMA_VERSION_KEY) ?? 0,
-			function (int $version): void {
-				$this->setUserConfigurationValue(self::SCHEMA_VERSION_KEY, $version);
+			function (): int {
+				$version = $this->getUserConfigurationValue(self::SCHEMA_VERSION_KEY);
+				return is_numeric($version) ? (int)$version : 0;
 			},
+			fn (int $version) => $this->setUserValue(self::SCHEMA_VERSION_KEY, $version),
 			DATA_PATH . '/users/' . $user . '/articlenotes-migration.lock',
 		);
 	}
 
 	#[\Override]
 	public function uninstall(): bool|string {
-		foreach (FreshRSS_user_Controller::listUsers() as $user) {
+		foreach (self::users() as $user) {
 			try {
 				(new ArticleNotes\Storage($user))->dropTables();
-				$configuration = FreshRSS_UserConfiguration::getForUser($user);
+				$configuration = self::userConfiguration($user);
 				if ($configuration !== null && $configuration->hasParam('extensions')) {
 					$extensions = $configuration->extensions;
 					unset($extensions[$this->getName()]);
@@ -195,5 +218,35 @@ final class ArticleNotesExtension extends Minz_Extension {
 		$this->removeUserConfiguration();
 		$this->removeSystemConfiguration();
 		return true;
+	}
+
+	/** A user's configuration (like `FreshRSS_UserConfiguration::getForUser()`, which FreshRSS 1.27 does not have). */
+	public static function userConfiguration(string $user): ?FreshRSS_UserConfiguration {
+		if (!FreshRSS_user_Controller::checkUsername($user)) {
+			return null;
+		}
+		try {
+			FreshRSS_UserConfiguration::register('user_' . $user, USERS_PATH . '/' . $user . '/config.php',
+				FRESHRSS_PATH . '/config-user.default.php');
+			return FreshRSS_UserConfiguration::get('user_' . $user);
+		} catch (Minz_FileNotExistException) {
+			return null;
+		}
+	}
+
+	/**
+	 * The users of this instance (like `FreshRSS_user_Controller::listUsers()`, which FreshRSS 1.27 does not have).
+	 *
+	 * @return list<string>
+	 */
+	private static function users(): array {
+		$users = [];
+		$names = scandir(DATA_PATH . '/users');
+		foreach ($names === false ? [] : $names as $name) {
+			if ($name[0] !== '.' && $name !== '_' && is_file(DATA_PATH . '/users/' . $name . '/config.php')) {
+				$users[] = $name;
+			}
+		}
+		return $users;
 	}
 }

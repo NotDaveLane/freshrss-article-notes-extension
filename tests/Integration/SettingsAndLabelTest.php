@@ -236,7 +236,7 @@ final class SettingsAndLabelTest extends TestCase {
 	public function testSettingsArePerUser(): void {
 		$this->settings()->save(false, 'Mine alone');
 		if (!FreshRSS_user_Controller::userExists(self::OTHER_USER)) {
-			self::assertTrue(FreshRSS_user_Controller::createUser(self::OTHER_USER, null, 'settings-other-password'));
+			self::assertTrue(FreshRSS_user_Controller::createUser(self::OTHER_USER, null, 'settings-other-password', ['language' => 'en']));
 		}
 		self::useUser(self::OTHER_USER);
 		self::assertTrue($this->settings()->labelEnabled());
@@ -285,14 +285,12 @@ final class SettingsAndLabelTest extends TestCase {
 	public function testLabelIdMigrationIsIdempotent(): void {
 		self::assertTrue($this->extension()->ensureSchema());
 		$pdo = (new ArticleNotes\Storage(TestEnvironment::USER))->pdo();
-		$migration = require dirname(__DIR__, 2) . '/xExtension-ArticleNotes/Migrations/0003_add_label_id.php';
-		self::assertInstanceOf(ArticleNotes\Migration::class, $migration);
-		$previous = $pdo->getAttribute(PDO::ATTR_ERRMODE);
-		$pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
-		$driver = $pdo->getAttribute(PDO::ATTR_DRIVER_NAME);
-		$migration->up($pdo, $pdo->prefix(), is_string($driver) ? $driver : '');
-		$migration->up($pdo, $pdo->prefix(), is_string($driver) ? $driver : '');
-		$pdo->setAttribute(PDO::ATTR_ERRMODE, is_int($previous) ? $previous : PDO::ERRMODE_SILENT);
+		// Re-apply 0003 (the column exists already) twice, the way the Migrator runs migrations.
+		$migrator = new ArticleNotes\Migrator(dirname(__DIR__, 2) . '/xExtension-ArticleNotes/Migrations', $pdo,
+			static fn (): int => 2, static function (int $version): void {
+			});
+		self::assertGreaterThanOrEqual(1, $migrator->migrate());
+		self::assertGreaterThanOrEqual(1, $migrator->migrate());
 		self::assertGreaterThanOrEqual(0, (new ArticleNotes\NoteDAO($pdo))->count(true));
 	}
 }

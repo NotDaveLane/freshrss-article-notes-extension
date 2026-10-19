@@ -286,7 +286,7 @@ final class NoteServiceTest extends TestCase {
 		$entryId = $this->addEntry();
 		$this->service()->save($entryId, 'private to A');
 
-		self::assertTrue(FreshRSS_user_Controller::createUser(self::OTHER_USER, null, 'other-password-123', [], false));
+		self::assertTrue(FreshRSS_user_Controller::createUser(self::OTHER_USER, null, 'other-password-123', ['language' => 'en'], false));
 		self::useUser(self::OTHER_USER);
 		$other = $this->service();
 		self::assertNull($other->get($entryId));
