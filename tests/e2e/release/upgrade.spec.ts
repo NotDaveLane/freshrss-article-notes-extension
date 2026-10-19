@@ -73,7 +73,7 @@ test('after: 1.1.0 migrated the user, kept the note, and serves the new API', as
 	const json = { ...auth, 'Content-Type': 'application/json' };
 	const created = await request.post(`${API}/highlights`, {
 		headers: json,
-		data: { entry_id: entryId, source: 'freshrss', color: 'green', note: 'new in 1.1', selector: { quote: { exact: 'async closures' } } },
+		data: { entry_id: entryId, source: 'freshrss', color: 'green', note: 'new in 1.1', selector: { quote: { exact: 'compile times for large workspaces' } } },
 	});
 	expect(created.status()).toBe(201);
 	const pageNote = await request.put(`${API}/page-notes`, { headers: json, params: { url: 'https://example.org/upgrade' }, data: { note: 'page note' } });
@@ -97,5 +97,5 @@ test('after: 1.1.0 migrated the user, kept the note, and serves the new API', as
 	await page.reload();
 	await page.goto('/i/?state=3');
 	const again = await openArticle(page, TITLE);
-	await expect(again.locator('mark.articlenotes-hl')).toContainText('async closures');
+	await expect(again.locator('mark.articlenotes-hl')).toContainText('compile times for large workspaces');
 });
