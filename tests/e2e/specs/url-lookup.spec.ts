@@ -78,7 +78,10 @@ test('a browser extension looks a page up, writes a note, and deletes it again',
 	const gone = await json(await request.get(`${API}/lookup`, { headers: auth, params: { url: PAGE_URL } }));
 	expect((gone.matches as Match[])[0].note).toBeNull();
 
-	await page.goto(`/i/${await label.getAttribute('href')}&state=3`);
+	// A URL the browser has not cached: FreshRSS's Last-Modified has a one-second resolution and API requests have no
+	// session (part of its ETag), so the same URL fetched in the same second as the write could revalidate as 304.
+	await page.goto(`/i/${await label.getAttribute('href')}&state=3&after=delete`);
+	await expect(page.locator('#stream')).toBeVisible();
 	await expect(page.locator('.flux', { hasText: TITLE })).toHaveCount(0);
 });
 
