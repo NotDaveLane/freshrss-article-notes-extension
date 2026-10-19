@@ -30,12 +30,15 @@ final class ExtensionSchemaTest extends TestCase {
 		self::assertGreaterThanOrEqual(1, $extension->getUserConfigurationValue('schema_version'));
 	}
 
-	public function testUninstallRemovesConfiguration(): void {
+	public function testUninstallKeepsTheData(): void {
+		// FreshRSS calls uninstall() when an administrator disables the extension: notes must survive it.
 		$extension = $this->extension();
-		$extension->ensureSchema();
+		self::assertTrue($extension->ensureSchema());
+		$count = (new ArticleNotes\NoteDAO((new ArticleNotes\Storage(TestEnvironment::USER))->pdo()))->count(true);
 		self::assertTrue($extension->uninstall());
+		self::assertSame($count, (new ArticleNotes\NoteDAO((new ArticleNotes\Storage(TestEnvironment::USER))->pdo()))->count(true));
 		$stored = ArticleNotesExtension::userConfiguration(TestEnvironment::USER);
 		self::assertNotNull($stored);
-		self::assertArrayNotHasKey('ArticleNotes', $stored->extensions);
+		self::assertIsArray($stored->extensions['ArticleNotes'] ?? null);
 	}
 }

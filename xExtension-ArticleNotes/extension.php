@@ -198,26 +198,27 @@ final class ArticleNotesExtension extends Minz_Extension {
 		);
 	}
 
+	/**
+	 * Keeps every user's notes and settings: FreshRSS calls uninstall() when an administrator *disables* the extension
+	 * (and its "Remove" button only deletes the directory), so it must not destroy data. `cli/delete-data.php` deletes
+	 * it on purpose ({@see deleteUserData()}).
+	 */
 	#[\Override]
 	public function uninstall(): bool|string {
-		foreach (self::users() as $user) {
-			try {
-				(new ArticleNotes\Storage($user))->dropTables();
-				$configuration = self::userConfiguration($user);
-				if ($configuration !== null && $configuration->hasParam('extensions')) {
-					$extensions = $configuration->extensions;
-					unset($extensions[$this->getName()]);
-					$configuration->extensions = $extensions;
-					$configuration->save();
-				}
-				@unlink(DATA_PATH . '/users/' . $user . '/articlenotes-migration.lock');
-			} catch (\Throwable $exception) {
-				return 'Cannot remove ArticleNotes data of user ' . $user . ': ' . $exception->getMessage();
-			}
-		}
-		$this->removeUserConfiguration();
-		$this->removeSystemConfiguration();
 		return true;
+	}
+
+	/** Permanently deletes one user's ArticleNotes data: the extension's tables and the user's extension settings. */
+	public static function deleteUserData(string $user): void {
+		(new ArticleNotes\Storage($user))->dropTables();
+		$configuration = self::userConfiguration($user);
+		if ($configuration !== null && $configuration->hasParam('extensions')) {
+			$extensions = $configuration->extensions;
+			unset($extensions['ArticleNotes']);
+			$configuration->extensions = $extensions;
+			$configuration->save();
+		}
+		@unlink(DATA_PATH . '/users/' . $user . '/articlenotes-migration.lock');
 	}
 
 	/** A user's configuration (like `FreshRSS_UserConfiguration::getForUser()`, which FreshRSS 1.27 does not have). */
@@ -239,7 +240,7 @@ final class ArticleNotesExtension extends Minz_Extension {
 	 *
 	 * @return list<string>
 	 */
-	private static function users(): array {
+	public static function users(): array {
 		$users = [];
 		$names = scandir(DATA_PATH . '/users');
 		foreach ($names === false ? [] : $names as $name) {
