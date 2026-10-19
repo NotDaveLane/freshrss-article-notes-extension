@@ -28,3 +28,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   keyboard accessible) in the normal, reading and global views and for dynamically loaded articles; the note is
   shown under the article (escaped); `save`/`delete` JSON endpoints with CSRF protection
   (`note-editor` OpenSpec capability).
+- Notes API: read-only JSON on `p/api/misc.php/ArticleNotes/v1/` (`status`, `notes` with `since`, `limit`,
+  `continuation` and `include_deleted` for incremental sync with tombstones, `notes/<entry_id>`), authenticated with
+  the FreshRSS API password (HTTP Basic) or a Google Reader API token (`notes-api` OpenSpec capability).
