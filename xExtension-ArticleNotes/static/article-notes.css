@@ -270,3 +270,108 @@ mark.articlenotes-hl:focus-visible {
 		overflow-y: auto;
 	}
 }
+
+/* The Notes page. */
+.articlenotes-notes {
+	max-width: 60rem;
+	overflow-wrap: anywhere;
+}
+
+.articlenotes-notes-filters {
+	display: grid;
+	grid-template-columns: 1fr;
+	gap: 0.75rem;
+	margin: 1rem 0;
+}
+
+.articlenotes-notes-filters label span {
+	display: block;
+	font-size: 0.85rem;
+	opacity: 0.8;
+}
+
+.articlenotes-notes-filters input[type="search"], .articlenotes-notes-filters select {
+	width: 100%;
+	box-sizing: border-box;
+}
+
+.articlenotes-notes-check {
+	display: flex;
+	align-items: center;
+	gap: 0.5rem;
+}
+
+.articlenotes-notes-summary {
+	display: flex;
+	flex-wrap: wrap;
+	justify-content: space-between;
+	gap: 0.5rem;
+}
+
+.articlenotes-notes-group {
+	margin: 1.5rem 0;
+	padding: 0.75rem 1rem;
+	border: 1px solid var(--frss-border-color, #ccc);
+	border-radius: 4px;
+}
+
+.articlenotes-notes-header h2 {
+	margin: 0;
+	font-size: 1.2rem;
+}
+
+.articlenotes-notes-meta {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 0.25rem 0.75rem;
+	margin: 0.25rem 0 0.75rem;
+	font-size: 0.85rem;
+	opacity: 0.85;
+}
+
+.articlenotes-notes-note h3 {
+	margin: 0.5rem 0 0.25rem;
+	font-size: 1rem;
+}
+
+.articlenotes-notes-edit {
+	margin: 0.5rem 0;
+}
+
+.articlenotes-notes-edit summary {
+	display: inline-block;
+	cursor: pointer;
+}
+
+.articlenotes-notes-edit form {
+	margin-top: 0.5rem;
+}
+
+.articlenotes-notes-edit .articlenotes-textarea {
+	width: 100%;
+	box-sizing: border-box;
+}
+
+.articlenotes-notes-color {
+	display: block;
+	margin: 0.5rem 0;
+}
+
+.articlenotes-notes-pagination {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	gap: 1rem;
+	margin: 1.5rem 0;
+}
+
+@media (min-width: 48rem) {
+	.articlenotes-notes-filters {
+		grid-template-columns: repeat(4, 1fr);
+		align-items: end;
+	}
+
+	.articlenotes-notes-search, .articlenotes-notes-filters .articlenotes-actions {
+		grid-column: 1 / -1;
+	}
+}

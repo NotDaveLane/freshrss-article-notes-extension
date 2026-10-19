@@ -83,3 +83,48 @@ test('highlight screenshot', async ({ page }) => {
 	await page.getByRole('dialog').getByRole('button', { name: 'Delete' }).click();
 	await expect(article.locator('mark.articlenotes-hl')).toHaveCount(0);
 });
+
+test('notes page screenshot', async ({ page }) => {
+	await signIn(page, admin);
+	const api = '/api/misc.php/ArticleNotes/v1';
+	const headers = {
+		Authorization: 'Basic ' + Buffer.from(`${admin.user}:${process.env.FRESHRSS_DEV_API_PASSWORD ?? 'freshrss-dev-api'}`).toString('base64'),
+	};
+	await page.goto('/i/?state=3');
+	const ids = await page.locator('.flux[data-entry]').evaluateAll((items) => items.slice(0, 2).map((item) => item.getAttribute('data-entry')));
+	const created = { notes: [] as string[], highlights: [] as string[], pageNotes: [] as string[] };
+	const notes = ['Worth re-reading before the architecture review.', 'Compare with the follow-up discussion on Lobsters.'];
+	for (const [index, id] of ids.entries()) {
+		await page.request.put(`${api}/notes/${id}`, { headers, data: { note: notes[index] } });
+		created.notes.push(id!);
+		const response = await page.request.post(`${api}/highlights`, {
+			headers,
+			data: { entry_id: id, source: 'freshrss', color: ['yellow', 'green'][index], note: index === 0 ? 'Check this claim.' : '',
+				selector: { quote: { exact: ['the passage worth keeping', 'another passage that moved'][index] } } },
+		});
+		created.highlights.push(((await response.json()) as { highlight: { uuid: string } }).highlight.uuid);
+	}
+	const pageUrl = 'https://example.org/docs/screenshot-page';
+	await page.request.put(`${api}/page-notes`, { headers, params: { url: pageUrl }, data: { note: 'Pricing changes in March.', title: 'Example pricing page' } });
+	created.pageNotes.push(pageUrl);
+	const pageHighlight = await page.request.post(`${api}/highlights`, {
+		headers,
+		data: { url: pageUrl, title: 'Example pricing page', source: 'page', color: 'pink', selector: { quote: { exact: 'Free for personal use' } } },
+	});
+	created.highlights.push(((await pageHighlight.json()) as { highlight: { uuid: string } }).highlight.uuid);
+
+	await page.goto('/i/?c=ArticleNotes&a=notes');
+	await expect(page.locator('.articlenotes-notes-group').first()).toBeVisible();
+	await page.screenshot({ path: `${dir}/notes-page.png` });
+
+	// Leave the dev data as it was.
+	for (const uuid of created.highlights) {
+		await page.request.delete(`${api}/highlights/${uuid}`, { headers });
+	}
+	for (const id of created.notes) {
+		await page.request.delete(`${api}/notes/${id}`, { headers });
+	}
+	for (const url of created.pageNotes) {
+		await page.request.delete(`${api}/page-notes`, { headers, params: { url } });
+	}
+});

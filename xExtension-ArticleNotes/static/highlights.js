@@ -143,6 +143,7 @@
 			});
 			flux.dataset.articlenotesHl = 'done';
 			syncPanel(state);
+			jumpToRequested(state);
 		}).catch(function () {
 			delete flux.dataset.articlenotesHl;	// tried again when the article is displayed again
 		});
@@ -587,6 +588,11 @@
 		if (!state.panel) {
 			const panel = element('section', 'articlenotes-panel', { 'data-articlenotes-ui': '' });
 			panel.appendChild(element('h4', 'articlenotes-panel-title')).textContent = t.panelTitle;
+			if (settings().notesUrl) {
+				const link = element('a', 'articlenotes-notes-link', { 'href': settings().notesUrl });
+				link.textContent = t.allMyNotes;
+				panel.appendChild(element('p', 'articlenotes-notes-link-line')).appendChild(link);
+			}
 			panel.appendChild(element('div', 'articlenotes-panel-list'));
 			state.root.appendChild(panel);
 			state.panel = panel;
@@ -594,6 +600,12 @@
 				event.stopPropagation();
 			});
 			panel.addEventListener('click', function (event) {
+				const notes = event.target instanceof Element ? event.target.closest('a.articlenotes-notes-link') : null;
+				if (notes) {	// FreshRSS cancels clicks on links inside article content: navigate ourselves
+					event.preventDefault();
+					window.location.assign(notes.href);
+					return;
+				}
 				const target = event.target instanceof Element ? event.target.closest('button[data-action]') : null;
 				const li = target && target.closest('li[data-uuid]');
 				const item = li && state.items.get(li.dataset.uuid);
@@ -649,6 +661,43 @@
 		list.appendChild(ol);
 	}
 
+	// --- Opening an article at a highlight (links of the Notes page: ?articlenotes_hl=<uuid>) --------------------------
+
+	let requestedHighlight = new URLSearchParams(window.location.search).get('articlenotes_hl');
+
+	/** Scrolls to the requested highlight once its article is drawn; done once. */
+	function jumpToRequested(state) {
+		const item = requestedHighlight && state.items.get(requestedHighlight);
+		if (!item) {
+			return;
+		}
+		requestedHighlight = null;
+		if (item.marks.length > 0) {
+			item.marks[0].scrollIntoView({ block: 'center' });
+			item.marks[0].focus({ preventScroll: true });
+		} else if (state.panel) {
+			state.panel.scrollIntoView({ block: 'center' });
+		}
+	}
+
+	/**
+	 * The Notes page links to a list showing just that article: open it (an article's content is only drawn when open).
+	 * Retried a few times, as FreshRSS binds its click handlers after the page has loaded.
+	 */
+	function openRequestedArticle(attempt) {
+		if (!requestedHighlight || attempt > 20) {
+			return;
+		}
+		const flux = document.querySelector('.flux[data-entry]');
+		const title = flux && flux.querySelector('.flux_header .item a.title');	// FreshRSS toggles on a click on the link's parent
+		if (document.readyState === 'complete' && title && title.parentElement && !flux.classList.contains('current')) {
+			title.parentElement.click();
+		}
+		if (!flux || !flux.classList.contains('current')) {
+			window.setTimeout(openRequestedArticle, 500, attempt + 1);
+		}
+	}
+
 	// --- Wiring -----------------------------------------------------------------------------------------------------
 
 	function candidates(node, found) {
@@ -692,6 +741,7 @@
 			return;
 		}
 		loadLibrary();
+		openRequestedArticle(0);
 		const initial = new Set();
 		candidates(document.body, initial);
 		scheduleSweep(initial);
