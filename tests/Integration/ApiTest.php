@@ -32,7 +32,7 @@ final class ApiTest extends TestCase {
 			self::NO_API_PASSWORD => [],
 		];
 		foreach ($users as $user => $config) {
-			self::assertTrue(FreshRSS_user_Controller::createUser($user, null, self::WEB_PASSWORD, $config, false));
+			self::assertTrue(FreshRSS_user_Controller::createUser($user, null, self::WEB_PASSWORD, $config + ['language' => 'en'], false));
 		}
 		foreach ([self::USER, self::OTHER] as $user) {
 			self::useUser($user);

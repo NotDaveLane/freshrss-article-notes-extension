@@ -27,18 +27,15 @@ final class LabelApplier {
 		if ($tagId === false) {
 			throw new \RuntimeException('Cannot create the label ' . $name);
 		}
-		$alreadyLabelled = false;
 		foreach ($tags->getTagsForEntry($note->entryId) as $entryTag) {
 			if ($entryTag['id'] === $tagId && $entryTag['checked']) {
-				$alreadyLabelled = true;
+				return;	// labelled by the user: not ours to remove later (and re-tagging fails on PostgreSQL with FreshRSS 1.27)
 			}
 		}
 		if (!$tags->tagEntry($tagId, $note->entryId)) {
 			throw new \RuntimeException('Cannot label the article ' . $note->entryId);
 		}
-		if (!$alreadyLabelled) {
-			$this->dao()->setAppliedLabel($note->entryId, $tagId);
-		}
+		$this->dao()->setAppliedLabel($note->entryId, $tagId);
 	}
 
 	/** Removes the label the extension applied to the article of a deleted note (never one the user added). */

@@ -1,0 +1,13 @@
+#!/usr/bin/env bash
+# Captures the README screenshots into docs/screenshots/ from the dev instance, signed in as the dev admin with the
+# seeded Hacker News content (tests/e2e/screenshots/). The note it adds for the pictures is deleted afterwards.
+#   bin/screenshots
+# Prerequisite: docker compose up --build -d --wait, with the seed feeds fetched (needs internet access).
+set -uo pipefail
+source "$(dirname "${BASH_SOURCE[0]}")/lib-common.sh"
+require_stack
+mkdir -p docs/screenshots
+docker compose run --rm --no-deps -T -v "$ROOT/docs/screenshots:/screenshots" \
+	-e SCREENSHOT_DIR=/screenshots -e HOST_UID="$(id -u)" -e HOST_GID="$(id -g)" e2e \
+	sh -c 'npm ci --no-audit --no-fund --loglevel=error && npx playwright test --config screenshots.config.ts; status=$?
+		chown -R "$HOST_UID:$HOST_GID" /screenshots; exit $status'

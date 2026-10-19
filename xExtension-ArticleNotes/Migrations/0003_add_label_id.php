@@ -8,8 +8,12 @@ return new class implements ArticleNotes\Migration {
 	public function up(PDO $pdo, string $prefix, string $driver): void {
 		$table = $prefix . 'articlenotes_note';
 		try {
-			$pdo->exec("SELECT label_id FROM {$table} WHERE 1 = 0");
-			$exists = true;
+			// query() and closeCursor(), not exec(): on MySQL, exec('SELECT …') leaves the connection unusable.
+			$probe = $pdo->query("SELECT label_id FROM {$table} WHERE 1 = 0");
+			$exists = $probe !== false;
+			if ($probe !== false) {
+				$probe->closeCursor();
+			}
 		} catch (\PDOException) {
 			$exists = false;
 		}

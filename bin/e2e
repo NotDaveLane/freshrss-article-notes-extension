@@ -4,7 +4,8 @@
 #   bin/e2e specs/smoke.spec.ts     one spec
 # A throwaway user is created for the run via FreshRSS's CLI, subscribed to the local fixture
 # feed (http://fixtures/feed.xml), exported as E2E_USER/E2E_PASSWORD (web login) and E2E_API_PASSWORD
-# (FreshRSS API password), and deleted afterwards.
+# (FreshRSS API password), and deleted afterwards. A second throwaway user without an API password,
+# E2E_JOURNEY_USER/E2E_JOURNEY_PASSWORD, serves the full-journey spec (which sets one itself).
 set -uo pipefail
 source "$(dirname "${BASH_SOURCE[0]}")/lib-common.sh"
 require_stack
@@ -12,17 +13,29 @@ require_stack
 E2E_USER="e2e$(date +%s)$RANDOM"
 E2E_PASSWORD="e2e-$(head -c 12 /dev/urandom | od -An -tx1 | tr -d ' \n')"
 E2E_API_PASSWORD="api-$(head -c 12 /dev/urandom | od -An -tx1 | tr -d ' \n')"
+E2E_JOURNEY_USER="${E2E_USER}j"
+E2E_JOURNEY_PASSWORD="e2e-$(head -c 12 /dev/urandom | od -An -tx1 | tr -d ' \n')"
 fx() { docker compose exec -T -u www-data freshrss "$@"; }
 
-cleanup() { fx php cli/delete-user.php --user "$E2E_USER" >/dev/null 2>&1; }
+cleanup() {
+	fx php cli/delete-user.php --user "$E2E_USER" >/dev/null 2>&1
+	fx php cli/delete-user.php --user "$E2E_JOURNEY_USER" >/dev/null 2>&1
+}
 trap cleanup EXIT
 
-fx php cli/create-user.php --user "$E2E_USER" --password "$E2E_PASSWORD" --api-password "$E2E_API_PASSWORD" --language en --no-default-feeds >/dev/null || exit 1
-fx sh -c "cat > /tmp/$E2E_USER.opml" < tests/fixtures/fixture-feed.opml || exit 1
-fx php cli/import-for-user.php --user "$E2E_USER" --filename "/tmp/$E2E_USER.opml" >/dev/null || exit 1
-fx rm -f "/tmp/$E2E_USER.opml"
-fx php cli/actualize-user.php --user "$E2E_USER" >/dev/null || exit 1
+# create_user <user> <password> [create-user.php options]: a user subscribed to the fixture feed, refreshed.
+create_user() {
+	local user="$1" password="$2"; shift 2
+	fx php cli/create-user.php --user "$user" --password "$password" "$@" --language en --no-default-feeds >/dev/null || return 1
+	fx sh -c "cat > /tmp/$user.opml" < tests/fixtures/fixture-feed.opml || return 1
+	fx php cli/import-for-user.php --user "$user" --filename "/tmp/$user.opml" >/dev/null || return 1
+	fx rm -f "/tmp/$user.opml"
+	fx php cli/actualize-user.php --user "$user" >/dev/null
+}
+create_user "$E2E_USER" "$E2E_PASSWORD" --api-password "$E2E_API_PASSWORD" || exit 1
+create_user "$E2E_JOURNEY_USER" "$E2E_JOURNEY_PASSWORD" || exit 1
 
 docker compose run --rm --no-deps -T \
 	-e E2E_USER="$E2E_USER" -e E2E_PASSWORD="$E2E_PASSWORD" -e E2E_API_PASSWORD="$E2E_API_PASSWORD" \
+	-e E2E_JOURNEY_USER="$E2E_JOURNEY_USER" -e E2E_JOURNEY_PASSWORD="$E2E_JOURNEY_PASSWORD" \
 	e2e sh -c 'npm ci --no-audit --no-fund --loglevel=error && npx playwright test "$@"' sh "$@"
