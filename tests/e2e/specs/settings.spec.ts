@@ -57,7 +57,7 @@ test('turning the label off keeps new annotated articles unlabelled; the default
 	await expect(page.getByLabel('Add a label to articles I annotate')).not.toBeChecked();
 
 	await page.goto('/i/?state=3');
-	const unlabelled = await openArticle(page, 'SQLite as an application file format');
+	const unlabelled = await openArticle(page, 'The hidden costs of microservices');
 	await saveNote(unlabelled, 'unlabelled note');
 
 	await openSettings(page);
@@ -75,5 +75,5 @@ test('turning the label off keeps new annotated articles unlabelled; the default
 	expect(href).toContain('get=t_');
 	await page.goto(`/i/${href}`);
 	await expect(page.locator('.flux', { hasText: 'PHP 8.5 pipe operator in practice' })).toHaveCount(1);
-	await expect(page.locator('.flux', { hasText: 'SQLite as an application file format' })).toHaveCount(0);
+	await expect(page.locator('.flux', { hasText: 'The hidden costs of microservices' })).toHaveCount(0);
 });
