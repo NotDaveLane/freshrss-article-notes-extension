@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test';
+import { expect, test } from '../support/test';
 import { basicAuth, openArticle, signIn } from '../support/freshrss';
 
 const API = '/api/misc.php/ArticleNotes/v1';

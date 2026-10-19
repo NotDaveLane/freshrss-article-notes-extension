@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test';
+import { expect, test } from '../support/test';
 import { admin, signIn, throwawayUser } from '../support/freshrss';
 
 test('the dev admin can sign in and ArticleNotes is enabled', async ({ page }) => {

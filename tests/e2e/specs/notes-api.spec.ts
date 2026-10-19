@@ -1,4 +1,4 @@
-import { expect, test, type APIResponse } from '@playwright/test';
+import { expect, test, type APIResponse } from '../support/test';
 import { basicAuth as basic, openArticle, signIn, throwawayApiPassword, throwawayUser } from '../support/freshrss';
 
 const API = '/api/misc.php/ArticleNotes/v1';

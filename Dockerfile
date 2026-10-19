@@ -10,7 +10,8 @@ RUN apt-get update \
 	&& rm -rf /var/lib/apt/lists/*
 
 COPY docker/ /opt/dev/
-RUN chmod +x /opt/dev/*.sh
+RUN chmod +x /opt/dev/*.sh \
+	&& cp /opt/dev/apache-error-log.conf /etc/apache2/conf-enabled/articlenotes-error-log.conf
 
 ENTRYPOINT ["/opt/dev/entrypoint.sh"]
 # Setting ENTRYPOINT resets the inherited CMD, so restate FreshRSS's (cron + Apache).
