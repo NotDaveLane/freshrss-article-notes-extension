@@ -1,0 +1,98 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0" xmlns:dc="http://purl.org/dc/elements/1.1/">
+<channel>
+<title>Fixture Tech Feed</title>
+<link>http://fixtures/</link>
+<description>Static feed used by automated tests</description>
+<item>
+<title>Rust 1.90 stabilizes async closures in more places</title>
+<link>http://fixtures/articles/1</link>
+<guid isPermaLink="false">fixture-article-01</guid>
+<pubDate>Mon, 01 Sep 2025 09:00:00 +0000</pubDate>
+<dc:creator>Fixture Author 1</dc:creator>
+<category>Rust</category>
+<description>The latest release smooths out async closure ergonomics and improves compile times for large workspaces.</description>
+</item>
+<item>
+<title>PostgreSQL 18 brings asynchronous I/O to sequential scans</title>
+<link>http://fixtures/articles/2</link>
+<guid isPermaLink="false">fixture-article-02</guid>
+<pubDate>Mon, 02 Sep 2025 09:00:00 +0000</pubDate>
+<dc:creator>Fixture Author 2</dc:creator>
+<category>Databases</category>
+<description>Early benchmarks show up to threefold read throughput improvements on cold caches.</description>
+</item>
+<item>
+<title>A gentle introduction to WebAssembly components</title>
+<link>http://fixtures/articles/3</link>
+<guid isPermaLink="false">fixture-article-03</guid>
+<pubDate>Mon, 03 Sep 2025 09:00:00 +0000</pubDate>
+<dc:creator>Fixture Author 3</dc:creator>
+<category>WebAssembly</category>
+<description>The component model lets modules written in different languages call each other through typed interfaces.</description>
+</item>
+<item>
+<title>Why we moved our CI to ephemeral containers</title>
+<link>http://fixtures/articles/4</link>
+<guid isPermaLink="false">fixture-article-04</guid>
+<pubDate>Mon, 04 Sep 2025 09:00:00 +0000</pubDate>
+<dc:creator>Fixture Author 4</dc:creator>
+<category>DevOps</category>
+<description>Reproducible builds, no cache poisoning, and a surprisingly small bill.</description>
+</item>
+<item>
+<title>SQLite as an application file format, revisited</title>
+<link>http://fixtures/articles/5</link>
+<guid isPermaLink="false">fixture-article-05</guid>
+<pubDate>Mon, 05 Sep 2025 09:00:00 +0000</pubDate>
+<dc:creator>Fixture Author 5</dc:creator>
+<category>Databases</category>
+<description>Ten years on, the case for single-file databases is stronger than ever.</description>
+</item>
+<item>
+<title>Understanding Linux io_uring security trade-offs</title>
+<link>http://fixtures/articles/6</link>
+<guid isPermaLink="false">fixture-article-06</guid>
+<pubDate>Mon, 06 Sep 2025 09:00:00 +0000</pubDate>
+<dc:creator>Fixture Author 6</dc:creator>
+<category>Linux</category>
+<description>A look at why some distributions restrict io_uring and what it means for your workloads.</description>
+</item>
+<item>
+<title>PHP 8.5 pipe operator in practice</title>
+<link>http://fixtures/articles/7</link>
+<guid isPermaLink="false">fixture-article-07</guid>
+<pubDate>Mon, 07 Sep 2025 09:00:00 +0000</pubDate>
+<dc:creator>Fixture Author 7</dc:creator>
+<category>PHP</category>
+<description>Chaining functions without temporary variables, with real-world refactoring examples.</description>
+</item>
+<item>
+<title>Building a feed reader that respects your attention</title>
+<link>http://fixtures/articles/8</link>
+<guid isPermaLink="false">fixture-article-08</guid>
+<pubDate>Mon, 08 Sep 2025 09:00:00 +0000</pubDate>
+<dc:creator>Fixture Author 8</dc:creator>
+<category>Web</category>
+<description>Design notes on filtering, labels, and avoiding infinite scroll.</description>
+</item>
+<item>
+<title>The hidden costs of microservices</title>
+<link>http://fixtures/articles/9</link>
+<guid isPermaLink="false">fixture-article-09</guid>
+<pubDate>Mon, 09 Sep 2025 09:00:00 +0000</pubDate>
+<dc:creator>Fixture Author 9</dc:creator>
+<category>Architecture</category>
+<description>Network hops, partial failures and organizational overhead often outweigh the benefits.</description>
+</item>
+<item>
+<title>Type-safe SQL without an ORM</title>
+<link>http://fixtures/articles/10</link>
+<guid isPermaLink="false">fixture-article-10</guid>
+<pubDate>Mon, 10 Sep 2025 09:00:00 +0000</pubDate>
+<dc:creator>Fixture Author 10</dc:creator>
+<category>Programming</category>
+<description>Query builders and compile-time checks make raw SQL pleasant again.</description>
+</item>
+</channel>
+</rss>

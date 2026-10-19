@@ -1,0 +1,45 @@
+services:
+  freshrss:
+    build:
+      context: .
+      args:
+        FRESHRSS_VERSION: ${FRESHRSS_VERSION:-1.30.1}
+    ports:
+      - "${FRESHRSS_PORT:-8080}:80"
+    volumes:
+      - ./xExtension-ArticleNotes:/var/www/FreshRSS/extensions/xExtension-ArticleNotes
+      - freshrss-data:/var/www/FreshRSS/data
+    environment:
+      TZ: UTC
+      CRON_MIN: "3,33"
+      DEV_USER: ${FRESHRSS_DEV_USER:-admin}
+      FRESHRSS_ENV: development
+      FRESHRSS_INSTALL: |-
+        --api-enabled
+        --base-url http://localhost:${FRESHRSS_PORT:-8080}
+        --db-type sqlite
+        --default-user ${FRESHRSS_DEV_USER:-admin}
+        --language en
+      FRESHRSS_USER: |-
+        --user ${FRESHRSS_DEV_USER:-admin}
+        --password ${FRESHRSS_DEV_PASSWORD:-freshrss-dev-password}
+        --api-password ${FRESHRSS_DEV_API_PASSWORD:-freshrss-dev-api}
+        --language en
+        --no-default-feeds
+    depends_on:
+      fixtures:
+        condition: service_healthy
+    restart: unless-stopped
+
+  fixtures:
+    image: nginx:alpine
+    volumes:
+      - ./tests/fixtures/feeds:/usr/share/nginx/html:ro
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1/feed.xml"]
+      interval: 3s
+      timeout: 3s
+      retries: 20
+
+volumes:
+  freshrss-data:
