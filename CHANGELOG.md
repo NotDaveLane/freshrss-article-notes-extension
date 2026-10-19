@@ -21,3 +21,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   (`Migrator`, baseline migration `0001`, run lazily and from FreshRSS's user-maintenance hook), FreshRSS
   version guard (API hook skipped below 1.27.0), `uninstall()` cleanup, and `bin/package` release zips
   (`versioning-and-migrations` OpenSpec capability).
+- Note storage: per-user `articlenotes_note` table (migration `0002`) with article snapshots and deletion
+  tombstones, `NoteDAO` and `NoteService` (validation, 20,000-character limit, save/delete listeners)
+  (`notes-storage` OpenSpec capability).

@@ -4,6 +4,10 @@ declare(strict_types=1);
 
 require_once __DIR__ . '/Migration.php';
 require_once __DIR__ . '/Migrator.php';
+require_once __DIR__ . '/Note.php';
+require_once __DIR__ . '/NoteDAO.php';
+require_once __DIR__ . '/NoteException.php';
+require_once __DIR__ . '/NoteService.php';
 require_once __DIR__ . '/Storage.php';
 
 final class ArticleNotesExtension extends Minz_Extension {
@@ -60,6 +64,11 @@ final class ArticleNotesExtension extends Minz_Extension {
 			}
 		}
 		return $this->migrated[$user];
+	}
+
+	/** The note service of the current user; it migrates the user's schema before first use. */
+	public function noteService(): ArticleNotes\NoteService {
+		return new ArticleNotes\NoteService(Minz_User::name() ?? '', $this->ensureSchema(...));
 	}
 
 	private function migrator(string $user): ArticleNotes\Migrator {

@@ -7,7 +7,7 @@ namespace ArticleNotes;
 /** Database access to one user's FreshRSS database (same connection and table prefix as FreshRSS's own tables). */
 final class Storage extends \Minz_ModelPdo {
 	/** Tables owned by the extension (without prefix); dropped on uninstall. */
-	public const TABLES = ['articlenote'];
+	public const TABLES = ['articlenotes_note'];
 
 	public function pdo(): \Minz_Pdo {
 		return $this->pdo;
