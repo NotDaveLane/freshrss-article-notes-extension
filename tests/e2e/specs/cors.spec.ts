@@ -41,6 +41,18 @@ test('the administrator page rejects wildcards and keeps the list; exact origins
 	await expect(page.getByLabel('Allowed client origins')).toHaveValue(`${ORIGIN}\n${EXTENSION_ORIGIN}`);
 });
 
+test('refused lines are shown as text in the notification, never as HTML', async ({ page }) => {
+	await signIn(page, admin);
+	await page.goto('/i/?c=extension&a=configure&e=ArticleNotes');
+	await page.getByLabel('Allowed client origins').fill('<img src=x onerror="window.__xss=1">');
+	await page.getByRole('button', { name: 'Submit' }).click();
+	const notification = page.locator('.notification.bad');
+	await expect(notification).toContainText('<img src=x onerror="window.__xss=1">');
+	await expect(notification.locator('.msg img')).toHaveCount(0);
+	expect(await page.evaluate(() => (window as unknown as { __xss?: number }).__xss)).toBeUndefined();
+	await expect(page.getByLabel('Allowed client origins')).toHaveValue(`${ORIGIN}\n${EXTENSION_ORIGIN}`);
+});
+
 test('an allowed origin gets preflight and response headers, any other origin none', async ({ request }) => {
 	const auth = basicAuth(throwawayUser().user, throwawayApiPassword());
 	const preflight = await request.fetch(`${API}/notes/1`, {
