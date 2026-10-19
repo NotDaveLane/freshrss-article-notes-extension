@@ -45,6 +45,7 @@ final class ArticleNotesExtension extends Minz_Extension {
 		$this->registerViews();
 		Minz_View::appendStyle($this->getFileUrl('article-notes.css'));
 		Minz_View::appendScript($this->getFileUrl('article-notes.js'));
+		Minz_View::appendScript($this->getFileUrl('highlights.js'));
 		$this->registerHooks(FRESHRSS_VERSION);
 	}
 
@@ -182,6 +183,13 @@ final class ArticleNotesExtension extends Minz_Extension {
 			'maxLength' => ArticleNotes\NoteService::MAX_LENGTH,
 			'saveUrl' => Minz_Url::display(['c' => 'ArticleNotes', 'a' => 'save'], 'php'),
 			'deleteUrl' => Minz_Url::display(['c' => 'ArticleNotes', 'a' => 'delete'], 'php'),
+			'highlightsUrl' => Minz_Url::display(['c' => 'ArticleNotes', 'a' => 'highlights'], 'php'),
+			'highlightCreateUrl' => Minz_Url::display(['c' => 'ArticleNotes', 'a' => 'highlightCreate'], 'php'),
+			'highlightUpdateUrl' => Minz_Url::display(['c' => 'ArticleNotes', 'a' => 'highlightUpdate'], 'php'),
+			'highlightDeleteUrl' => Minz_Url::display(['c' => 'ArticleNotes', 'a' => 'highlightDelete'], 'php'),
+			'anchoringUrl' => html_entity_decode($this->getFileUrl('anchoring.js'), ENT_QUOTES, 'UTF-8'),
+			'colors' => ArticleNotes\Highlight::COLORS,
+			'maxQuoteLength' => 2000,
 			'i18n' => [
 				'action' => _t('ext.article_notes.note.action'),
 				'actionTitle' => _t('ext.article_notes.note.action_title'),
@@ -193,6 +201,30 @@ final class ArticleNotesExtension extends Minz_Extension {
 				'counter' => _t('ext.article_notes.note.counter'),
 				'saving' => _t('ext.article_notes.note.saving'),
 				'network' => _t('ext.article_notes.error.network'),
+				'highlight' => _t('ext.article_notes.highlight.highlight'),
+				'addNote' => _t('ext.article_notes.highlight.add_note'),
+				'color' => _t('ext.article_notes.highlight.color'),
+				'tooLong' => _t('ext.article_notes.highlight.too_long'),
+				'toolbar' => _t('ext.article_notes.highlight.toolbar'),
+				'popoverTitle' => _t('ext.article_notes.highlight.popover'),
+				'noteLabel' => _t('ext.article_notes.highlight.note_label'),
+				'highlightSave' => _t('ext.article_notes.highlight.save'),
+				'highlightDelete' => _t('ext.article_notes.highlight.delete'),
+				'close' => _t('ext.article_notes.highlight.close'),
+				'highlightFailed' => _t('ext.article_notes.highlight.failed'),
+				'markLabel' => _t('ext.article_notes.highlight.mark_label'),
+				'noteIndicator' => _t('ext.article_notes.highlight.has_note'),
+				'panelTitle' => _t('ext.article_notes.highlight.panel_title'),
+				'listTitle' => _t('ext.article_notes.highlight.list_title'),
+				'orphan' => _t('ext.article_notes.highlight.orphan'),
+				'jumpTo' => _t('ext.article_notes.highlight.jump_to'),
+				'jumpToLabel' => _t('ext.article_notes.highlight.jump_to_label'),
+				'edit' => _t('ext.article_notes.highlight.edit'),
+				'colorYellow' => _t('ext.article_notes.highlight.color_yellow'),
+				'colorGreen' => _t('ext.article_notes.highlight.color_green'),
+				'colorBlue' => _t('ext.article_notes.highlight.color_blue'),
+				'colorPink' => _t('ext.article_notes.highlight.color_pink'),
+				'colorPurple' => _t('ext.article_notes.highlight.color_purple'),
 			],
 		];
 		return $vars;

@@ -35,6 +35,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   controller actions (`highlights`, `highlightCreate`, `highlightUpdate`, `highlightDelete`; CSRF-protected) for the
   upcoming UI (`highlights` OpenSpec capability).
 
+- Highlighting in the FreshRSS article view: selecting text inside an article shows a toolbar (below the selection on touch
+  devices) to highlight it in one of five colours or add a note; highlights are drawn when the article is displayed (normal,
+  reader and global views, infinite scroll), anchored with the shared anchoring library, with a dashed underline for those
+  with a note. A popover edits the note and colour or deletes a highlight; an "Annotations" panel under the article lists the
+  article note and the highlights in reading order, with a "Jump to" action and orphaned highlights flagged "Passage not
+  found" (`highlighting-ui` OpenSpec capability).
+
 ### Changed
 
 - The "Annotated" label now follows article notes and highlights together: it is applied with an article's first note or

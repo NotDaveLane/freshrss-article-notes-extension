@@ -45,12 +45,14 @@
 			old.remove();
 		}
 		if (html === '') {
+			flux.dispatchEvent(new CustomEvent('articlenotes:note', { bubbles: true }));
 			return;
 		}
 		const template = document.createElement('template');
 		template.innerHTML = html;
 		const container = flux.querySelector('.content .text') || flux.querySelector('.content') || flux;
 		container.appendChild(template.content);
+		flux.dispatchEvent(new CustomEvent('articlenotes:note', { bubbles: true }));
 	}
 
 	function post(url, entryId, extra) {
