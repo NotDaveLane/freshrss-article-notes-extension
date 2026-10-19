@@ -405,6 +405,39 @@ test('the text model follows changes to the document', async ({ page }) => {
 	expect(result).toEqual({ first: 'before', second: 'after', third: '', anchored: 'after' });
 });
 
+test('the text model follows changes made before an asynchronous gap', async ({ page }) => {
+	await setHtml(page, '<p id="p">before</p><p>Second paragraph with a quote.</p>');
+	const result = await page.evaluate(async () => {
+		const { textOf, anchor, describe, highlight } = window.anchoring;
+		const tick = () => new Promise((resolve) => setTimeout(resolve, 0));
+		const p = document.getElementById('p')!;
+		const texts = [textOf(window.root)];
+		p.firstChild!.textContent = 'third text';
+		await tick();	// the observer's records are delivered to its callback here
+		texts.push(textOf(window.root));
+		const anchored = anchor({ quote: { exact: 'third' } }, window.root)?.toString() ?? null;
+		await tick();
+		window.root.innerHTML = '<p>Replaced content, quote included.</p>';
+		await tick();
+		const replaced = anchor({ quote: { exact: 'quote' } }, window.root)?.toString() ?? null;
+		const handle = highlight(anchor({ quote: { exact: 'content' } }, window.root));
+		await tick();
+		handle.remove();
+		await tick();
+		const selector = describe(window.find(window.root, 'quote'), window.root);
+		const again = anchor(selector, window.root)?.toString() ?? null;
+		return { texts, anchored, replaced, selector, again };
+	});
+	expect(result.texts).toEqual(['before\nSecond paragraph with a quote.', 'third text\nSecond paragraph with a quote.']);
+	expect(result.anchored).toBe('third');
+	expect(result.replaced).toBe('quote');
+	expect(result.selector).toEqual({
+		quote: { exact: 'quote', prefix: 'Replaced content, ', suffix: ' included.' },
+		position: { start: 18, end: 23 },
+	});
+	expect(result.again).toBe('quote');
+});
+
 test('anchoring 200 highlights in a 50 KB article takes under 250 ms', async ({ page }) => {
 	const result = await page.evaluate(() => {
 		const { describe, anchor, highlight } = window.anchoring;

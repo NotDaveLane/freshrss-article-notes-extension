@@ -119,9 +119,11 @@ function buildModel(root) {
 		pendingBreak = pendingBreak || block;
 	};
 	visit(root);
-	const observer = new MutationObserver(() => {});
-	observer.observe(root, { subtree: true, childList: true, characterData: true, attributes: true });
+	// Changes are seen synchronously through takeRecords() (modelOf(), highlight()) and, once the records have been
+	// delivered after an asynchronous gap, by this callback.
+	const observer = new MutationObserver(() => invalidate(model));
 	const model = { root, text: parts.join(''), segments, byNode: new Map(), observer, views: {}, stale: false };
+	observer.observe(root, { subtree: true, childList: true, characterData: true, attributes: true });
 	for (const segment of segments) {
 		model.byNode.set(segment.node, segment);
 		addNodeModel(segment.node, model);

@@ -23,7 +23,8 @@ extension's static URL (`ext.php?f=xExtension-ArticleNotes/static/anchoring.js`)
 
 `textOf(root)` SHALL return the data of `root`'s text nodes in document order, leaving out `<script>`, `<style>`,
 `<noscript>`, `<template>`, form controls, elements that are `hidden` or not displayed, and the extension's own UI
-(`[data-articlenotes-ui]`, the note block and editor). The model SHALL reflect the current DOM on every call.
+(`[data-articlenotes-ui]`, the note block and editor). The model SHALL reflect every change inside `root` made before the
+call, synchronously or across asynchronous gaps.
 
 #### Scenario: Ignored content
 - **WHEN** an article contains a script, a style element, a hidden span, a `display: none` span and a note block
@@ -32,6 +33,10 @@ extension's static URL (`ext.php?f=xExtension-ArticleNotes/static/anchoring.js`)
 #### Scenario: Document changes
 - **WHEN** a text node changes or an element becomes hidden after a call
 - **THEN** the next call returns the new text
+
+#### Scenario: Changes before an asynchronous gap
+- **WHEN** the content is edited or replaced, or a highlight removed, and the page yields to the event loop
+- **THEN** the next `textOf()`, `anchor()` or `describe()` uses the new content
 
 ### Requirement: Block separators
 

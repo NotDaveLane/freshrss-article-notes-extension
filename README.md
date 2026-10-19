@@ -327,7 +327,8 @@ if (range !== null) {
   other ranges you already hold.
 - `textOf(root)` is the text the positions count in (UTF-16 code units, like DOM offsets): the text nodes of `root`
   without `<script>`, `<style>`, hidden elements and ArticleNotes' own UI (elements with `data-articlenotes-ui`), with a
-  line break at block boundaries and `<br>`.
+  line break at block boundaries and `<br>`. It follows every change inside `root`, but not styles changed from outside
+  it (a class on an ancestor, a new stylesheet) that hide or show parts of it.
 - Lengths are counted in characters (Unicode code points): `exact` is 1–2,000 characters, `prefix` and `suffix` at most
   64.
 
