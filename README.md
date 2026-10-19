@@ -14,7 +14,8 @@ fetch and analyze them later.
   FreshRSS purges the article.
 - **An "Annotated" label** on the articles you annotate (optional and renamable per user), so you can browse them in the
   sidebar and FreshRSS keeps them when it archives old articles — see [Configuration](#configuration).
-- **A read-only JSON [API](#api)** to fetch and sync your notes, deletions included, with your FreshRSS API password.
+- **A JSON [API](#api)** to fetch and sync your notes (deletions included), find the article behind any page URL, and
+  create, update and delete notes from other tools such as a browser extension, with your FreshRSS API password.
 - Per-user data, SQLite / MySQL / MariaDB / PostgreSQL, English interface; licensed AGPL-3.0-or-later like FreshRSS.
 
 | The note under its article | Annotated articles in the sidebar | Per-user settings |
@@ -100,13 +101,14 @@ so annotated articles are not purged. The page also shows your API endpoint, `<F
 
 ## API
 
-ArticleNotes serves each user's notes as read-only JSON on FreshRSS's extension API endpoint:
+ArticleNotes serves each user's notes as JSON on FreshRSS's extension API endpoint:
 
 ```
 https://freshrss.example.net/api/misc.php/ArticleNotes/v1/...
 ```
 
-(`/api/misc.php/v1/...?ext=ArticleNotes` works too.) Only `GET` and `HEAD` are accepted.
+(`/api/misc.php/v1/...?ext=ArticleNotes` works too.) Every path accepts `GET` and `HEAD`; `v1/notes/<entry_id>` also
+accepts `PUT` and `DELETE`. Any other method answers `405` with an `Allow` header.
 
 ### Authentication
 
@@ -134,13 +136,15 @@ Then authenticate every request with either:
   ```
 
 Wrong or missing credentials, disabled users and users without an API password get `401` with
-`WWW-Authenticate: Basic realm="ArticleNotes"`. A user only ever sees their own notes.
+`WWW-Authenticate: Basic realm="ArticleNotes"`. A user only ever sees and writes their own notes. Credentials come from the
+`Authorization` header only: a FreshRSS session cookie never authenticates an API request, so writes need no CSRF token.
 
 ### Endpoints
 
 Every response, errors included, is JSON (`application/json; charset=UTF-8`, `Cache-Control: no-store`). Errors look
-like `{"error": {"code": "not_found", "message": "…"}}` with the codes `invalid_parameter` (400), `unauthorized` (401),
-`not_found` (404), `method_not_allowed` (405) and `internal_error` (500).
+like `{"error": {"code": "not_found", "message": "…"}}` with the codes `invalid_parameter`, `invalid_json` and `invalid_body`
+(400), `unauthorized` (401), `not_found` (404), `method_not_allowed` (405), `precondition_failed` (412),
+`payload_too_large` (413), `unsupported_media_type` (415), `note_too_long` (422) and `internal_error` (500).
 
 - `GET v1/status` — a cheap credentials check:
   `{"extension": "ArticleNotes", "version": "1.0.0", "api_version": 1, "user": "alice", "note_count": 12}`
@@ -153,7 +157,12 @@ like `{"error": {"code": "not_found", "message": "…"}}` with the codes `invali
     is given, `0` otherwise;
   - `continuation`: the `continuation` of the previous page, to get the next one (it keeps the filters of the first
     request). It is `null` on the last page.
-- `GET v1/notes/<entry_id>` — `{"note": { … }}`, the live note of one article; `404` when there is none.
+- `GET v1/notes/<entry_id>` — `{"note": { … }}`, the live note of one article, with an `ETag` header; `404` when there
+  is none.
+- `GET v1/lookup?url=<page url>` — which of your articles is this web page? See [Looking up a page](#looking-up-a-page).
+- `PUT v1/notes/<entry_id>` — create (`201`) or update (`200`) the note of an article; see
+  [Writing notes](#writing-notes).
+- `DELETE v1/notes/<entry_id>` — delete the note (`204`; `404` when there is none).
 
 ### The note object
 
@@ -167,6 +176,8 @@ like `{"error": {"code": "not_found", "message": "…"}}` with the codes `invali
   "updated_at": 1760895000, "updated_at_iso": "2025-10-19T17:30:00+00:00",
   "deleted_at": null, "deleted_at_iso": null,
   "label_applied": false,
+  "url": "https://example.org/post/42",
+  "normalized_url": "https://example.org/post/42",
   "article": {
     "guid": "https://example.org/post/42",
     "url": "https://example.org/post/42",
@@ -181,6 +192,8 @@ like `{"error": {"code": "not_found", "message": "…"}}` with the codes `invali
 
 - `entry_id` is FreshRSS's article id, as a string; `greader_item_id` is the same article in the Google Reader API's
   long form, so you can correlate notes with items fetched through `greader.php`.
+- `url` is the article's original URL and `normalized_url` its [normalized form](#url-normalization) (`null` when the
+  article has no web URL); they stay available after FreshRSS purges the article.
 - `note` is the text exactly as entered (plain text: escape it when you display it), or `null` for a deleted note.
 - Timestamps are Unix seconds, with an ISO 8601 (UTC) `*_iso` twin.
 - `article` is a snapshot of the article taken when the note was last saved; it stays available after FreshRSS
@@ -198,6 +211,83 @@ like `{"error": {"code": "not_found", "message": "…"}}` with the codes `invali
 curl -u alice:my-api-password 'https://freshrss.example.net/api/misc.php/ArticleNotes/v1/notes?limit=500'
 curl -u alice:my-api-password 'https://freshrss.example.net/api/misc.php/ArticleNotes/v1/notes?since=1760900000'
 curl -u alice:my-api-password 'https://freshrss.example.net/api/misc.php/ArticleNotes/v1/notes/1760891234567890'
+```
+
+### Looking up a page
+
+A client that knows the URL of the page you are viewing (a browser extension, say) asks whether it is one of your
+articles, and gets your note on it:
+
+```sh
+curl -u alice:my-api-password -G https://freshrss.example.net/api/misc.php/ArticleNotes/v1/lookup \
+  --data-urlencode 'url=http://www.example.org/post/42/?utm_source=newsletter#comments'
+```
+
+```json
+{
+  "url": "http://www.example.org/post/42/?utm_source=newsletter#comments",
+  "normalized_url": "https://example.org/post/42",
+  "index_complete": true,
+  "matches": [
+    {
+      "entry_id": "1760891234567890",
+      "greader_item_id": "tag:google.com,2005:reader/item/00064185708646d2",
+      "title": "An interesting post",
+      "url": "https://example.org/post/42",
+      "published_at": 1760880000,
+      "feed": {"id": 3, "name": "Example blog", "url": "https://example.org/feed.xml"},
+      "note": null
+    }
+  ]
+}
+```
+
+- `matches` has at most 20 articles, most recently published first: those whose link (or GUID, when it is a URL)
+  matches, plus those with a note at that URL (so notes on articles FreshRSS has purged are still found). `note` is the
+  [note object](#the-note-object) or `null`. A `url` that is not an `http(s)` URL answers `400 invalid_parameter`.
+- FreshRSS does not index article links, so ArticleNotes keeps its own URL index, filled while FreshRSS refreshes your
+  feeds and, for articles it has not seen yet, on lookups (a bounded number each). `index_complete` is `false` while
+  articles remain to be indexed: a lookup may then miss an article that a later one finds.
+- New keys may appear in these objects in later versions; ignore what you do not know.
+
+#### URL normalization
+
+Pages match when their normalized URLs are equal. The scheme and host are lowercased (international host names become
+punycode); `http` and `https` are equivalent, as is a leading `www.`; default ports (80, 443), credentials and the
+`#fragment` are dropped; the tracking parameters `utm_*`, `fbclid`, `gclid`, `mc_cid`, `mc_eid` and `ref_src` are removed
+and the other query parameters sorted; a trailing slash is dropped (except on the root path); percent-encoded unreserved
+characters are decoded. The normalized form is always written `https://` without `www.`: it is for matching, and
+`url` keeps the original for display. `ftp:`, `javascript:` and other non-web URLs do not normalize.
+
+### Writing notes
+
+```sh
+# Create or replace the note (201 when created, 200 when updated); the response is {"note": { … }}.
+curl -u alice:my-api-password -X PUT -H 'Content-Type: application/json' \
+  -d '{"note": "Worth re-reading."}' \
+  https://freshrss.example.net/api/misc.php/ArticleNotes/v1/notes/1760891234567890
+
+# Delete it (204)
+curl -u alice:my-api-password -X DELETE \
+  https://freshrss.example.net/api/misc.php/ArticleNotes/v1/notes/1760891234567890
+```
+
+Writes follow the rules of the UI: the text is trimmed, at most 20,000 characters (`422 note_too_long`), and an
+empty text deletes the note (`204`). Annotating an article applies the "Annotated" label, as in the UI. An unknown
+article answers `404`.
+
+- A `PUT` or `DELETE` without `If-Match` overwrites or deletes whatever note is there, and the check and the write are not
+  one atomic step: clients that may race with other edits (the FreshRSS UI, another device) should send `If-Match`.
+- The body must be `application/json` (`415` otherwise), at most 64 KB (`413`), valid JSON (`400 invalid_json`) and an
+  object with a string `note` (`400 invalid_body`).
+- **Optimistic concurrency.** Note responses carry an `ETag`. Send it back as `If-Match` with `PUT` or `DELETE` to change
+  the note only if nobody else did: otherwise you get `412 precondition_failed`. Without `If-Match` the write always
+  applies; `If-Match: *` means "any existing note".
+
+```sh
+curl -i -u alice:my-api-password …/v1/notes/1760891234567890       # … ETag: "7-1760895000"
+curl -u alice:my-api-password -X PUT -H 'Content-Type: application/json' -H 'If-Match: "7-1760895000"' \
+  -d '{"note": "Edited."}' …/v1/notes/1760891234567890
 ```
 
 ## Upgrading

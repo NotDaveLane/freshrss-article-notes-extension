@@ -2,14 +2,14 @@
 
 ## Purpose
 
-An authenticated, read-only JSON API for other systems to fetch and sync each user's notes.
+An authenticated JSON API for other systems to fetch and sync each user's notes (writes: `notes-api-write`; URL lookup: `url-lookup`).
 
 ## Requirements
 
 ### Requirement: API routing
 
 The extension SHALL answer `p/api/misc.php/ArticleNotes/<path>` (and `p/api/misc.php/<path>?ext=ArticleNotes`) through
-the `ApiMisc` hook with the versioned paths `v1/status`, `v1/notes` and `v1/notes/<entry_id>` (a trailing slash is
+the `ApiMisc` hook with the versioned paths `v1/status`, `v1/notes`, `v1/lookup` and `v1/notes/<entry_id>` (a trailing slash is
 accepted), and SHALL answer 404 `not_found` to any other path, even without credentials.
 
 #### Scenario: Unknown path
@@ -20,14 +20,19 @@ accepted), and SHALL answer 404 `not_found` to any other path, even without cred
 - **WHEN** a client requests `p/api/misc.php/v1/status?ext=ArticleNotes`
 - **THEN** it gets the same answer as `p/api/misc.php/ArticleNotes/v1/status`
 
-### Requirement: Read-only methods
+### Requirement: Methods per path
 
-The API SHALL accept only `GET` and `HEAD` (`HEAD` answers like `GET` without a body); other methods SHALL answer 405
-`method_not_allowed` with `Allow: GET, HEAD`.
+Every path SHALL accept `GET` and `HEAD` (`HEAD` answers like `GET` without a body); `v1/notes/<entry_id>` SHALL also accept
+`PUT` and `DELETE`. Any other method on a path SHALL answer 405 `method_not_allowed` with an `Allow` header listing the
+accepted methods (`GET, HEAD` or `GET, HEAD, PUT, DELETE`), before credentials are checked.
 
-#### Scenario: Write method
-- **WHEN** a client sends `POST`, `PUT`, `PATCH` or `DELETE` to `v1/notes`
+#### Scenario: Write method on a read-only path
+- **WHEN** a client sends `POST`, `PUT`, `PATCH` or `DELETE` to `v1/notes`, `v1/status` or `v1/lookup`
 - **THEN** the response is 405 with error code `method_not_allowed` and `Allow: GET, HEAD`
+
+#### Scenario: Unsupported method on a note
+- **WHEN** a client sends `POST` or `PATCH` to `v1/notes/<entry_id>`
+- **THEN** the response is 405 with `Allow: GET, HEAD, PUT, DELETE`
 
 ### Requirement: JSON responses
 
@@ -117,12 +122,13 @@ and 404 `not_found` when the user has no live note on it.
 ### Requirement: Note object
 
 A note SHALL be serialized as `id`, `entry_id` (string), `greader_item_id`
-(`tag:google.com,2005:reader/item/<16 hex digits of entry_id>`), `note` (null when deleted), `created_at`,
-`updated_at`, `deleted_at` (Unix seconds or null) with ISO 8601 UTC `*_iso` counterparts, `label_applied`, and `article`.
+(`tag:google.com,2005:reader/item/<16 hex digits of entry_id>`), `url` (the article's original URL), `normalized_url` (its
+normalized form, or null), `note` (null when deleted), `created_at`, `updated_at`, `deleted_at` (Unix seconds or null) with
+ISO 8601 UTC `*_iso` counterparts, `label_applied`, and `article`. Single-note responses SHALL carry an `ETag` header.
 
 #### Scenario: Live note
 - **WHEN** a client fetches a live note
-- **THEN** `note` holds the text as entered and `deleted_at`/`deleted_at_iso` are null
+- **THEN** `note` holds the text as entered, `deleted_at`/`deleted_at_iso` are null, and `url`/`normalized_url` describe the article's URL
 
 ### Requirement: Article snapshot
 

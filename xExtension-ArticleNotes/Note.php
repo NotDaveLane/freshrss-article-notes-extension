@@ -24,7 +24,14 @@ final class Note {
 		public readonly bool $labelApplied,
 		/** Id of the label the extension applied to the article (set when `labelApplied`). */
 		public readonly ?int $labelId = null,
+		/** Normalized {@see UrlNormalizer} form of the article's URL ('' when it has none). */
+		public readonly string $normalizedUrl = '',
 	) {
+	}
+
+	/** The article's URL as FreshRSS knows it: its link, or its GUID when that is the only URL. */
+	public function url(): string {
+		return $this->entryLink !== '' || UrlNormalizer::normalize($this->entryGuid) === null ? $this->entryLink : $this->entryGuid;
 	}
 
 	public function isDeleted(): bool {

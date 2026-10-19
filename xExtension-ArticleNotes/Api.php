@@ -5,8 +5,9 @@ declare(strict_types=1);
 namespace ArticleNotes;
 
 /**
- * The read-only notes API (`p/api/misc.php/ArticleNotes/v1/...`). It authenticates with the user's FreshRSS
- * API password, like the Google Reader API, and only ever reads the authenticated user's notes.
+ * The notes API (`p/api/misc.php/ArticleNotes/v1/...`). It authenticates every request with the user's FreshRSS
+ * API password, like the Google Reader API (never with a session cookie, so writes need no CSRF token), and only ever
+ * reads or writes the authenticated user's notes.
  */
 final class Api {
 	public const API_VERSION = 1;
@@ -28,20 +29,29 @@ final class Api {
 
 	public function handle(ApiRequest $request): ApiResponse {
 		$path = trim($request->path, '/');
+		$read = null;
+		$routes = [];
 		if ($path === 'v1/status') {
-			$route = fn (): ApiResponse => $this->status();
+			$read = fn (): ApiResponse => $this->status();
 		} elseif ($path === 'v1/notes') {
-			$route = fn (): ApiResponse => $this->listNotes($request->query);
+			$read = fn (): ApiResponse => $this->listNotes($request->query);
+		} elseif ($path === 'v1/lookup') {
+			$read = fn (): ApiResponse => $this->lookup($request->query);
 		} elseif (preg_match('#^v1/notes/(\d{1,20})$#', $path, $matches) === 1) {
 			$entryId = $matches[1];
-			$route = fn (): ApiResponse => $this->oneNote($entryId);
+			$read = fn (): ApiResponse => $this->oneNote($entryId);
+			$routes['PUT'] = fn (): ApiResponse => $this->putNote($entryId, $request);
+			$routes['DELETE'] = fn (): ApiResponse => $this->deleteNote($entryId, $request);
 		} else {
 			return ApiResponse::error(404, 'not_found', 'Unknown API path.');
 		}
+		$routes = ['GET' => $read, 'HEAD' => $read] + $routes;
 
-		if ($request->method !== 'GET' && $request->method !== 'HEAD') {
-			return ApiResponse::error(405, 'method_not_allowed', 'This API is read-only: use GET or HEAD.', ['Allow' => 'GET, HEAD']);
+		if (!isset($routes[$request->method])) {
+			$allow = implode(', ', array_keys($routes));
+			return ApiResponse::error(405, 'method_not_allowed', 'Use one of: ' . $allow . '.', ['Allow' => $allow]);
 		}
+		$route = $routes[$request->method];
 
 		if ($this->authenticate($request->authorization) === null) {
 			\Minz_User::change();
@@ -55,9 +65,11 @@ final class Api {
 			return $route();
 		} catch (InvalidParameterException $exception) {
 			return ApiResponse::error(400, 'invalid_parameter', $exception->getMessage());
+		} catch (ApiException $exception) {
+			return ApiResponse::error($exception->status, $exception->errorCode, $exception->getMessage());
 		} catch (\Throwable $exception) {
 			\Minz_Log::error('ArticleNotes API failure for user ' . (\Minz_User::name() ?? '') . ': ' . $exception->getMessage());
-			return ApiResponse::error(500, 'internal_error', 'The notes cannot be read right now.');
+			return ApiResponse::error(500, 'internal_error', 'The request cannot be served right now.');
 		}
 	}
 
@@ -144,7 +156,128 @@ final class Api {
 		if ($note === null) {
 			return ApiResponse::error(404, 'not_found', 'There is no note on this article.');
 		}
-		return ApiResponse::ok(['note' => self::noteJson($note, $service->existingEntryIds([$note->entryId]) !== [])]);
+		return self::noteResponse(200, $note, $service->existingEntryIds([$note->entryId]) !== []);
+	}
+
+	/** Creates, updates (or, with empty text, deletes) the note of an article. */
+	private function putNote(string $entryId, ApiRequest $request): ApiResponse {
+		$text = self::noteText($request);
+		$service = $this->service();
+		$current = $service->get($entryId);
+		if (self::preconditionFails($request->ifMatch, $current)) {
+			return self::preconditionFailed();
+		}
+		try {
+			$note = $service->save($entryId, $text);
+		} catch (NoteException $exception) {
+			return $exception->getCode() === NoteException::UNKNOWN_ENTRY
+				? ApiResponse::error(404, 'not_found', 'There is no such article.')
+				: ApiResponse::error(422, 'note_too_long', 'A note is limited to ' . NoteService::MAX_LENGTH . ' characters.');
+		}
+		if ($note === null) {
+			return ApiResponse::noContent();
+		}
+		return self::noteResponse($current === null ? 201 : 200, $note, true);
+	}
+
+	private function deleteNote(string $entryId, ApiRequest $request): ApiResponse {
+		$service = $this->service();
+		$current = $service->get($entryId);
+		if ($current === null) {
+			return ApiResponse::error(404, 'not_found', 'There is no note on this article.');
+		}
+		if (self::preconditionFails($request->ifMatch, $current)) {
+			return self::preconditionFailed();
+		}
+		$service->delete($entryId);
+		return ApiResponse::noContent();
+	}
+
+	/**
+	 * The note text of a write request.
+	 *
+	 * @throws ApiException a body that is not JSON (415, 413, 400)
+	 */
+	private static function noteText(ApiRequest $request): string {
+		$mediaType = strtolower(trim(explode(';', $request->contentType, 2)[0]));
+		if ($mediaType !== 'application/json') {
+			throw new ApiException(415, 'unsupported_media_type', 'Send the body as application/json.');
+		}
+		if (strlen($request->body) > ApiRequest::MAX_BODY_BYTES) {
+			throw new ApiException(413, 'payload_too_large', 'The request body is limited to ' . ApiRequest::MAX_BODY_BYTES . ' bytes.');
+		}
+		try {
+			$body = json_decode($request->body, true, 8, JSON_THROW_ON_ERROR);
+		} catch (\JsonException) {
+			throw new ApiException(400, 'invalid_json', 'The request body is not valid JSON.');
+		}
+		if (!is_array($body) || !isset($body['note']) || !is_string($body['note'])) {
+			throw new ApiException(400, 'invalid_body', 'The body must be a JSON object with a "note" string.');
+		}
+		return $body['note'];
+	}
+
+	private static function etag(Note $note): string {
+		return '"' . $note->id . '-' . $note->updatedAt . '"';
+	}
+
+	/**
+	 * Whether an `If-Match` header is present and does not match the live note (`*` matches any note). Web servers
+	 * that compress responses (Apache's mod_deflate) turn the ETag into a weak one or add a `-gzip` suffix, and the
+	 * client sends back what it received: both forms are accepted.
+	 */
+	private static function preconditionFails(?string $ifMatch, ?Note $current): bool {
+		if ($ifMatch === null) {
+			return false;
+		}
+		if ($current === null) {
+			return true;
+		}
+		foreach (explode(',', $ifMatch) as $candidate) {
+			$candidate = preg_replace('/^W\/|-(?:gzip|br|deflate|zstd)(?="$)/', '', trim($candidate)) ?? '';
+			if ($candidate === '*' || $candidate === self::etag($current)) {
+				return false;
+			}
+		}
+		return true;
+	}
+
+	private static function preconditionFailed(): ApiResponse {
+		return ApiResponse::error(412, 'precondition_failed', 'The note changed since the version in If-Match.');
+	}
+
+	private static function noteResponse(int $status, Note $note, bool $articleExists): ApiResponse {
+		return ApiResponse::withStatus($status, ['note' => self::noteJson($note, $articleExists)], ['ETag' => self::etag($note)]);
+	}
+
+	/** @param array<string,string> $query */
+	private function lookup(array $query): ApiResponse {
+		$url = $query['url'] ?? '';
+		$normalized = UrlNormalizer::normalize($url);
+		if ($normalized === null) {
+			throw new InvalidParameterException('"url" must be an http or https URL.');
+		}
+		$service = $this->service();
+		$result = (new UrlLookup($service))->find($normalized);
+		$existing = array_flip($service->existingEntryIds(array_map(static fn (UrlMatch $match): string => $match->entryId, $result['matches'])));
+		return ApiResponse::ok([
+			'url' => $url,
+			'normalized_url' => $normalized,
+			'index_complete' => $result['index_complete'],
+			'matches' => array_map(static fn (UrlMatch $match): array => [
+				'entry_id' => $match->entryId,
+				'greader_item_id' => self::greaderItemId($match->entryId),
+				'title' => $match->title,
+				'url' => $match->url,
+				'published_at' => $match->publishedAt,
+				'feed' => ['id' => $match->feedId, 'name' => $match->feedName, 'url' => $match->feedUrl],
+				'note' => $match->note === null ? null : self::noteJson($match->note, isset($existing[$match->entryId])),
+			], $result['matches']),
+		]);
+	}
+
+	private static function greaderItemId(string $entryId): string {
+		return self::GREADER_ITEM_PREFIX . str_pad(dechex((int)$entryId), 16, '0', STR_PAD_LEFT);
 	}
 
 	/** @param array<string,string> $query */
@@ -212,7 +345,9 @@ final class Api {
 		return [
 			'id' => $note->id,
 			'entry_id' => $note->entryId,
-			'greader_item_id' => self::GREADER_ITEM_PREFIX . str_pad(dechex((int)$note->entryId), 16, '0', STR_PAD_LEFT),
+			'greader_item_id' => self::greaderItemId($note->entryId),
+			'url' => $note->url(),
+			'normalized_url' => $note->normalizedUrl === '' ? null : $note->normalizedUrl,
 			'note' => $note->isDeleted() ? null : $note->note,
 			'created_at' => $note->createdAt,
 			'created_at_iso' => self::iso($note->createdAt),

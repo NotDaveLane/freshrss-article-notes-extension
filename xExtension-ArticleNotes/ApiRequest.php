@@ -4,8 +4,13 @@ declare(strict_types=1);
 
 namespace ArticleNotes;
 
-/** An API request: method, path below the extension (e.g. `v1/notes`), query string and `Authorization` header. */
+/**
+ * An API request: method, path below the extension (e.g. `v1/notes`), query string, `Authorization` header and, for
+ * writes, the body (read up to {@see MAX_BODY_BYTES} + 1 bytes), its `Content-Type` and `If-Match` headers.
+ */
 final class ApiRequest {
+	public const MAX_BODY_BYTES = 65536;
+
 	/** @param array<string,string> $query */
 	public function __construct(
 		public readonly string $method,
@@ -13,6 +18,9 @@ final class ApiRequest {
 		public readonly array $query,
 		#[\SensitiveParameter]
 		public readonly string $authorization,
+		public readonly string $body = '',
+		public readonly string $contentType = '',
+		public readonly ?string $ifMatch = null,
 	) {
 	}
 
@@ -40,7 +48,27 @@ final class ApiRequest {
 			}
 		}
 
-		return new self($method, $path, $query, self::authorizationHeader());
+		$ifMatch = $_SERVER['HTTP_IF_MATCH'] ?? null;
+		return new self($method, $path, $query, self::authorizationHeader(), self::bodyFromInput($method),
+			is_string($_SERVER['CONTENT_TYPE'] ?? null) ? $_SERVER['CONTENT_TYPE'] : '', is_string($ifMatch) ? $ifMatch : null);
+	}
+
+	/** The request body of a `PUT`, at most {@see MAX_BODY_BYTES} + 1 bytes: one more than allowed means too large. */
+	private static function bodyFromInput(string $method): string {
+		if ($method !== 'PUT') {
+			return '';
+		}
+		$length = $_SERVER['CONTENT_LENGTH'] ?? null;
+		if (is_string($length) && ctype_digit($length) && (int)$length > self::MAX_BODY_BYTES) {
+			return str_repeat(' ', self::MAX_BODY_BYTES + 1);	// no need to read what is refused anyway
+		}
+		$input = fopen('php://input', 'r');
+		if ($input === false) {
+			return '';
+		}
+		$body = stream_get_contents($input, self::MAX_BODY_BYTES + 1);
+		fclose($input);
+		return $body === false ? '' : $body;
 	}
 
 	private static function authorizationHeader(): string {

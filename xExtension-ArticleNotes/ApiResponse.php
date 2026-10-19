@@ -17,6 +17,19 @@ final class ApiResponse {
 	) {
 	}
 
+	/**
+	 * @param array<string,mixed> $body
+	 * @param array<string,string> $headers
+	 */
+	public static function withStatus(int $status, array $body, array $headers = []): self {
+		return new self($status, $body, $headers + self::defaultHeaders());
+	}
+
+	/** @param array<string,string> $headers */
+	public static function noContent(array $headers = []): self {
+		return new self(204, [], $headers + ['Cache-Control' => 'no-store']);
+	}
+
 	/** @param array<string,mixed> $body */
 	public static function ok(array $body): self {
 		return new self(200, $body, self::defaultHeaders());
@@ -46,7 +59,7 @@ final class ApiResponse {
 				header($name . ': ' . $value);
 			}
 		}
-		if ($includeBody) {
+		if ($includeBody && $this->status !== 204) {
 			echo $json;
 		}
 	}
