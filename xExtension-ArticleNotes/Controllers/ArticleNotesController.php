@@ -9,7 +9,7 @@ use ArticleNotes\NoteException;
  * JSON endpoints used by the article note editor: ?c=ArticleNotes&a=save|delete (POST, CSRF token required),
  * and the per-user settings page: ?c=ArticleNotes&a=settings.
  */
-final class FreshExtension_ArticleNotes_Controller extends Minz_ActionController {
+final class FreshExtension_ArticleNotes_Controller extends FreshRSS_ActionController {
 	/** @var array<string,mixed> the JSON body of the current response, written out by the view */
 	private static array $body = [];
 

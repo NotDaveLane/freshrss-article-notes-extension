@@ -38,6 +38,8 @@ test('a non-admin user sees the settings with their defaults and the API URL', a
 	await expect(page.getByLabel('Label name')).toHaveValue('Annotated');
 	await expect(page.getByLabel('Your API endpoint')).toHaveValue(/\/api\/misc\.php\/ArticleNotes\/$/);
 	await expect(page.locator('main')).toContainText('not touch articles that are already labelled');
+	// The dev instance shows PHP warnings: the page must render without any (e.g. a missing FreshRSS_View property).
+	await expect(page.locator('body')).not.toContainText(/(Warning|Notice|Deprecated): /);
 });
 
 test('invalid names are refused and valid settings are confirmed', async ({ page }) => {
