@@ -297,7 +297,7 @@ for (const viewport of viewports) {
 			await expect(page).toHaveURL(/articlenotes_hl=/);
 			const article = page.locator('.flux', { hasText: WASM }).first();
 			await expect(article).toHaveClass(/current/);
-			const mark = article.locator('mark.articlenotes-hl');
+			const mark = article.locator('mark.articlenotes-hl', { hasText: 'component model' });
 			await expect(mark).toHaveText('component model');
 			await expect(mark).toBeInViewport();
 			await expect(article.locator('.articlenotes-panel .articlenotes-notes-link')).toHaveText('All my notes');

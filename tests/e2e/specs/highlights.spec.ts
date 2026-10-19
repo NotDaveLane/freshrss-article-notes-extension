@@ -1,4 +1,4 @@
-import { expect, test, type APIRequestContext, type Locator, type Page } from '@playwright/test';
+import { expect, test, type APIRequestContext, type Locator, type Page } from '../support/test';
 import { basicAuth, openArticle, signIn, throwawayApiPassword, throwawayUser } from '../support/freshrss';
 
 const API = '/api/misc.php/ArticleNotes/v1';
