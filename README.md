@@ -53,6 +53,20 @@ docker compose down        # stop, keep data
 docker compose down -v     # stop and reset everything (fresh install on next start)
 ```
 
+### Tests and quality checks
+
+With the stack up, one command runs everything in containers (code style, static analysis, PHPUnit with
+coverage, Playwright end-to-end tests):
+
+```sh
+bin/ci               # SQLite only; HTML coverage report in coverage/index.html
+bin/ci --all-dbs     # also run the integration tests on MariaDB and PostgreSQL
+```
+
+Single runs: `bin/phpunit tests/Unit/MetadataTest.php`, `TEST_DB=postgres bin/phpunit --testsuite integration`,
+`bin/e2e specs/smoke.spec.ts`, `bin/lint`. End-to-end tests use a throwaway user subscribed to the local
+fixture feed, never the live feeds.
+
 See [AGENTS.md](AGENTS.md) for conventions, specs and the full command list.
 
 ## License

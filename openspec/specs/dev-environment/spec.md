@@ -58,3 +58,12 @@ static feed of about ten articles with stable GUIDs; automated tests MUST NOT de
 #### Scenario: Reachable from FreshRSS
 - **WHEN** running `curl http://fixtures/feed.xml` inside the `freshrss` container
 - **THEN** the fixture RSS feed is returned
+
+### Requirement: Fixture host allowed
+
+Because FreshRSS refuses to fetch from internal hosts, the dev instance SHALL add `fixtures:80` to the system
+`internal_host_allowlist` during seeding (idempotently).
+
+#### Scenario: Subscribe to the fixture feed
+- **WHEN** a user is subscribed to `http://fixtures/feed.xml` and feeds are actualized
+- **THEN** the fixture articles are fetched

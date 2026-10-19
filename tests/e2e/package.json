@@ -1,0 +1,12 @@
+{
+	"name": "articlenotes-e2e",
+	"private": true,
+	"description": "Playwright end-to-end tests for the ArticleNotes FreshRSS extension",
+	"license": "AGPL-3.0-or-later",
+	"scripts": {
+		"test": "playwright test"
+	},
+	"devDependencies": {
+		"@playwright/test": "1.55.0"
+	}
+}

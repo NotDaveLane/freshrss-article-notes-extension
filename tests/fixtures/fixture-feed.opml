@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<opml version="2.0">
+	<head><title>Test fixtures</title></head>
+	<body>
+		<outline text="Fixtures">
+			<outline type="rss" text="Fixture Tech Feed" title="Fixture Tech Feed" xmlUrl="http://fixtures/feed.xml" htmlUrl="http://fixtures/"/>
+		</outline>
+	</body>
+</opml>
