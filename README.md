@@ -1,40 +1,89 @@
 # FreshRSS Article Notes
 
-**ArticleNotes** is an open-source [FreshRSS](https://freshrss.org/) extension that lets you
-attach a personal note to any article for future reference, and exposes those notes through an
-authenticated FreshRSS API endpoint so other systems can fetch and analyze them later.
+**ArticleNotes** is an open-source [FreshRSS](https://freshrss.org/) extension that lets you attach a personal note to any
+article for future reference, and exposes those notes through an authenticated FreshRSS API endpoint so other systems can
+fetch and analyze them later.
+
+![Writing a note under a Hacker News article](docs/screenshots/note-editor.png)
 
 ## Features
 
-- One note per article per user, editable and deletable (plain Markdown-ish text, up to 20,000
-  characters, always displayed escaped) — see [Using notes](#using-notes).
-- Notes keep a snapshot of their article (title, link, feed, …) so they stay meaningful after
+- **One note per article per user**, editable and deletable, from a **Note** action on every article — see
+  [Using notes](#using-notes). Notes are plain Markdown-ish text of up to 20,000 characters, always displayed escaped.
+- **Snapshots**: every note keeps a copy of its article's title, link, author, date and feed, so it stays meaningful after
   FreshRSS purges the article.
-- An optional "Annotated" label applied to annotated articles, configurable per user — see
-  [Configuration](#configuration).
-- A read-only, authenticated JSON [API](#api) to fetch and sync your notes, deletions included.
+- **An "Annotated" label** on the articles you annotate (optional and renamable per user), so you can browse them in the
+  sidebar and FreshRSS keeps them when it archives old articles — see [Configuration](#configuration).
+- **A read-only JSON [API](#api)** to fetch and sync your notes, deletions included, with your FreshRSS API password.
+- Per-user data, SQLite / MySQL / MariaDB / PostgreSQL, English interface; licensed AGPL-3.0-or-later like FreshRSS.
+
+| The note under its article | Annotated articles in the sidebar | Per-user settings |
+| --- | --- | --- |
+| ![A saved note under its article](docs/screenshots/note.png) | ![The Annotated label lists annotated articles](docs/screenshots/annotated-label.png) | ![The Article notes settings page](docs/screenshots/settings.png) |
 
 ## Requirements
 
-- FreshRSS **1.27.0 or newer** (tested with 1.30.1). On older versions the extension logs a warning and
-  does not register its API endpoint.
-- API access enabled (Configuration → Authentication → "Allow API access", plus an API password
-  in your profile) to use the notes API.
+- **FreshRSS 1.27.0 or newer** (tested with 1.27.1 and 1.30.1). On older versions the extension logs a warning and does
+  not register its API endpoint.
+- **PHP**: whatever your FreshRSS version requires (PHP 8.1 or newer for FreshRSS 1.27–1.30); no extra PHP extension.
+- **Database**: any database FreshRSS supports (SQLite, MySQL/MariaDB, PostgreSQL); the extension adds one table per user.
+- **For the API only**: API access allowed by the administrator (Configuration → Authentication → "Allow API access"),
+  and an API password for each user who uses it.
 
 ## Installation
 
-1. Download the release zip, or copy the `xExtension-ArticleNotes/` directory of this repository.
-2. Place the `xExtension-ArticleNotes/` directory in FreshRSS's `extensions/` directory
-   (in the official Docker image: `/var/www/FreshRSS/extensions`).
-3. As an **administrator**, open Configuration → Extensions and enable **ArticleNotes**. It is a
-   *system* extension, so it is enabled once for the whole instance.
+ArticleNotes is a single directory, `xExtension-ArticleNotes/`, that goes into FreshRSS's `extensions/` directory
+(`/var/www/FreshRSS/extensions` in the official Docker image). Pick one way to get it there:
+
+**a) Release zip.** Download `ArticleNotes-X.Y.Z.zip` from the Releases (or Tags) page of this repository and unpack it
+into `extensions/`; the zip contains just `xExtension-ArticleNotes/`:
+
+```sh
+cd /path/to/FreshRSS/extensions
+unzip ~/Downloads/ArticleNotes-1.0.0.zip      # creates xExtension-ArticleNotes/
+```
+
+**b) Git.** Clone the repository (optionally check out a release tag such as `v1.0.0`) and copy the extension directory
+(the rest of the repository is development tooling):
+
+```sh
+git clone <repository URL> freshrss-article-notes
+cp -r freshrss-article-notes/xExtension-ArticleNotes /path/to/FreshRSS/extensions/
+```
+
+**c) Docker** ([`freshrss/freshrss`](https://hub.docker.com/r/freshrss/freshrss)). Bind-mount the unpacked
+`xExtension-ArticleNotes/` into the container's extensions directory, for example with Docker Compose:
+
+```yaml
+services:
+  freshrss:
+    image: freshrss/freshrss:1.30.1
+    ports:
+      - "8080:80"
+    volumes:
+      - freshrss_data:/var/www/FreshRSS/data
+      - ./xExtension-ArticleNotes:/var/www/FreshRSS/extensions/xExtension-ArticleNotes:ro
+volumes:
+  freshrss_data:
+```
+
+(or `docker run … -v "$PWD/xExtension-ArticleNotes:/var/www/FreshRSS/extensions/xExtension-ArticleNotes:ro" freshrss/freshrss`).
+If you already mount a whole directory on `/var/www/FreshRSS/extensions` (as FreshRSS's documentation suggests), unpack
+the zip into that directory instead.
+
+The files must be readable by the web server (`www-data` in the Docker image). Then:
+
+1. **Enable it, as an administrator**: Configuration → Extensions → **ArticleNotes** → enable. It is a *system* extension:
+   it is enabled once for the whole instance, and every user gets their own notes and settings.
+2. **To use the API**, the administrator allows API access (Configuration → Authentication → "Allow API access"), and each
+   user sets an API password: Configuration → Profile → "External access via API" → **API password**, then Submit.
 
 ## Using notes
 
-Open an article and click **Note** in its action bar (next to the read, favourite and sharing icons; also in the
-reading and global views). Type your note and press **Save**; **Cancel** (or Escape) closes the editor, and **Delete**
-removes an existing note. Notes are plain text of up to 20,000 characters, shown under the article in a "Your note" block
-with the time of the last update; HTML and Markdown are never rendered. Saving an empty note deletes it.
+Open an article and click **Note** in its action bar (next to the read, favourite and sharing icons; also in the reading
+and global views). Type your note and press **Save**; **Cancel** (or Escape) closes the editor, and **Delete** removes an
+existing note. Notes are plain text of up to 20,000 characters, shown under the article in a "Your note" block with the
+time of the last update; HTML and Markdown are never rendered. Saving an empty note deletes it.
 
 ## Configuration
 
@@ -64,7 +113,7 @@ https://freshrss.example.net/api/misc.php/ArticleNotes/v1/...
 The API uses the same credentials as FreshRSS's Google Reader API, never your web login password:
 
 1. An administrator allows API access (Configuration → Authentication → "Allow API access").
-2. Each user sets an **API password** under Configuration → Profile ("External access via API" → "API password").
+2. Each user sets an **API password** under Configuration → Profile, section "External access via API" → "API password".
    Use HTTPS: the password travels with every request.
 
 Then authenticate every request with either:
@@ -94,7 +143,7 @@ like `{"error": {"code": "not_found", "message": "…"}}` with the codes `invali
 `not_found` (404), `method_not_allowed` (405) and `internal_error` (500).
 
 - `GET v1/status` — a cheap credentials check:
-  `{"extension": "ArticleNotes", "version": "0.1.0", "api_version": 1, "user": "alice", "note_count": 12}`
+  `{"extension": "ArticleNotes", "version": "1.0.0", "api_version": 1, "user": "alice", "note_count": 12}`
   (`note_count` counts live notes).
 - `GET v1/notes` — your notes, oldest change first (ordered by `updated_at`, then `id`):
   `{"notes": [ … ], "continuation": "…" or null, "server_time": 1760900000}`. Parameters:
@@ -153,11 +202,49 @@ curl -u alice:my-api-password 'https://freshrss.example.net/api/misc.php/Article
 
 ## Upgrading
 
-Replace the `xExtension-ArticleNotes/` directory with the new release. Nothing else is needed: the
-extension tracks a schema version per user and applies any missing database migrations automatically,
-the first time it uses its storage and during FreshRSS's regular feed refresh (cron). Versions and
-changes are listed in [CHANGELOG.md](CHANGELOG.md). Disabling the extension keeps your data; removing it
-through FreshRSS's uninstall drops its tables and settings for every user.
+Replace the `xExtension-ArticleNotes/` directory with the new release (unpack the new zip over it, `git pull` and copy
+again, or update your bind mount's source). Nothing else is needed: the extension keeps a schema version per user and
+applies any missing database migrations automatically, the first time it uses its storage for that user and during
+FreshRSS's regular feed refresh (cron). Your notes and settings are kept. Versions and changes are listed in
+[CHANGELOG.md](CHANGELOG.md).
+
+## Uninstalling
+
+- **Disabling** the extension (Configuration → Extensions, administrator) keeps every user's notes and settings; enabling it
+  again brings everything back. FreshRSS's **Remove** button deletes the `xExtension-ArticleNotes/` directory and also
+  keeps the data (as does deleting the directory yourself).
+- **To delete the data permanently**, run the extension's script from the FreshRSS directory *before* removing the
+  extension, as the web server user:
+
+  ```sh
+  cd /var/www/FreshRSS
+  sudo -u www-data php extensions/xExtension-ArticleNotes/cli/delete-data.php --yes                # every user
+  sudo -u www-data php extensions/xExtension-ArticleNotes/cli/delete-data.php --yes --user alice   # one user
+  # Docker: docker exec -u www-data freshrss php extensions/xExtension-ArticleNotes/cli/delete-data.php --yes
+  ```
+
+  It drops the notes table (`articlenotes_note` with FreshRSS's per-user prefix: every note and tombstone) and removes the
+  extension's settings of those users. The labels it created (e.g. "Annotated") are ordinary FreshRSS labels and stay,
+  with their articles; delete them in Subscription management → Label management if you no longer want them.
+
+## FAQ and troubleshooting
+
+- **There is no "Note" button.** The extension is not enabled (Configuration → Extensions, as an administrator), or the
+  page was opened before it was enabled: reload it.
+- **The API answers `404` with the plain text `Not Found!`** (FreshRSS 1.28 and newer). ArticleNotes is not enabled in
+  the *system* configuration (an administrator must enable it), or the extension name in the URL is not spelled exactly
+  `ArticleNotes`. If your web server does not pass the path after `misc.php` (`PATH_INFO`), use
+  `…/api/misc.php/v1/status?ext=ArticleNotes`.
+- **The API answers `503` (`Service Unavailable!`).** API access is disabled (Configuration → Authentication → "Allow API
+  access"). FreshRSS 1.27 also answers `503` when ArticleNotes is not enabled system-wide or the name is misspelled.
+- **`api/misc.php` does not exist** (a web server 404 page): FreshRSS is older than 1.27.0; upgrade FreshRSS.
+- **The API answers `401` (JSON `unauthorized`).** The user name or API password is wrong; you used your web login password
+  instead of the API password; the user has no API password yet (Profile → "External access via API"); the user is
+  disabled; or a reverse proxy / PHP-FPM setup drops the `Authorization` header (forward it, e.g. Apache's
+  `CGIPassAuth On`; FreshRSS's own Google Reader API needs it too).
+- **`404` with the JSON `not_found` error** is the extension speaking: an unknown path, or no live note for that
+  `entry_id`.
+- **Where are errors logged?** In FreshRSS's logs (Configuration → Logs), in messages starting with `ArticleNotes`.
 
 ## Development
 
@@ -168,7 +255,8 @@ docker compose up --build -d --wait   # builds, installs, seeds, and waits until
 ```
 
 - URL: find the port with `docker compose port freshrss 80` (default <http://localhost:8080/>;
-  override with `FRESHRSS_PORT`).
+  override with `FRESHRSS_PORT`). Another FreshRSS version: `docker compose down -v`, then
+  `FRESHRSS_VERSION=1.27.1 docker compose up --build -d --wait`.
 - Login: `admin` / `freshrss-dev-password` (API password `freshrss-dev-api`). These are
   development-only defaults; override them by copying `.env.example` to `.env`.
 - The instance is subscribed to Hacker News and Lobsters (empty if you are offline) and the
@@ -188,17 +276,28 @@ coverage, Playwright end-to-end tests):
 ```sh
 bin/ci               # SQLite only; HTML coverage report in coverage/index.html
 bin/ci --all-dbs     # also run the integration tests on MariaDB and PostgreSQL
+bin/ci --compat      # the matrix: bin/ci --all-dbs on FreshRSS 1.27.1 and 1.30.1, each in a throwaway stack
 ```
 
+`bin/ci --compat` does not need (or touch) the dev stack; set `COMPAT_VERSIONS` (e.g. `COMPAT_VERSIONS="1.27.1"`) to pick
+versions. It lints on the default version only, as FreshRSS's APIs and coding standard differ between versions.
+
 Single runs: `bin/phpunit tests/Unit/MetadataTest.php`, `TEST_DB=postgres bin/phpunit --testsuite integration`,
-`bin/e2e specs/smoke.spec.ts`, `bin/lint`. End-to-end tests use a throwaway user subscribed to the local
-fixture feed, never the live feeds.
+`FRESHRSS_VERSION=1.27.1 bin/phpunit`, `bin/e2e specs/full-journey.spec.ts`, `bin/lint`. End-to-end tests use throwaway
+users subscribed to the local fixture feed, never the live feeds.
+
+`bin/screenshots` refreshes the pictures in `docs/screenshots/` from the dev instance (seeded Hacker News content).
 
 ### Releasing
 
-Maintainers: bump `version` in `xExtension-ArticleNotes/metadata.json`, move the `[Unreleased]` entries of
-`CHANGELOG.md` under a new `## [X.Y.Z] - YYYY-MM-DD` heading, commit, tag `vX.Y.Z`, then run `bin/package`
-to build `dist/ArticleNotes-X.Y.Z.zip` (it contains only `xExtension-ArticleNotes/`).
+Maintainers:
+
+1. Bump `version` in `xExtension-ArticleNotes/metadata.json` and move the `[Unreleased]` entries of `CHANGELOG.md` under a
+   new `## [X.Y.Z] - YYYY-MM-DD` heading (a test fails if the two disagree).
+2. Run `bin/ci --compat`, commit, and tag `vX.Y.Z`.
+3. `bin/package` builds `dist/ArticleNotes-X.Y.Z.zip` (only `xExtension-ArticleNotes/`); `bin/verify-release` installs
+   that zip into a clean `freshrss/freshrss` container, enables it as the administrator, adds a note and fetches it
+   through the API. Attach the zip to the release.
 
 See [AGENTS.md](AGENTS.md) for conventions, specs and the full command list.
 

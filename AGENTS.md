@@ -7,8 +7,12 @@ Guidance for AI coding agents (and humans) working in this repository.
 - `xExtension-ArticleNotes/` – the installable FreshRSS extension (`metadata.json`, `extension.php`, `i18n/`).
   Everything else at the root is development tooling.
 - `Dockerfile`, `docker-compose.yml`, `docker/` – dev FreshRSS image (stock FreshRSS + curl + seeding scripts).
-- `bin/` – host-side wrappers (`ci`, `phpunit`, `e2e`, `lint`, `package`); `tests/` – `Unit/`, `Integration/`, `Support/`,
-  `bootstrap.php`, `e2e/` (Playwright); `composer.json`, `phpunit.xml.dist`, `phpcs.xml`, `phpstan.neon` – tooling config.
+- `bin/` – host-side wrappers (`ci`, `phpunit`, `e2e`, `lint`, `package`, `verify-release`, `screenshots`); `tests/` –
+  `Unit/`, `Integration/`, `Support/`, `bootstrap.php`, `e2e/` (Playwright: `specs/` run by `bin/e2e`, `release/` by
+  `bin/verify-release`, `screenshots/` by `bin/screenshots`); `composer.json`, `phpunit.xml.dist`, `phpcs.xml`,
+  `phpstan.neon` – tooling config.
+- `docs/screenshots/` – README pictures (`bin/screenshots`); `docs/community-listing.md` – draft entry for
+  FreshRSS/Extensions.
 - `tests/fixtures/feeds/feed.xml` – static fixture feed (stable GUIDs) served at `http://fixtures/feed.xml`.
 - `openspec/` – `project.md` and capability specs in `openspec/specs/`.
 - `CHANGELOG.md`, `README.md`, `LICENSE` (AGPL-3.0-or-later).
@@ -42,6 +46,7 @@ Prerequisite: the dev stack is up (`docker compose up --build -d --wait`); `bin/
 ```sh
 bin/ci                 # phpcs, PHPStan, PHPUnit + coverage (coverage/index.html), Playwright; SQLite only
 bin/ci --all-dbs       # same, plus the integration suite on MariaDB and PostgreSQL
+bin/ci --compat        # bin/ci --all-dbs on FreshRSS 1.27.1 and 1.30.1 (COMPAT_VERSIONS), throwaway stacks; no dev stack needed
 bin/lint               # phpcs + PHPStan only
 bin/phpunit            # whole PHPUnit suite, no coverage
 bin/phpunit tests/Unit/MetadataTest.php           # one file
@@ -49,6 +54,8 @@ bin/phpunit --filter testVersionIsSemver          # one test
 TEST_DB=postgres bin/phpunit --testsuite integration   # one engine: sqlite (default) | mariadb | postgres
 bin/e2e                # all Playwright specs (needs the stack up)
 bin/e2e specs/smoke.spec.ts                       # one spec (path relative to tests/e2e)
+FRESHRSS_VERSION=1.27.1 bin/phpunit               # against another FreshRSS (builds that dev image)
+bin/package && bin/verify-release                 # build the zip, install it into a clean freshrss/freshrss
 ```
 
 - Tools run in the `dev` (PHP, image built from the same pinned FreshRSS; FreshRSS sources at
@@ -59,7 +66,8 @@ bin/e2e specs/smoke.spec.ts                       # one spec (path relative to t
   `docker compose run --rm --no-deps --user "$(id -u):$(id -g)" dev composer require --dev <pkg>`.
 - Integration tests run against a real FreshRSS install in a temporary data directory with a throwaway
   user (`tests/Support/TestEnvironment.php`); nothing touches the dev instance. E2E tests get a
-  per-run throwaway user subscribed to `http://fixtures/feed.xml` (`E2E_USER`/`E2E_PASSWORD`), never the live feeds.
+  per-run throwaway user subscribed to `http://fixtures/feed.xml` (`E2E_USER`/`E2E_PASSWORD`/`E2E_API_PASSWORD`), never
+  the live feeds, plus one without an API password for the full-journey spec (`E2E_JOURNEY_USER`/`E2E_JOURNEY_PASSWORD`).
 - PHPStan is level 10 with no baseline; phpcs uses FreshRSS's own `phpcs.xml`. Fix findings, don't suppress them.
 - **Red/green TDD**: write the failing test first (`bin/phpunit <file>` / `bin/e2e <spec>`), see it fail for the
   right reason, make it pass, then run `bin/ci` (and `bin/ci --all-dbs` when touching storage code) before committing.
@@ -69,7 +77,10 @@ bin/e2e specs/smoke.spec.ts                       # one spec (path relative to t
 ## FreshRSS extension conventions
 
 - System extension (`"type": "system"`), enabled via `extensions_enabled`; per-user settings on the
-  extension's own controller page linked via the `MenuConfigurationEntry` hook. API via `Minz_HookType::ApiMisc` (FreshRSS ≥ 1.27.0).
+  extension's own controller page linked via the `MenuConfigurationEntry` hook. API via the `api_misc` hook (FreshRSS ≥ 1.27.0).
+- Supported: FreshRSS ≥ 1.27.0. Use only APIs that 1.27 has, or fall back: register hooks by name (`'api_misc'`, not
+  `Minz_HookType`, which 1.27 lacks), and use `ArticleNotesExtension`'s helpers (`setUserValue()`, `users()`,
+  `userConfiguration()`). `bin/ci --compat` checks 1.27.1 and 1.30.1.
 - PHP: tabs, `declare(strict_types=1);`, FreshRSS code style, `final` classes, `#[\Override]`.
 - Translations through `registerTranslates()` and `i18n/<lang>/ext.php`; no hardcoded UI strings.
 - CSRF tokens on every state-changing form/request; escape all output (notes are rendered escaped).
@@ -88,7 +99,8 @@ per-user migrations (FreshRSS has no extension upgrade hook).
 1. Bump `version` in `xExtension-ArticleNotes/metadata.json` (the single source of truth).
 2. In `CHANGELOG.md`, move the `[Unreleased]` entries under `## [X.Y.Z] - YYYY-MM-DD` (newest first) and leave an empty
    `## [Unreleased]`. `tests/Unit/ChangelogTest.php` fails if the two drift apart.
-3. Commit, tag `vX.Y.Z`, run `bin/package` (writes `dist/ArticleNotes-X.Y.Z.zip`, only `xExtension-ArticleNotes/`).
+3. Run `bin/ci --compat`, commit, tag `vX.Y.Z`, run `bin/package` (writes `dist/ArticleNotes-X.Y.Z.zip`, only
+   `xExtension-ArticleNotes/`) and `bin/verify-release` (installs that zip into a clean `freshrss/freshrss`).
 
 ### Schema migrations
 
@@ -96,8 +108,9 @@ Numbered files in `xExtension-ArticleNotes/Migrations/` (`NNNN_description.php`,
 whose `up()` is idempotent and works on SQLite, MySQL/MariaDB and PostgreSQL). Never edit a shipped migration; add a new
 one. `ArticleNotes\Migrator` applies the missing ones per user (version in the user's extension config
 `schema_version`, recorded after each step), lazily via `ArticleNotesExtension::ensureSchema()` — call it before first
-using storage in a request — and from the `FreshrssUserMaintenance` hook. List new tables in `Storage::TABLES` so
-`uninstall()` drops them.
+using storage in a request — and from the `freshrss_user_maintenance` hook. List new tables in `Storage::TABLES` so
+`cli/delete-data.php` drops them. `uninstall()` keeps all data: FreshRSS calls it when the extension is *disabled*.
+Probe with `query()` + `closeCursor()`, never `exec('SELECT …')` (it breaks MySQL connections).
 
 ## OpenSpec
 
