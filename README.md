@@ -13,9 +13,6 @@ authenticated FreshRSS API endpoint so other systems can fetch and analyze them 
   characters, always displayed escaped).
 - Notes keep a snapshot of their article (title, link, feed, …) so they stay meaningful after
   FreshRSS purges the article.
-- An optional "Annotated" label applied automatically to annotated articles (configurable per user),
-  which also protects them from FreshRSS's archiving purge.
-- A per-user settings page, linked from the Configuration menu.
 - An authenticated API endpoint (`p/api/misc.php`) to fetch notes, including deletions.
 
 ## Requirements
@@ -39,6 +36,19 @@ Open an article and click **Note** in its action bar (next to the read, favourit
 reading and global views). Type your note and press **Save**; **Cancel** (or Escape) closes the editor, and **Delete**
 removes an existing note. Notes are plain text of up to 20,000 characters, shown under the article in a "Your note" block
 with the time of the last update; HTML and Markdown are never rendered. Saving an empty note deletes it.
+
+## Configuration
+
+Every user has a settings page: Configuration → **Article notes** (no administrator needed).
+
+- **Add a label to articles I annotate** (on by default): adding a note applies a FreshRSS label to the article, so annotated
+  articles are listed under it in the sidebar. Deleting the note removes the label again, but only if the extension applied
+  it (a label you had added yourself stays).
+- **Label name** (default `Annotated`, 1–63 characters): the label is created the first time it is needed.
+
+Turning the label off or renaming it affects notes you add from then on; already labelled articles keep their label.
+Labelled articles are kept by FreshRSS's default archiving setting "keep labelled articles" (Configuration → Archiving),
+so annotated articles are not purged. The page also shows your API endpoint, `<FreshRSS base URL>/api/misc.php/ArticleNotes/`.
 
 ## Upgrading
 

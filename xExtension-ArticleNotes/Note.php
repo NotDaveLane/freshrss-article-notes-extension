@@ -22,6 +22,8 @@ final class Note {
 		public readonly string $feedName,
 		public readonly string $feedUrl,
 		public readonly bool $labelApplied,
+		/** Id of the label the extension applied to the article (set when `labelApplied`). */
+		public readonly ?int $labelId = null,
 	) {
 	}
 

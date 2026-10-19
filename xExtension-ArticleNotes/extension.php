@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+require_once __DIR__ . '/LabelApplier.php';
 require_once __DIR__ . '/Migration.php';
 require_once __DIR__ . '/Migrator.php';
 require_once __DIR__ . '/Note.php';
@@ -9,6 +10,7 @@ require_once __DIR__ . '/NoteBlock.php';
 require_once __DIR__ . '/NoteDAO.php';
 require_once __DIR__ . '/NoteException.php';
 require_once __DIR__ . '/NoteService.php';
+require_once __DIR__ . '/Settings.php';
 require_once __DIR__ . '/Storage.php';
 
 final class ArticleNotesExtension extends Minz_Extension {
@@ -38,12 +40,36 @@ final class ArticleNotesExtension extends Minz_Extension {
 		$this->registerHook(Minz_HookType::FreshrssUserMaintenance, [$this, 'ensureSchema']);
 		$this->registerHook(Minz_HookType::EntryBeforeDisplay, [$this, 'appendNote']);
 		$this->registerHook(Minz_HookType::JsVars, [$this, 'jsVars']);
+		$this->registerHook(Minz_HookType::MenuConfigurationEntry, [$this, 'menuEntry']);
 		if (self::isSupportedFreshRss($freshrssVersion)) {
 			$this->registerHook(Minz_HookType::ApiMisc, [$this, 'handleApi']);
 		} else {
 			Minz_Log::warning('ArticleNotes requires FreshRSS ' . self::MIN_FRESHRSS_VERSION . ' or newer (running '
 				. $freshrssVersion . '): the API endpoint is disabled.');
 		}
+	}
+
+	/** The entry of the Configuration menu that leads to the user's settings page. */
+	public function menuEntry(): string {
+		$active = Minz_Request::controllerName() === 'ArticleNotes' && Minz_Request::actionName() === 'settings';
+		return '<li class="item' . ($active ? ' active' : '') . '"><a href="'
+			. Minz_Url::display(['c' => 'ArticleNotes', 'a' => 'settings']) . '">'
+			. htmlspecialchars(_t('ext.article_notes.settings.menu'), ENT_QUOTES, 'UTF-8') . '</a></li>';
+	}
+
+	/** The current user's settings. */
+	public function settings(): ArticleNotes\Settings {
+		return new ArticleNotes\Settings(
+			fn (string $key): mixed => $this->getUserConfigurationValue($key),
+			function (string $key, mixed $value): void {
+				$this->setUserConfigurationValue($key, $value);
+			},
+		);
+	}
+
+	/** The URL of the notes API of this instance. */
+	public static function apiUrl(): string {
+		return rtrim(FreshRSS_Context::systemConf()->base_url, '/') . '/api/misc.php/ArticleNotes/';
 	}
 
 	/** Placeholder for the notes API (ApiMisc hook, FreshRSS >= 1.27.0). */
@@ -120,7 +146,10 @@ final class ArticleNotesExtension extends Minz_Extension {
 
 	/** The note service of the current user; it migrates the user's schema before first use. */
 	public function noteService(): ArticleNotes\NoteService {
-		return new ArticleNotes\NoteService(Minz_User::name() ?? '', $this->ensureSchema(...));
+		$user = Minz_User::name() ?? '';
+		$service = new ArticleNotes\NoteService($user, $this->ensureSchema(...));
+		(new ArticleNotes\LabelApplier($user, $this->settings()))->listen($service);
+		return $service;
 	}
 
 	private function migrator(string $user): ArticleNotes\Migrator {

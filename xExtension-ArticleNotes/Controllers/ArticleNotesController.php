@@ -5,15 +5,56 @@ declare(strict_types=1);
 use ArticleNotes\NoteBlock;
 use ArticleNotes\NoteException;
 
-/** JSON endpoints used by the article note editor: ?c=ArticleNotes&a=save|delete (POST, CSRF token required). */
+/**
+ * JSON endpoints used by the article note editor: ?c=ArticleNotes&a=save|delete (POST, CSRF token required),
+ * and the per-user settings page: ?c=ArticleNotes&a=settings.
+ */
 final class FreshExtension_ArticleNotes_Controller extends Minz_ActionController {
 	/** @var array<string,mixed> the JSON body of the current response, written out by the view */
 	private static array $body = [];
 
 	#[\Override]
 	public function firstAction(): void {
+		if (Minz_Request::actionName() === 'settings') {
+			if (!FreshRSS_Auth::hasAccess()) {
+				Minz_Error::error(403);
+			}
+			return;
+		}
 		$this->view->_layout(null);
 		$this->view->_path('ArticleNotes/respond.phtml');
+	}
+
+	public function settingsAction(): void {
+		if (Minz_Request::isPost()) {
+			$error = $this->saveSettings();
+			$url = ['c' => 'ArticleNotes', 'a' => 'settings'];
+			if ($error === null) {
+				Minz_Request::good(_t('feedback.conf.updated'), $url);
+			} else {
+				Minz_Request::bad($error, $url);
+			}
+		}
+		FreshRSS_View::prependTitle(_t('ext.article_notes.settings.title') . ' · ');
+	}
+
+	/** Validates and stores the submitted settings. @return string|null the error message, null when saved */
+	public function saveSettings(): ?string {
+		if (!FreshRSS_Auth::hasAccess()) {
+			return _t('ext.article_notes.error.signed_out');
+		}
+		if (!Minz_Request::isPost() || !FreshRSS_Auth::isCsrfOk()) {
+			return _t('ext.article_notes.error.csrf');
+		}
+		try {
+			self::extension()->settings()->save(
+				Minz_Request::paramBoolean('label_enabled'),
+				Minz_Request::paramString('label_name', true),
+			);
+		} catch (\InvalidArgumentException) {
+			return _t('ext.article_notes.settings.label_name_invalid', ArticleNotes\Settings::MAX_LABEL_NAME_LENGTH);
+		}
+		return null;
 	}
 
 	public function saveAction(): void {
@@ -85,11 +126,15 @@ final class FreshExtension_ArticleNotes_Controller extends Minz_ActionController
 	}
 
 	private static function service(): ArticleNotes\NoteService {
+		return self::extension()->noteService();
+	}
+
+	private static function extension(): ArticleNotesExtension {
 		$extension = Minz_ExtensionManager::findExtension('ArticleNotes');
 		if (!$extension instanceof ArticleNotesExtension) {
 			throw new RuntimeException('ArticleNotes extension is not loaded');
 		}
-		return $extension->noteService();
+		return $extension;
 	}
 
 	/** @return array{status:int,body:array<string,mixed>} */
