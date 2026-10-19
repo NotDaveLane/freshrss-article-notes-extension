@@ -62,12 +62,15 @@ final class NoteService {
 		$feed = \FreshRSS_Factory::createFeedDao($this->user)->searchById($entry->feedId());
 
 		$dao = $this->dao();
+		$existing = $dao->find($entry->id(), true);
 		$created = $dao->find($entry->id()) === null;
+		// Strictly after the previous version, so a note's (id, updated_at) pair, its ETag, changes with every save.
+		$updatedAt = max($this->now(), $existing === null ? 0 : $existing->updatedAt + 1);
 		$dao->upsert(new Note(
-			0, $entry->id(), $text, 0, $this->now(), null,
+			0, $entry->id(), $text, 0, $updatedAt, null,
 			$entry->guid(), $entry->link(true), $entry->title(), implode(', ', $entry->authors()), (int)$entry->date(true),
 			$entry->feedId(), $feed === null ? '' : $feed->name(true), $feed === null ? '' : $feed->url(false),
-			false,
+			false, null, UrlNormalizer::forEntry($entry->link(true), $entry->guid()) ?? '',
 		));
 		$note = $dao->find($entry->id());
 		if ($note === null) {
@@ -111,6 +114,20 @@ final class NoteService {
 	 */
 	public function existingEntryIds(array $entryIds): array {
 		return $this->dao()->existingEntryIds($entryIds);
+	}
+
+	/**
+	 * The live notes of articles at a normalized URL, most recently published first.
+	 *
+	 * @return list<Note>
+	 */
+	public function findByUrl(string $normalizedUrl, int $limit): array {
+		return $this->dao()->findByUrlHash(UrlNormalizer::hash($normalizedUrl), $limit);
+	}
+
+	/** The URL index of this user's articles. */
+	public function urlIndex(): UrlIndex {
+		return new UrlIndex($this->dao()->pdo());
 	}
 
 	public function count(): int {

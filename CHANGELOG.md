@@ -9,6 +9,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- API: `GET v1/lookup?url=` finds the articles (and notes on purged articles) behind a web page URL, for third-party clients
+  such as a browser extension; `PUT` and `DELETE v1/notes/<entry_id>` create, update and delete a note, with `ETag` /
+  `If-Match`, JSON body validation (415/413/400) and a method list per path (`url-lookup`, `notes-api-write` OpenSpec
+  capabilities).
+- URL normalization (`UrlNormalizer`) and a per-user URL index (migration `0004`, `articlenotes_url`), kept current by
+  FreshRSS's user maintenance and filled lazily on lookups; notes store their normalized URL.
 - Anchoring library `static/anchoring.js` for highlights: a dependency-free ES module that describes a text selection as
   a W3C Web Annotation-style selector (quote with prefix/suffix context, and position), anchors a selector again
   (position, then context-scored quote search, then whitespace-insensitive search; `null` when the passage is gone),
@@ -16,6 +22,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `anchoring` OpenSpec capability).
 - ESLint for the extension's JavaScript (`bin/lint`, `bin/ci`), and JavaScript coverage of the anchoring library in
   `coverage/js/index.html`.
+
+### Changed
+
+- The API is no longer read-only: `v1/notes/<entry_id>` accepts `PUT` and `DELETE` (other paths still answer `405` to writes).
+- Note objects gain `url` and `normalized_url`; a note's `updated_at` now always increases when it is saved.
 
 ## [1.0.0] - 2026-10-19
 
