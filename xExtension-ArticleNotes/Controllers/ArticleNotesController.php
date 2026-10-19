@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use ArticleNotes\HighlightException;
 use ArticleNotes\NoteBlock;
 use ArticleNotes\NoteException;
 
@@ -63,6 +64,124 @@ final class FreshExtension_ArticleNotes_Controller extends FreshRSS_ActionContro
 
 	public function deleteAction(): void {
 		$this->respond($this->delete());
+	}
+
+	public function highlightsAction(): void {
+		$this->respond($this->highlights());
+	}
+
+	public function highlightCreateAction(): void {
+		$this->respond($this->highlightCreate());
+	}
+
+	public function highlightUpdateAction(): void {
+		$this->respond($this->highlightUpdate());
+	}
+
+	public function highlightDeleteAction(): void {
+		$this->respond($this->highlightDelete());
+	}
+
+	/**
+	 * The live highlights of an article (`entry_id`) in document order; a read, so no CSRF token is needed.
+	 *
+	 * @return array{status:int,body:array<string,mixed>}
+	 */
+	public function highlights(): array {
+		if (!FreshRSS_Auth::hasAccess()) {
+			return self::error(403, 'signed_out');
+		}
+		$entryId = Minz_Request::paramString('entry_id', true);
+		if (!ctype_digit($entryId)) {
+			return self::error(404, 'unknown_entry');
+		}
+		try {
+			$service = self::extension()->highlightService();
+			$highlights = $service->forEntry($entryId);
+			$exists = $highlights !== [] && $service->existingEntryIds([$entryId]) !== [];
+		} catch (\Throwable $exception) {
+			return self::failure($exception);
+		}
+		return ['status' => 200, 'body' => ['ok' => true, 'highlights' => array_map(
+			static fn (ArticleNotes\Highlight $highlight): array => $highlight->toArray($exists), $highlights)]];
+	}
+
+	/**
+	 * Creates a highlight from `entry_id`, `source`, `selector` (JSON), and optionally `color`, `note`, `uuid`, `title`.
+	 *
+	 * @return array{status:int,body:array<string,mixed>}
+	 */
+	public function highlightCreate(): array {
+		return $this->highlightWrite(function (ArticleNotes\HighlightService $service): array {
+			$input = [];
+			foreach (['uuid', 'entry_id', 'url', 'title', 'source', 'color', 'note'] as $name) {
+				if (Minz_Request::hasParam($name)) {
+					$input[$name] = Minz_Request::paramString($name, true);
+				}
+			}
+			$selector = Minz_Request::paramString('selector', true);
+			$input['selector'] = $selector === '' ? null : json_decode($selector, true);
+			$result = $service->create($input);
+			return [$result['highlight'], $result['created'] ? 201 : 200];
+		});
+	}
+
+	/**
+	 * Changes the `note` and/or `color` of the highlight `uuid`.
+	 *
+	 * @return array{status:int,body:array<string,mixed>}
+	 */
+	public function highlightUpdate(): array {
+		return $this->highlightWrite(static function (ArticleNotes\HighlightService $service): array {
+			if (Minz_Request::hasParam('selector')) {
+				throw new HighlightException(HighlightException::SELECTOR_IMMUTABLE, 'The selector cannot change.');
+			}
+			$note = Minz_Request::hasParam('note') ? Minz_Request::paramString('note', true) : null;
+			$color = Minz_Request::hasParam('color') ? Minz_Request::paramString('color', true) : null;
+			if ($note === null && $color === null) {
+				throw new HighlightException(HighlightException::INVALID_FIELD, 'Give a note and/or a color.');
+			}
+			return [$service->update(Minz_Request::paramString('uuid', true), $note, $color), 200];
+		});
+	}
+
+	/** @return array{status:int,body:array<string,mixed>} */
+	public function highlightDelete(): array {
+		$denied = $this->guard();
+		if ($denied !== null) {
+			return $denied;
+		}
+		try {
+			self::extension()->highlightService()->delete(Minz_Request::paramString('uuid', true));
+		} catch (\Throwable $exception) {
+			return self::failure($exception);
+		}
+		return ['status' => 200, 'body' => ['ok' => true]];
+	}
+
+	/**
+	 * Runs a highlight write behind the sign-in, POST and CSRF checks.
+	 *
+	 * @param \Closure(ArticleNotes\HighlightService):array{ArticleNotes\Highlight,int} $write
+	 * @return array{status:int,body:array<string,mixed>}
+	 */
+	private function highlightWrite(\Closure $write): array {
+		$denied = $this->guard();
+		if ($denied !== null) {
+			return $denied;
+		}
+		try {
+			$service = self::extension()->highlightService();
+			[$highlight, $status] = $write($service);
+			$exists = $highlight->entryId !== null && $service->existingEntryIds([$highlight->entryId]) !== [];
+		} catch (HighlightException $exception) {
+			return ['status' => $exception->status(), 'body' => [
+				'ok' => false, 'code' => $exception->errorCode, 'error' => _t('ext.article_notes.error.highlight_' . $exception->errorCode),
+			]];
+		} catch (\Throwable $exception) {
+			return self::failure($exception);
+		}
+		return ['status' => $status, 'body' => ['ok' => true, 'highlight' => $highlight->toArray($exists)]];
 	}
 
 	/** @return array<string,mixed> */

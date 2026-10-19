@@ -28,7 +28,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `GET v1/lookup`, page notes in `GET v1/notes`; `NoteService::savePageNote()` / `deletePageNote()` (`page-notes`
   OpenSpec capability).
 
+- Highlights: passages selected on a FreshRSS article or any web page, with an optional note, colour and a W3C-style
+  selector (migration `0006`, `articlenotes_highlight`; `HighlightService` is the single write path). API:
+  `POST v1/highlights` (idempotent by `uuid`), `GET`/`PATCH`/`DELETE v1/highlights/<uuid>`, `GET v1/highlights` by
+  `entry_id`, by `url` or as a changed-since sync, `highlights` / `page_highlights` in `GET v1/lookup`. FreshRSS-side
+  controller actions (`highlights`, `highlightCreate`, `highlightUpdate`, `highlightDelete`; CSRF-protected) for the
+  upcoming UI (`highlights` OpenSpec capability).
+
 ### Changed
+
+- The "Annotated" label now follows article notes and highlights together: it is applied with an article's first note or
+  highlight and removed (only if ArticleNotes applied it) when neither remains.
 
 - Note objects gain `kind` (`article` | `page`) and `title`; `entry_id`, `greader_item_id` and `article` are `null` on page
   notes.

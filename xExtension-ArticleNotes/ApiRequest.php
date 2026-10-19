@@ -53,9 +53,9 @@ final class ApiRequest {
 			is_string($_SERVER['CONTENT_TYPE'] ?? null) ? $_SERVER['CONTENT_TYPE'] : '', is_string($ifMatch) ? $ifMatch : null);
 	}
 
-	/** The request body of a `PUT`, at most {@see MAX_BODY_BYTES} + 1 bytes: one more than allowed means too large. */
+	/** The request body of a `PUT`, `POST` or `PATCH`, at most {@see MAX_BODY_BYTES} + 1 bytes: one more than allowed means too large. */
 	private static function bodyFromInput(string $method): string {
-		if ($method !== 'PUT') {
+		if (!in_array($method, ['PUT', 'POST', 'PATCH'], true)) {
 			return '';
 		}
 		$length = $_SERVER['CONTENT_LENGTH'] ?? null;

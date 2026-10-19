@@ -6,6 +6,11 @@ require_once __DIR__ . '/Api.php';
 require_once __DIR__ . '/ApiException.php';
 require_once __DIR__ . '/ApiRequest.php';
 require_once __DIR__ . '/ApiResponse.php';
+require_once __DIR__ . '/ArticleSnapshot.php';
+require_once __DIR__ . '/Highlight.php';
+require_once __DIR__ . '/HighlightDAO.php';
+require_once __DIR__ . '/HighlightException.php';
+require_once __DIR__ . '/HighlightService.php';
 require_once __DIR__ . '/InvalidParameterException.php';
 require_once __DIR__ . '/LabelApplier.php';
 require_once __DIR__ . '/Migration.php';
@@ -144,7 +149,8 @@ final class ArticleNotesExtension extends Minz_Extension {
 
 	/** The read-only notes API; it authenticates the user itself. */
 	public function api(): ArticleNotes\Api {
-		return new ArticleNotes\Api($this->getName(), $this->getVersion(), fn (): ArticleNotes\NoteService => $this->noteService());
+		return new ArticleNotes\Api($this->getName(), $this->getVersion(), fn (): ArticleNotes\NoteService => $this->noteService(),
+			fn (): ArticleNotes\HighlightService => $this->highlightService());
 	}
 
 	/** Appends the user's note, when there is one, to the article content. */
@@ -220,6 +226,14 @@ final class ArticleNotesExtension extends Minz_Extension {
 		$user = Minz_User::name() ?? '';
 		$service = new ArticleNotes\NoteService($user, $this->ensureSchema(...));
 		(new ArticleNotes\LabelApplier($user, $this->settings()))->listen($service);
+		return $service;
+	}
+
+	/** The highlight service of the current user (it shares the note service's storage and label bookkeeping). */
+	public function highlightService(): ArticleNotes\HighlightService {
+		$user = Minz_User::name() ?? '';
+		$service = new ArticleNotes\HighlightService($user, $this->noteService());
+		(new ArticleNotes\LabelApplier($user, $this->settings()))->listenHighlights($service);
 		return $service;
 	}
 
