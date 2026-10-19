@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.0.0] - 2026-10-19
+
+First public release.
+
 ### Added
 
 - Extension skeleton (`ArticleNotes`, system extension, English translations).
@@ -19,8 +23,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `bin/e2e` and `bin/lint` wrappers (`toolchain` OpenSpec capability).
 - Versioning and upgrades: changelog/version consistency test, per-user schema migration framework
   (`Migrator`, baseline migration `0001`, run lazily and from FreshRSS's user-maintenance hook), FreshRSS
-  version guard (API hook skipped below 1.27.0), `uninstall()` cleanup, and `bin/package` release zips
-  (`versioning-and-migrations` OpenSpec capability).
+  version guard (API hook skipped below 1.27.0), and `bin/package` release zips (`versioning-and-migrations` OpenSpec
+  capability).
 - Note storage: per-user `articlenotes_note` table (migration `0002`) with article snapshots and deletion
   tombstones, `NoteDAO` and `NoteService` (validation, 20,000-character limit, save/delete listeners)
   (`notes-storage` OpenSpec capability).
@@ -35,3 +39,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Notes API: read-only JSON on `p/api/misc.php/ArticleNotes/v1/` (`status`, `notes` with `since`, `limit`,
   `continuation` and `include_deleted` for incremental sync with tombstones, `notes/<entry_id>`), authenticated with
   the FreshRSS API password (HTTP Basic) or a Google Reader API token (`notes-api` OpenSpec capability).
+- Full-journey end-to-end test: set an API password, annotate, see the label, fetch through the API, follow an edit with
+  `since`, delete and receive the tombstone, label removed.
+- Support for FreshRSS 1.27.x (tested with 1.27.1 and 1.30.1 on SQLite, MariaDB and PostgreSQL), and `bin/ci --compat` to
+  run that version and database matrix (`bin/ci --no-lint` skips linting).
+- `cli/delete-data.php --yes [--user <name>]` permanently deletes the extension's tables and settings (of every user or
+  one user). Disabling or removing the extension keeps the data.
+- `bin/verify-release` installs a release zip into a clean `freshrss/freshrss` container and checks it end to end;
+  `bin/screenshots` captures the README pictures.
+- README for first-time installers: screenshots, requirements, installation (release zip, git, Docker), upgrading,
+  uninstalling, FAQ and troubleshooting; draft entry for the FreshRSS community extension list.
