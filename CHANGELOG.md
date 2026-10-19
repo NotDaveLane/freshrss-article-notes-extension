@@ -23,8 +23,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - ESLint for the extension's JavaScript (`bin/lint`, `bin/ci`), and JavaScript coverage of the anchoring library in
   `coverage/js/index.html`.
 
+- Page notes: one note for a web page URL that matches no FreshRSS article (migration `0005`: `entry_id` becomes
+  nullable, page notes are unique per normalized URL). API: `GET`/`PUT`/`DELETE v1/page-notes?url=`, `page_note` in
+  `GET v1/lookup`, page notes in `GET v1/notes`; `NoteService::savePageNote()` / `deletePageNote()` (`page-notes`
+  OpenSpec capability).
+
 ### Changed
 
+- Note objects gain `kind` (`article` | `page`) and `title`; `entry_id`, `greader_item_id` and `article` are `null` on page
+  notes.
 - The API is no longer read-only: `v1/notes/<entry_id>` accepts `PUT` and `DELETE` (other paths still answer `405` to writes).
 - Note objects gain `url` and `normalized_url`; a note's `updated_at` now always increases when it is saved.
 

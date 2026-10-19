@@ -290,7 +290,7 @@ final class ApiTest extends TestCase {
 		for ($i = 0; $i < 5; $i++) {
 			$service->save(self::addEntry(self::USER), 'page note ' . $i);
 		}
-		$expected = array_map(static fn (ArticleNotes\Note $note): string => $note->entryId,
+		$expected = array_map(static fn (ArticleNotes\Note $note): string => (string)$note->entryId,
 			array_values(array_filter(self::service(self::USER)->changedSince(0, 100000),
 				static fn (ArticleNotes\Note $note): bool => !$note->isDeleted())));
 		self::assertGreaterThanOrEqual(5, count($expected));

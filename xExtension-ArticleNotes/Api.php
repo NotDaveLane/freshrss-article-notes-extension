@@ -37,6 +37,10 @@ final class Api {
 			$read = fn (): ApiResponse => $this->listNotes($request->query);
 		} elseif ($path === 'v1/lookup') {
 			$read = fn (): ApiResponse => $this->lookup($request->query);
+		} elseif ($path === 'v1/page-notes') {
+			$read = fn (): ApiResponse => $this->onePageNote($request->query);
+			$routes['PUT'] = fn (): ApiResponse => $this->putPageNote($request);
+			$routes['DELETE'] = fn (): ApiResponse => $this->deletePageNote($request);
 		} elseif (preg_match('#^v1/notes/(\d{1,20})$#', $path, $matches) === 1) {
 			$entryId = $matches[1];
 			$read = fn (): ApiResponse => $this->oneNote($entryId);
@@ -156,7 +160,7 @@ final class Api {
 		if ($note === null) {
 			return ApiResponse::error(404, 'not_found', 'There is no note on this article.');
 		}
-		return self::noteResponse(200, $note, $service->existingEntryIds([$note->entryId]) !== []);
+		return self::noteResponse(200, $note, $service->existingEntryIds([$note->entryId ?? '']) !== []);
 	}
 
 	/** Creates, updates (or, with empty text, deletes) the note of an article. */
@@ -199,6 +203,20 @@ final class Api {
 	 * @throws ApiException a body that is not JSON (415, 413, 400)
 	 */
 	private static function noteText(ApiRequest $request): string {
+		$text = self::noteBody($request)['note'];
+		if (!is_string($text)) {
+			throw new ApiException(400, 'invalid_body', 'The body must be a JSON object with a "note" string.');
+		}
+		return $text;
+	}
+
+	/**
+	 * The decoded JSON object of a write request, which has a "note" entry.
+	 *
+	 * @return array<string,mixed>
+	 * @throws ApiException a body that is not JSON (415, 413, 400)
+	 */
+	private static function noteBody(ApiRequest $request): array {
 		$mediaType = strtolower(trim(explode(';', $request->contentType, 2)[0]));
 		if ($mediaType !== 'application/json') {
 			throw new ApiException(415, 'unsupported_media_type', 'Send the body as application/json.');
@@ -214,7 +232,72 @@ final class Api {
 		if (!is_array($body) || !isset($body['note']) || !is_string($body['note'])) {
 			throw new ApiException(400, 'invalid_body', 'The body must be a JSON object with a "note" string.');
 		}
-		return $body['note'];
+		return array_combine(array_map('strval', array_keys($body)), $body);
+	}
+
+	/**
+	 * The normalized form of the `url` parameter.
+	 *
+	 * @param array<string,string> $query
+	 * @throws InvalidParameterException
+	 */
+	private static function pageUrl(array $query): string {
+		return UrlNormalizer::normalize($query['url'] ?? '') ?? throw new InvalidParameterException('"url" must be an http or https URL.');
+	}
+
+	/** @param array<string,string> $query */
+	private function onePageNote(array $query): ApiResponse {
+		$normalized = self::pageUrl($query);
+		$note = $this->service()->getPageNote($normalized);
+		if ($note === null) {
+			return ApiResponse::error(404, 'not_found', 'There is no page note on this URL.');
+		}
+		return self::noteResponse(200, $note, false);
+	}
+
+	/** Creates, updates (or, with empty text, deletes) the note of a web page that is no article. */
+	private function putPageNote(ApiRequest $request): ApiResponse {
+		self::pageUrl($request->query);
+		$body = self::noteBody($request);
+		$text = $body['note'];
+		$title = $body['title'] ?? '';
+		if (!is_string($text) || !is_string($title)) {
+			throw new ApiException(400, 'invalid_body', 'The body must be a JSON object with a "note" string and an optional "title" string.');
+		}
+		$service = $this->service();
+		$current = $service->getPageNote($request->query['url'] ?? '');
+		if (self::preconditionFails($request->ifMatch, $current)) {
+			return self::preconditionFailed();
+		}
+		try {
+			$note = $service->savePageNote($request->query['url'] ?? '', $text, $title);
+		} catch (NoteException $exception) {
+			return match ($exception->getCode()) {
+				NoteException::URL_IS_ARTICLE => ApiResponse::error(409, 'url_is_article',
+					'This URL is a FreshRSS article: PUT v1/notes/' . ($exception->entryId ?? '') . ' instead.'),
+				NoteException::TITLE_TOO_LONG => ApiResponse::error(422, 'title_too_long',
+					'A page title is limited to ' . NoteService::MAX_TITLE_LENGTH . ' characters.'),
+				default => ApiResponse::error(422, 'note_too_long', 'A note is limited to ' . NoteService::MAX_LENGTH . ' characters.'),
+			};
+		}
+		if ($note === null) {
+			return ApiResponse::noContent();
+		}
+		return self::noteResponse($current === null ? 201 : 200, $note, false);
+	}
+
+	private function deletePageNote(ApiRequest $request): ApiResponse {
+		self::pageUrl($request->query);
+		$service = $this->service();
+		$current = $service->getPageNote($request->query['url'] ?? '');
+		if ($current === null) {
+			return ApiResponse::error(404, 'not_found', 'There is no page note on this URL.');
+		}
+		if (self::preconditionFails($request->ifMatch, $current)) {
+			return self::preconditionFailed();
+		}
+		$service->deletePageNote($request->query['url'] ?? '');
+		return ApiResponse::noContent();
 	}
 
 	private static function etag(Note $note): string {
@@ -260,9 +343,11 @@ final class Api {
 		$service = $this->service();
 		$result = (new UrlLookup($service))->find($normalized);
 		$existing = array_flip($service->existingEntryIds(array_map(static fn (UrlMatch $match): string => $match->entryId, $result['matches'])));
+		$pageNote = $service->getPageNote($normalized);
 		return ApiResponse::ok([
 			'url' => $url,
 			'normalized_url' => $normalized,
+			'page_note' => $pageNote === null ? null : self::noteJson($pageNote, false),
 			'index_complete' => $result['index_complete'],
 			'matches' => array_map(static fn (UrlMatch $match): array => [
 				'entry_id' => $match->entryId,
@@ -300,10 +385,10 @@ final class Api {
 			$last = $notes[$limit - 1];
 			$continuation = self::encodeContinuation($last->updatedAt, $last->id, $withDeleted);
 		}
-		$existing = array_flip($service->existingEntryIds(array_map(static fn (Note $note): string => $note->entryId, $notes)));
+		$existing = array_flip($service->existingEntryIds(self::entryIds($notes)));
 
 		return ApiResponse::ok([
-			'notes' => array_map(static fn (Note $note): array => self::noteJson($note, isset($existing[$note->entryId])), $notes),
+			'notes' => array_map(static fn (Note $note): array => self::noteJson($note, isset($existing[$note->entryId ?? ''])), $notes),
 			'continuation' => $continuation,
 			'server_time' => $serverTime,
 		]);
@@ -340,12 +425,27 @@ final class Api {
 		return [(int)$matches[1], (int)$matches[2], $matches[3] === '1'];
 	}
 
+	/**
+	 * @param list<Note> $notes
+	 * @return list<string> the ids of the articles the notes are on
+	 */
+	private static function entryIds(array $notes): array {
+		$ids = [];
+		foreach ($notes as $note) {
+			if ($note->entryId !== null) {
+				$ids[] = $note->entryId;
+			}
+		}
+		return $ids;
+	}
+
 	/** @return array<string,mixed> */
 	private static function noteJson(Note $note, bool $articleExists): array {
 		return [
 			'id' => $note->id,
 			'entry_id' => $note->entryId,
-			'greader_item_id' => self::greaderItemId($note->entryId),
+			'kind' => $note->isPageNote() ? 'page' : 'article',
+			'greader_item_id' => $note->entryId === null ? null : self::greaderItemId($note->entryId),
 			'url' => $note->url(),
 			'normalized_url' => $note->normalizedUrl === '' ? null : $note->normalizedUrl,
 			'note' => $note->isDeleted() ? null : $note->note,
@@ -356,7 +456,8 @@ final class Api {
 			'deleted_at' => $note->deletedAt,
 			'deleted_at_iso' => $note->deletedAt === null ? null : self::iso($note->deletedAt),
 			'label_applied' => $note->labelApplied,
-			'article' => [
+			'title' => $note->isPageNote() ? ($note->entryTitle === '' ? null : $note->entryTitle) : $note->entryTitle,
+			'article' => $note->isPageNote() ? null : [
 				'guid' => $note->entryGuid,
 				'url' => $note->entryLink,
 				'title' => $note->entryTitle,

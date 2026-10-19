@@ -7,6 +7,7 @@ namespace ArticleNotes;
 /** The single entry point for writing one user's notes. */
 final class NoteService {
 	public const MAX_LENGTH = 20000;
+	public const MAX_TITLE_LENGTH = 500;
 
 	/** @var list<\Closure(Note,bool):void> */
 	private array $savedListeners = [];
@@ -80,6 +81,82 @@ final class NoteService {
 			$listener($note, $created);
 		}
 		return $dao->find($entry->id()) ?? $note;	// listeners may have updated it (label bookkeeping)
+	}
+
+	/** The live page note at a URL (any form of it), or null. */
+	public function getPageNote(string $url): ?Note {
+		$normalized = UrlNormalizer::normalize($url);
+		return $normalized === null ? null : $this->dao()->findPage($normalized);
+	}
+
+	/**
+	 * Creates or updates the note of a web page that is no FreshRSS article; empty (after trimming) text deletes it. Page
+	 * notes never get a label (there is no article to label).
+	 *
+	 * @param string $title the page title as the client saw it (optional, at most {@see MAX_TITLE_LENGTH} characters)
+	 * @return Note|null the saved note, null when it was deleted
+	 * @throws NoteException invalid URL, text or title too long, or a URL that is a FreshRSS article ({@see NoteException::$entryId})
+	 */
+	public function savePageNote(string $url, string $text, string $title = ''): ?Note {
+		$normalized = UrlNormalizer::normalize($url);
+		if ($normalized === null) {
+			throw new NoteException('The URL must be an http or https URL', NoteException::INVALID_URL);
+		}
+		$text = trim($text);
+		if ($text === '') {
+			$this->deletePageNote($url);
+			return null;
+		}
+		$title = trim($title);
+		if (mb_strlen($text, 'UTF-8') > self::MAX_LENGTH) {
+			throw new NoteException('A note is limited to ' . self::MAX_LENGTH . ' characters', NoteException::TOO_LONG);
+		}
+		if (mb_strlen($title, 'UTF-8') > self::MAX_TITLE_LENGTH) {
+			throw new NoteException('A page title is limited to ' . self::MAX_TITLE_LENGTH . ' characters', NoteException::TITLE_TOO_LONG);
+		}
+		$article = $this->articleAt($normalized);
+		if ($article !== null) {
+			throw new NoteException('This URL is the FreshRSS article ' . $article . ': use the article note', NoteException::URL_IS_ARTICLE, $article);
+		}
+
+		$dao = $this->dao();
+		$existing = $dao->findPage($normalized, true);
+		$created = $dao->findPage($normalized) === null;
+		$updatedAt = max($this->now(), $existing === null ? 0 : $existing->updatedAt + 1);
+		$dao->upsertPage(new Note(0, null, $text, 0, $updatedAt, null, '', trim($url), $title, '', 0, 0, '', '', false, null, $normalized));
+		$note = $dao->findPage($normalized);
+		if ($note === null) {
+			throw new \RuntimeException('Note vanished after saving');
+		}
+		foreach ($this->savedListeners as $listener) {
+			$listener($note, $created);
+		}
+		return $note;
+	}
+
+	/** Tombstones the page note at a URL. @return bool whether a note was deleted */
+	public function deletePageNote(string $url): bool {
+		$normalized = UrlNormalizer::normalize($url);
+		if ($normalized === null) {
+			return false;
+		}
+		$dao = $this->dao();
+		if (!$dao->softDeletePage($normalized, $this->now())) {
+			return false;
+		}
+		$note = $dao->findPage($normalized, true);
+		if ($note !== null) {
+			foreach ($this->deletedListeners as $listener) {
+				$listener($note);
+			}
+		}
+		return true;
+	}
+
+	/** The id of a FreshRSS article (or of a purged one that still has a note) at a normalized URL, or null. */
+	private function articleAt(string $normalized): ?string {
+		$matches = (new UrlLookup($this))->find($normalized)['matches'];
+		return $matches === [] ? null : $matches[0]->entryId;
 	}
 
 	/** Tombstones the note of an article (the article need not exist anymore). @return bool whether a note was deleted */

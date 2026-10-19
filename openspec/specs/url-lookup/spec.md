@@ -64,7 +64,7 @@ purges their article.
 
 ### Requirement: URL lookup
 
-`GET v1/lookup?url=<page url>` SHALL answer `{"url", "normalized_url", "index_complete", "matches"}`: up to 20 `matches`,
+`GET v1/lookup?url=<page url>` SHALL answer `{"url", "normalized_url", "index_complete", "page_note", "matches"}`: up to 20 `matches`,
 most recently published first, from the URL index plus the articles with a live note whose stored normalized URL matches.
 `index_complete` SHALL be false while articles remain unindexed. Later versions add keys, never change these.
 
@@ -82,7 +82,7 @@ most recently published first, from the URL index plus the articles with a live 
 
 #### Scenario: Another user's data
 - **WHEN** user B looks up a URL that only user A has articles or notes for
-- **THEN** `matches` is empty
+- **THEN** `matches` is empty and `page_note` is null
 
 ### Requirement: Lookup parameter
 
@@ -91,3 +91,11 @@ A missing, non-http(s) or malformed `url` SHALL answer 400 `invalid_parameter`.
 #### Scenario: Not a web page
 - **WHEN** a client looks up `ftp://example.com/a`
 - **THEN** the response is 400 with error code `invalid_parameter`
+
+### Requirement: Page note in lookup
+
+`page_note` SHALL be the user's live page note at the looked-up URL (a note object), or null, and SHALL be returned even when an article matches the URL too.
+
+#### Scenario: Article and page note
+- **WHEN** a page note exists for a URL and an article with that URL is fetched later
+- **THEN** the lookup returns the article in `matches` and the page note in `page_note`

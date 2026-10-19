@@ -31,6 +31,9 @@ final class UrlLookup {
 				$row['feed_id'], $row['feed_name'], $row['feed_url'], $this->notes->get($row['entry_id']));
 		}
 		foreach ($this->notes->findByUrl($normalizedUrl, self::MAX_MATCHES) as $note) {
+			if ($note->entryId === null) {
+				continue;
+			}
 			$matches[$note->entryId] ??= new UrlMatch($note->entryId, $note->entryTitle, $note->url(), $note->entryDate,
 				$note->feedId, $note->feedName, $note->feedUrl, $note);
 		}

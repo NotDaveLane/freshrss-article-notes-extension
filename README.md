@@ -143,8 +143,9 @@ Wrong or missing credentials, disabled users and users without an API password g
 
 Every response, errors included, is JSON (`application/json; charset=UTF-8`, `Cache-Control: no-store`). Errors look
 like `{"error": {"code": "not_found", "message": "…"}}` with the codes `invalid_parameter`, `invalid_json` and `invalid_body`
-(400), `unauthorized` (401), `not_found` (404), `method_not_allowed` (405), `precondition_failed` (412),
-`payload_too_large` (413), `unsupported_media_type` (415), `note_too_long` (422) and `internal_error` (500).
+(400), `unauthorized` (401), `not_found` (404), `method_not_allowed` (405), `url_is_article` (409),
+`precondition_failed` (412), `payload_too_large` (413), `unsupported_media_type` (415), `note_too_long` and
+`title_too_long` (422) and `internal_error` (500).
 
 - `GET v1/status` — a cheap credentials check:
   `{"extension": "ArticleNotes", "version": "1.0.0", "api_version": 1, "user": "alice", "note_count": 12}`
@@ -163,12 +164,15 @@ like `{"error": {"code": "not_found", "message": "…"}}` with the codes `invali
 - `PUT v1/notes/<entry_id>` — create (`201`) or update (`200`) the note of an article; see
   [Writing notes](#writing-notes).
 - `DELETE v1/notes/<entry_id>` — delete the note (`204`; `404` when there is none).
+- `GET`, `PUT` and `DELETE v1/page-notes?url=<page url>` — the note of a web page that is not an article; see
+  [Page notes](#page-notes).
 
 ### The note object
 
 ```json
 {
   "id": 7,
+  "kind": "article",
   "entry_id": "1760891234567890",
   "greader_item_id": "tag:google.com,2005:reader/item/00064185708646d2",
   "note": "Worth re-reading.\nSee also the follow-up post.",
@@ -178,6 +182,7 @@ like `{"error": {"code": "not_found", "message": "…"}}` with the codes `invali
   "label_applied": false,
   "url": "https://example.org/post/42",
   "normalized_url": "https://example.org/post/42",
+  "title": "An interesting post",
   "article": {
     "guid": "https://example.org/post/42",
     "url": "https://example.org/post/42",
@@ -190,6 +195,8 @@ like `{"error": {"code": "not_found", "message": "…"}}` with the codes `invali
 }
 ```
 
+- `kind` is `"article"` for the note of an article and `"page"` for a [page note](#page-notes); `entry_id`,
+  `greader_item_id` and `article` are `null` on page notes, whose `url` and `title` describe the page.
 - `entry_id` is FreshRSS's article id, as a string; `greader_item_id` is the same article in the Google Reader API's
   long form, so you can correlate notes with items fetched through `greader.php`.
 - `url` is the article's original URL and `normalized_url` its [normalized form](#url-normalization) (`null` when the
@@ -228,6 +235,7 @@ curl -u alice:my-api-password -G https://freshrss.example.net/api/misc.php/Artic
   "url": "http://www.example.org/post/42/?utm_source=newsletter#comments",
   "normalized_url": "https://example.org/post/42",
   "index_complete": true,
+  "page_note": null,
   "matches": [
     {
       "entry_id": "1760891234567890",
@@ -248,6 +256,8 @@ curl -u alice:my-api-password -G https://freshrss.example.net/api/misc.php/Artic
 - FreshRSS does not index article links, so ArticleNotes keeps its own URL index, filled while FreshRSS refreshes your
   feeds and, for articles it has not seen yet, on lookups (a bounded number each). `index_complete` is `false` while
   articles remain to be indexed: a lookup may then miss an article that a later one finds.
+- `page_note` is your [page note](#page-notes) at that URL, or `null`. It is returned even when an article matches
+  the URL too.
 - New keys may appear in these objects in later versions; ignore what you do not know.
 
 #### URL normalization
@@ -289,6 +299,31 @@ curl -i -u alice:my-api-password …/v1/notes/1760891234567890       # … ETag:
 curl -u alice:my-api-password -X PUT -H 'Content-Type: application/json' -H 'If-Match: "7-1760895000"' \
   -d '{"note": "Edited."}' …/v1/notes/1760891234567890
 ```
+
+### Page notes
+
+A web page that is **not** one of your articles can have one note too (a browser extension keeps them), through
+`v1/page-notes?url=<page url>`; the `url` is [normalized](#url-normalization), so variants of it are the same page.
+
+```sh
+# Create (201) or update (200) the page note; "title" is optional (at most 500 characters).
+curl -u alice:my-api-password -X PUT -H 'Content-Type: application/json' \
+  -d '{"note": "Check the pricing section.", "title": "Example pricing"}' \
+  'https://freshrss.example.net/api/misc.php/ArticleNotes/v1/page-notes?url=https%3A%2F%2Fexample.org%2Fpricing'
+
+# Read it (404 when there is none) or delete it (204).
+curl -u alice:my-api-password -G …/v1/page-notes --data-urlencode 'url=https://example.org/pricing'
+curl -u alice:my-api-password -X DELETE -G …/v1/page-notes --data-urlencode 'url=https://example.org/pricing'
+```
+
+- Same rules as [writing notes](#writing-notes): `ETag` / `If-Match`, the JSON body (`note`, plus the optional `title`),
+  text of at most 20,000 characters (`422 note_too_long`; a title over 500 characters is `422 title_too_long`), and an
+  empty text deletes the note.
+- An article has its own note: when the URL is one of your FreshRSS articles, the request is refused with
+  `409 url_is_article`, and the message names the `entry_id` to use with `PUT v1/notes/<entry_id>`.
+- Page notes never get the "Annotated" label. If an article with that URL shows up later, both notes stay; a
+  [lookup](#looking-up-a-page) returns the article (with its note) in `matches` and the page note in `page_note`.
+- `GET v1/notes` lists page notes with the article notes (`kind`: `"page"`, tombstones included).
 
 ## Anchoring library
 
