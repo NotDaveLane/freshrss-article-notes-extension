@@ -21,7 +21,7 @@ final class TestEnvironment {
 		$base = sys_get_temp_dir() . '/articlenotes-test-' . getmypid() . '-' . bin2hex(random_bytes(3));
 		self::$dataPath = $base . '/data';
 		$extensionsPath = $base . '/extensions';
-		foreach (['cache', 'favicons', 'tokens', 'users'] as $directory) {
+		foreach (['cache', 'favicons', 'tokens', 'users/_'] as $directory) {
 			mkdir(self::$dataPath . '/' . $directory, 0777, true);
 		}
 		mkdir($extensionsPath, 0777, true);

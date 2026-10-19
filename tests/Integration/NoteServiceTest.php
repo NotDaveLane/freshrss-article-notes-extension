@@ -238,6 +238,16 @@ final class NoteServiceTest extends TestCase {
 		self::assertSame([$ids[1]], array_map(static fn ($n) => $n->entryId, $page));
 		$next = $service->changedSince($page[0]->updatedAt, 1, $page[0]->id);
 		self::assertSame([$ids[2]], array_map(static fn ($n) => $n->entryId, $next));
+
+		$live = $service->changedSince($base, 2, 0, false);
+		self::assertSame([$ids[1], $ids[2]], array_map(static fn ($n) => $n->entryId, $live), 'tombstones excluded, page filled');
+	}
+
+	public function testExistingEntryIds(): void {
+		$service = $this->service();
+		$kept = $this->addEntry();
+		self::assertSame([$kept], $service->existingEntryIds([$kept, '999999999999999', 'not-a-number']));
+		self::assertSame([], $service->existingEntryIds([]));
 	}
 
 	public function testCountExcludesTombstones(): void {

@@ -78,13 +78,38 @@ final class NoteDAO {
 	 *
 	 * @return list<Note>
 	 */
-	public function listChangedSince(int $since, int $limit, int $afterId = 0): array {
+	public function listChangedSince(int $since, int $limit, int $afterId = 0, bool $includeDeleted = true): array {
 		return $this->fetch(
 			'SELECT ' . self::COLUMNS . ' FROM ' . $this->table
-				. ' WHERE updated_at > :since OR (updated_at = :since_equal AND id > :after_id)'
+				. ' WHERE (updated_at > :since OR (updated_at = :since_equal AND id > :after_id))'
+				. ($includeDeleted ? '' : ' AND deleted_at IS NULL')
 				. ' ORDER BY updated_at ASC, id ASC LIMIT ' . max(0, $limit),
 			[':since' => $since, ':since_equal' => $since, ':after_id' => $afterId],
 		);
+	}
+
+	/**
+	 * The given article ids that still exist in the user's FreshRSS `entry` table.
+	 *
+	 * @param list<string> $entryIds
+	 * @return list<string>
+	 */
+	public function existingEntryIds(array $entryIds): array {
+		$entryIds = array_values(array_unique(array_filter($entryIds, static fn (string $id): bool => ctype_digit($id))));
+		if ($entryIds === []) {
+			return [];
+		}
+		$values = [];
+		foreach ($entryIds as $i => $entryId) {
+			$values[':id' . $i] = (int)$entryId;
+		}
+		$statement = $this->run('SELECT id FROM ' . $this->pdo->prefix() . 'entry WHERE id IN (' . implode(', ', array_keys($values)) . ')',
+			$values);
+		$existing = [];
+		while (($id = $statement->fetchColumn()) !== false) {
+			$existing[] = is_scalar($id) ? (string)$id : '';
+		}
+		return $existing;
 	}
 
 	public function count(bool $includeDeleted = false): int {
