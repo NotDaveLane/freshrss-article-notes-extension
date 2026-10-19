@@ -4,8 +4,8 @@
 attach a personal note to any article for future reference, and exposes those notes through an
 authenticated FreshRSS API endpoint so other systems can fetch and analyze them later.
 
-> **Status: in development.** The extension currently installs and loads but has no user-facing
-> features yet. The list below is the plan.
+> **Status: in development.** You can already add, edit and delete notes (see [Using notes](#using-notes));
+> the remaining items below are planned.
 
 ## Planned features (in development)
 
@@ -32,6 +32,13 @@ authenticated FreshRSS API endpoint so other systems can fetch and analyze them 
    (in the official Docker image: `/var/www/FreshRSS/extensions`).
 3. As an **administrator**, open Configuration → Extensions and enable **ArticleNotes**. It is a
    *system* extension, so it is enabled once for the whole instance.
+
+## Using notes
+
+Open an article and click **Note** in its action bar (next to the read, favourite and sharing icons; also in the
+reading and global views). Type your note and press **Save**; **Cancel** (or Escape) closes the editor, and **Delete**
+removes an existing note. Notes are plain text of up to 20,000 characters, shown under the article in a "Your note" block
+with the time of the last update; HTML and Markdown are never rendered. Saving an empty note deletes it.
 
 ## Upgrading
 
