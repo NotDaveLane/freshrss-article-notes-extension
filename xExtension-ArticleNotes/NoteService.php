@@ -8,7 +8,7 @@ namespace ArticleNotes;
 final class NoteService {
 	public const MAX_LENGTH = 20000;
 
-	/** @var list<\Closure(Note):void> */
+	/** @var list<\Closure(Note,bool):void> */
 	private array $savedListeners = [];
 	/** @var list<\Closure(Note):void> */
 	private array $deletedListeners = [];
@@ -25,7 +25,7 @@ final class NoteService {
 	) {
 	}
 
-	/** @param \Closure(Note):void $listener called after a note is created or updated */
+	/** @param \Closure(Note,bool):void $listener called after a note is saved; the flag tells whether it was created or revived */
 	public function onSaved(\Closure $listener): void {
 		$this->savedListeners[] = $listener;
 	}
@@ -62,6 +62,7 @@ final class NoteService {
 		$feed = \FreshRSS_Factory::createFeedDao($this->user)->searchById($entry->feedId());
 
 		$dao = $this->dao();
+		$created = $dao->find($entry->id()) === null;
 		$dao->upsert(new Note(
 			0, $entry->id(), $text, 0, $this->now(), null,
 			$entry->guid(), $entry->link(true), $entry->title(), implode(', ', $entry->authors()), (int)$entry->date(true),
@@ -73,9 +74,9 @@ final class NoteService {
 			throw new \RuntimeException('Note vanished after saving');
 		}
 		foreach ($this->savedListeners as $listener) {
-			$listener($note);
+			$listener($note, $created);
 		}
-		return $note;
+		return $dao->find($entry->id()) ?? $note;	// listeners may have updated it (label bookkeeping)
 	}
 
 	/** Tombstones the note of an article (the article need not exist anymore). @return bool whether a note was deleted */

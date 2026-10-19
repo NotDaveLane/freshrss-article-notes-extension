@@ -7,7 +7,7 @@ namespace ArticleNotes;
 /** Reads and writes one user's notes table. Timestamps are Unix seconds. */
 final class NoteDAO {
 	private const COLUMNS = 'id, entry_id, note, created_at, updated_at, deleted_at, entry_guid, entry_link, entry_title, '
-		. 'entry_author, entry_date, feed_id, feed_name, feed_url, label_applied';
+		. 'entry_author, entry_date, feed_id, feed_name, feed_url, label_applied, label_id';
 
 	private readonly string $table;
 
@@ -61,9 +61,15 @@ final class NoteDAO {
 		) > 0;
 	}
 
-	public function setLabelApplied(string $entryId, bool $applied): void {
-		$this->execute('UPDATE ' . $this->table . ' SET label_applied=:applied WHERE entry_id=:entry_id',
-			[':applied' => $applied ? 1 : 0, ':entry_id' => $entryId]);
+	/** Records the label the extension applied to the article, or null when it applied none (anymore). */
+	public function setAppliedLabel(string $entryId, ?int $labelId): void {
+		if ($labelId === null) {
+			$this->execute('UPDATE ' . $this->table . ' SET label_applied=0, label_id=NULL WHERE entry_id=:entry_id',
+				[':entry_id' => $entryId]);
+			return;
+		}
+		$this->execute('UPDATE ' . $this->table . ' SET label_applied=1, label_id=:label_id WHERE entry_id=:entry_id',
+			[':label_id' => $labelId, ':entry_id' => $entryId]);
 	}
 
 	/**
@@ -104,6 +110,7 @@ final class NoteDAO {
 				(string)$row['entry_guid'], (string)$row['entry_link'], (string)$row['entry_title'], (string)$row['entry_author'],
 				(int)$row['entry_date'], (int)$row['feed_id'], (string)$row['feed_name'], (string)$row['feed_url'],
 				(int)$row['label_applied'] === 1,
+				$row['label_id'] === null ? null : (int)$row['label_id'],
 			);
 		}
 		return $notes;
