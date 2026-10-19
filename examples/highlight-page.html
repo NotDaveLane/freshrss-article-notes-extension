@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<!--
+  ArticleNotes example: a static page that highlights its own text and stores the highlights through the ArticleNotes API.
+  This is the shape of a browser-extension content script: look the page up, anchor the stored highlights with the
+  anchoring library (source "page"), and create new ones from the user's selection with a client-generated uuid.
+
+  Serve it over http(s) (a file:// page has no origin), from an origin the administrator allowed under
+  Configuration → Extensions → ArticleNotes ("Allowed client origins"), and keep the two imports next to it:
+    notes-client.mjs      examples/notes-client.mjs
+    anchoring.js          xExtension-ArticleNotes/static/anchoring.js
+  SPDX-License-Identifier: AGPL-3.0-or-later
+-->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>ArticleNotes: highlight this page</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+	body { font: 16px/1.5 system-ui, sans-serif; max-width: 46rem; margin: 1rem auto; padding: 0 1rem; }
+	fieldset { margin-bottom: 1rem; }
+	label { display: block; margin: .3rem 0; }
+	mark.articlenotes-hl { background: #ffe066; color: inherit; }
+	mark.articlenotes-hl[data-color="green"] { background: #b2f2bb; }
+	mark.articlenotes-hl[data-color="blue"] { background: #a5d8ff; }
+	mark.articlenotes-hl[data-color="pink"] { background: #fcc2d7; }
+	mark.articlenotes-hl[data-color="purple"] { background: #d0bfff; }
+	#status { min-height: 1.5em; }
+	#orphans li { color: #a00; }
+</style>
+</head>
+<body>
+<h1>Highlight this page</h1>
+
+<form id="connection" data-articlenotes-ui>
+	<fieldset>
+		<legend>Connection</legend>
+		<label>FreshRSS address <input id="base-url" name="base-url" type="url" required placeholder="https://freshrss.example.net" size="40"></label>
+		<label>User <input id="user" name="user" required autocomplete="username"></label>
+		<label>API password <input id="api-password" name="api-password" type="password" required autocomplete="current-password"></label>
+		<button id="connect" type="submit">Connect</button>
+	</fieldset>
+</form>
+<p id="status" role="status" data-articlenotes-ui>Not connected.</p>
+
+<div data-articlenotes-ui>
+	<button id="highlight-selection" type="button" disabled>Highlight the selected text</button>
+	<label>Color
+		<select id="color">
+			<option>yellow</option><option>green</option><option>blue</option><option>pink</option><option>purple</option>
+		</select>
+	</label>
+</div>
+
+<main id="content">
+	<p>The quick brown fox jumps over the lazy dog. Pack my box with five dozen liquor jugs, and sphinx of black quartz,
+	judge my vow.</p>
+	<p>How vexingly quick daft zebras jump! The five boxing wizards jump quickly. Amazingly few discotheques provide
+	jukeboxes, but the quick brown fox does not mind.</p>
+</main>
+
+<h2 data-articlenotes-ui>Highlights not found on this page</h2>
+<ul id="orphans" data-articlenotes-ui></ul>
+
+<script type="module">
+import { NotesClient } from './notes-client.mjs';
+import { anchor, describe, highlight } from './anchoring.js';
+
+const content = document.querySelector('#content');
+const status = document.querySelector('#status');
+const form = document.querySelector('#connection');
+const button = document.querySelector('#highlight-selection');
+const orphans = document.querySelector('#orphans');
+const STORAGE_KEY = 'articlenotes-example';
+let client = null;
+const drawn = new Map();	// uuid → {remove()}
+
+/** The page's own address without the fragment: what the highlights are attached to. */
+function pageUrl() {
+	return location.href.split('#')[0];
+}
+
+function say(text) {
+	status.textContent = text;
+}
+
+/** Draws every stored highlight; the ones whose passage is gone are listed, not dropped. */
+function draw(highlights) {
+	for (const entry of drawn.values()) {
+		entry.remove();
+	}
+	drawn.clear();
+	orphans.replaceChildren();
+	for (const stored of highlights) {
+		const range = anchor(stored.selector, content);	// anchor right before drawing: drawing moves text nodes
+		if (range === null) {
+			const item = document.createElement('li');
+			item.textContent = `Passage not found: ${stored.selector.quote.exact}`;	// textContent: stored text is never HTML
+			orphans.append(item);
+			continue;
+		}
+		drawn.set(stored.uuid, highlight(range, { id: stored.uuid, color: stored.color }));
+	}
+}
+
+async function load() {
+	const found = await client.lookup(pageUrl());
+	// An article with this URL gets the highlights of its match; otherwise they belong to the page.
+	const highlights = found.matches.length > 0 ? found.matches[0].highlights : found.page_highlights;
+	draw(highlights.filter((stored) => stored.source === 'page'));
+	say(`Connected. ${highlights.length} highlight(s) stored for this page.`);
+}
+
+async function connect() {
+	const settings = {
+		baseUrl: document.querySelector('#base-url').value,
+		user: document.querySelector('#user').value,
+		apiPassword: document.querySelector('#api-password').value,
+	};
+	client = new NotesClient(settings);
+	await client.status();
+	localStorage.setItem(STORAGE_KEY, JSON.stringify(settings));
+	button.disabled = false;
+	await load();
+}
+
+form.addEventListener('submit', (event) => {
+	event.preventDefault();
+	connect().catch((error) => say(`Cannot connect: ${error.message}`));
+});
+
+button.addEventListener('click', async () => {
+	const selection = window.getSelection();
+	if (client === null || selection === null || selection.rangeCount === 0 || selection.isCollapsed) {
+		say('Select some text of the page first.');
+		return;
+	}
+	try {
+		const selector = describe(selection.getRangeAt(0), content);
+		// The client generates the uuid: if this request is retried after a network error, no duplicate is created.
+		await client.createHighlight({
+			url: pageUrl(), source: 'page', selector, title: document.title, color: document.querySelector('#color').value,
+		});
+		selection.removeAllRanges();
+		await load();
+	} catch (error) {
+		say(`Cannot highlight: ${error.message}`);
+	}
+});
+
+const saved = localStorage.getItem(STORAGE_KEY);
+if (saved !== null) {
+	const settings = JSON.parse(saved);
+	document.querySelector('#base-url').value = settings.baseUrl;
+	document.querySelector('#user').value = settings.user;
+	document.querySelector('#api-password').value = settings.apiPassword;
+	connect().catch((error) => say(`Cannot connect: ${error.message}`));
+}
+</script>
+</body>
+</html>
