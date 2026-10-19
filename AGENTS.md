@@ -7,7 +7,7 @@ Guidance for AI coding agents (and humans) working in this repository.
 - `xExtension-ArticleNotes/` – the installable FreshRSS extension (`metadata.json`, `extension.php`, `i18n/`).
   Everything else at the root is development tooling.
 - `Dockerfile`, `docker-compose.yml`, `docker/` – dev FreshRSS image (stock FreshRSS + curl + seeding scripts).
-- `bin/` – host-side wrappers (`ci`, `phpunit`, `e2e`, `lint`); `tests/` – `Unit/`, `Integration/`, `Support/`,
+- `bin/` – host-side wrappers (`ci`, `phpunit`, `e2e`, `lint`, `package`); `tests/` – `Unit/`, `Integration/`, `Support/`,
   `bootstrap.php`, `e2e/` (Playwright); `composer.json`, `phpunit.xml.dist`, `phpcs.xml`, `phpstan.neon` – tooling config.
 - `tests/fixtures/feeds/feed.xml` – static fixture feed (stable GUIDs) served at `http://fixtures/feed.xml`.
 - `openspec/` – `project.md` and capability specs in `openspec/specs/`.
@@ -82,6 +82,22 @@ bin/e2e specs/smoke.spec.ts                       # one spec (path relative to t
 Semantic versioning in `xExtension-ArticleNotes/metadata.json`; record every user-visible change in
 `CHANGELOG.md` (Keep a Changelog, under `## [Unreleased]`). Schema changes use numbered, idempotent
 per-user migrations (FreshRSS has no extension upgrade hook).
+
+### Release procedure
+
+1. Bump `version` in `xExtension-ArticleNotes/metadata.json` (the single source of truth).
+2. In `CHANGELOG.md`, move the `[Unreleased]` entries under `## [X.Y.Z] - YYYY-MM-DD` (newest first) and leave an empty
+   `## [Unreleased]`. `tests/Unit/ChangelogTest.php` fails if the two drift apart.
+3. Commit, tag `vX.Y.Z`, run `bin/package` (writes `dist/ArticleNotes-X.Y.Z.zip`, only `xExtension-ArticleNotes/`).
+
+### Schema migrations
+
+Numbered files in `xExtension-ArticleNotes/Migrations/` (`NNNN_description.php`, returning an `ArticleNotes\Migration`
+whose `up()` is idempotent and works on SQLite, MySQL/MariaDB and PostgreSQL). Never edit a shipped migration; add a new
+one. `ArticleNotes\Migrator` applies the missing ones per user (version in the user's extension config
+`schema_version`, recorded after each step), lazily via `ArticleNotesExtension::ensureSchema()` — call it before first
+using storage in a request — and from the `FreshrssUserMaintenance` hook. List new tables in `Storage::TABLES` so
+`uninstall()` drops them.
 
 ## OpenSpec
 
