@@ -271,8 +271,10 @@ final class SettingsAndLabelTest extends TestCase {
 		self::assertSame('Reading list', $this->settings()->labelName());
 	}
 
-	public function testMenuEntryLinksToTheSettingsPage(): void {
+	public function testMenuEntryLinksToTheSettingsAndNotesPages(): void {
 		$html = $this->extension()->menuEntry();
+		self::assertStringContainsString('c=ArticleNotes&amp;a=notes"', $html);
+		self::assertStringContainsString('>Notes</a>', $html);
 		self::assertStringContainsString('c=ArticleNotes', $html);
 		self::assertStringContainsString('c=ArticleNotes&amp;a=settings"', $html);
 		self::assertStringContainsString('Article notes', $html);

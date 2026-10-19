@@ -5,21 +5,38 @@ declare(strict_types=1);
 use ArticleNotes\HighlightException;
 use ArticleNotes\NoteBlock;
 use ArticleNotes\NoteException;
+use ArticleNotes\NotesBrowser;
+use ArticleNotes\NotesExport;
+use ArticleNotes\NotesFilter;
+use ArticleNotes\NotesPage;
 
 /**
  * JSON endpoints used by the article note editor: ?c=ArticleNotes&a=save|delete (POST, CSRF token required),
- * and the per-user settings page: ?c=ArticleNotes&a=settings.
+ * the per-user settings page (?c=ArticleNotes&a=settings), and the Notes page: ?c=ArticleNotes&a=notes (list, GET),
+ * notesEdit (POST, CSRF token required) and notesExport (GET, a file download).
  */
 final class FreshExtension_ArticleNotes_Controller extends FreshRSS_ActionController {
 	/** @var array<string,mixed> the JSON body of the current response, written out by the view */
 	private static array $body = [];
+	private static ?NotesPage $page = null;
+	/** @var array{type:string,filename:string,body:string} the file of the current export, written out by the view */
+	private static array $file = ['type' => 'text/plain', 'filename' => '', 'body' => ''];
 
 	#[\Override]
 	public function firstAction(): void {
-		if (Minz_Request::actionName() === 'settings') {
+		$action = Minz_Request::actionName();
+		if (in_array($action, ['settings', 'notes'], true)) {
 			if (!FreshRSS_Auth::hasAccess()) {
 				Minz_Error::error(403);
 			}
+			return;
+		}
+		if ($action === 'notesExport') {
+			if (!FreshRSS_Auth::hasAccess()) {
+				Minz_Error::error(403);
+			}
+			$this->view->_layout(null);
+			$this->view->_path('ArticleNotes/export.phtml');
 			return;
 		}
 		$this->view->_layout(null);
@@ -37,6 +54,154 @@ final class FreshExtension_ArticleNotes_Controller extends FreshRSS_ActionContro
 			}
 		}
 		FreshRSS_View::prependTitle(_t('ext.article_notes.settings.title') . ' · ');
+	}
+
+	public function notesAction(): void {
+		self::$page = $this->notesPage();
+		FreshRSS_View::prependTitle(_t('ext.article_notes.notes.title') . ' · ');
+	}
+
+	/** The page of the Notes list that the request asks for (filters and `page` in the query string). */
+	public function notesPage(): NotesPage {
+		$filter = NotesFilter::fromParams(self::filterParams());
+		$browser = new NotesBrowser(self::extension()->noteService()->pdo());
+		$number = max(1, Minz_Request::paramInt('page'));
+		$result = $browser->groups($filter, $number);
+		$last = max(1, (int)ceil($result['total'] / NotesBrowser::PER_PAGE));
+		if ($number > $last) {	// e.g. after deleting the last annotation of the last page
+			$number = $last;
+			$result = $browser->groups($filter, $number);
+		}
+		return new NotesPage($filter, $result['groups'], $result['total'], $number, $browser->feeds());
+	}
+
+	public static function page(): NotesPage {
+		return self::$page ?? throw new RuntimeException('The Notes page is not loaded');
+	}
+
+	/** @return array<string,string> the filter parameters of the request */
+	private static function filterParams(): array {
+		$params = [];
+		foreach (['q', 'kind', 'color', 'feed', 'has_note'] as $name) {
+			if (Minz_Request::hasParam($name)) {
+				$params[$name] = Minz_Request::paramString($name, true);
+			}
+		}
+		return $params;
+	}
+
+	/**
+	 * Edits or deletes one annotation of the Notes page, then shows the same page of the list again.
+	 *
+	 * Parameters: `type` (article, page or highlight), the target (`id` of the article, `url` of the page, `uuid` of the
+	 * highlight), `op` (save or delete), `note`, and for a highlight `color`; `back` is the query string to return to.
+	 */
+	public function notesEditAction(): void {
+		$error = $this->notesEdit();
+		$back = [];
+		parse_str(Minz_Request::paramString('back', true), $back);
+		$params = [];
+		foreach ($back as $name => $value) {
+			if (is_string($name) && is_string($value)) {
+				$params[$name] = $value;
+			}
+		}
+		/** @var array<string,string> $query */
+		$query = NotesFilter::fromParams($params)->toParams();
+		if (ctype_digit($params['page'] ?? '') && (int)$params['page'] > 1) {
+			$query['page'] = (string)(int)$params['page'];
+		}
+		$url = ['c' => 'ArticleNotes', 'a' => 'notes', 'params' => $query];
+		if ($error === null) {
+			Minz_Request::good(_t('ext.article_notes.notes.' . (Minz_Request::paramString('op', true) === 'delete' ? 'deleted' : 'saved')), $url);
+		} else {
+			Minz_Request::bad($error, $url);
+		}
+	}
+
+	/** Applies the edit of {@see notesEditAction()}. @return string|null the error message, null when done */
+	public function notesEdit(): ?string {
+		if (!FreshRSS_Auth::hasAccess()) {
+			return _t('ext.article_notes.error.signed_out');
+		}
+		if (!Minz_Request::isPost() || !FreshRSS_Auth::isCsrfOk()) {
+			return _t('ext.article_notes.error.csrf');
+		}
+		$delete = Minz_Request::paramString('op', true) === 'delete';
+		$note = Minz_Request::paramString('note', true);
+		try {
+			switch (Minz_Request::paramString('type', true)) {
+				case 'article':
+					$entryId = Minz_Request::paramString('id', true);
+					if (!ctype_digit($entryId)) {
+						return _t('ext.article_notes.error.unknown_entry');
+					}
+					$delete ? self::service()->delete($entryId) : self::service()->save($entryId, $note);
+					break;
+				case 'page':
+					$url = Minz_Request::paramString('url', true);
+					$existing = self::service()->getPageNote($url);
+					if ($existing === null) {
+						return _t('ext.article_notes.notes.not_found');
+					}
+					$delete ? self::service()->deletePageNote($url) : self::service()->savePageNote($url, $note, $existing->entryTitle);
+					break;
+				case 'highlight':
+					$service = self::extension()->highlightService();
+					$uuid = Minz_Request::paramString('uuid', true);
+					if ($delete) {
+						if (!$service->delete($uuid)) {
+							return _t('ext.article_notes.notes.not_found');
+						}
+					} else {
+						$service->update($uuid, $note, Minz_Request::hasParam('color') ? Minz_Request::paramString('color', true) : null);
+					}
+					break;
+				default:
+					return _t('ext.article_notes.error.bad_request');
+			}
+		} catch (NoteException $exception) {
+			return $exception->getCode() === NoteException::TOO_LONG
+				? _t('ext.article_notes.error.too_long') : _t('ext.article_notes.error.bad_request');
+		} catch (HighlightException $exception) {
+			return match ($exception->errorCode) {
+				HighlightException::NOT_FOUND => _t('ext.article_notes.notes.not_found'),
+				HighlightException::INVALID_COLOR, HighlightException::NOTE_TOO_LONG => _t('ext.article_notes.error.highlight_' . $exception->errorCode),
+				default => _t('ext.article_notes.error.bad_request'),
+			};
+		} catch (\Throwable $exception) {
+			Minz_Log::error('ArticleNotes request failed: ' . $exception->getMessage());
+			return _t('ext.article_notes.error.server');
+		}
+		return null;
+	}
+
+	public function notesExportAction(): void {
+		self::$file = $this->export();
+		header('Content-Type: ' . self::$file['type']);
+		header('Content-Disposition: attachment; filename="' . self::$file['filename'] . '"');
+		header('X-Content-Type-Options: nosniff');
+	}
+
+	/**
+	 * The download of everything the current filters match: `format` markdown (default) or json (W3C Web Annotation).
+	 *
+	 * @return array{type:string,filename:string,body:string}
+	 */
+	public function export(): array {
+		$groups = (new NotesBrowser(self::extension()->noteService()->pdo()))->all(NotesFilter::fromParams(self::filterParams()));
+		$name = 'articlenotes-' . gmdate('Y-m-d');
+		if (Minz_Request::paramString('format', true) === 'json') {
+			return ['type' => 'application/ld+json; profile="http://www.w3.org/ns/anno.jsonld"; charset=UTF-8', 'filename' => $name . '.jsonld',
+				'body' => NotesExport::webAnnotations($groups)];
+		}
+		return ['type' => 'text/markdown; charset=UTF-8', 'filename' => $name . '.md',
+			'body' => NotesExport::markdown($groups, _t('ext.article_notes.notes.export_heading'))];
+	}
+
+	/** @return array{type:string,filename:string,body:string} */
+	public static function file(): array {
+		return self::$file;
 	}
 
 	/** Validates and stores the submitted settings. @return string|null the error message, null when saved */

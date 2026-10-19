@@ -25,7 +25,7 @@ async function saveNote(article: Locator, text: string): Promise<void> {
 /** Opens the settings page through the Configuration menu. */
 async function openSettings(page: Page): Promise<void> {
 	await page.goto('/i/?c=configure&a=display');
-	await page.locator('#aside_feed a[href*="c=ArticleNotes"]').click();
+	await page.locator('#aside_feed a[href*="a=settings"]').click();
 	await expect(page.getByRole('heading', { name: 'Article notes' })).toBeVisible();
 }
 
@@ -57,7 +57,7 @@ for (const viewport of [{ width: 390, height: 844 }, { width: 1440, height: 900 
 			await expect(page).toHaveTitle(/Article notes/);
 			await expect(page.locator('header.header')).toBeVisible();
 			await expect(page.locator('header.header button.signout, header.header a.signout').first()).toBeAttached();
-			await expect(page.locator('#aside_feed a[href*="c=ArticleNotes"]')).toBeAttached();
+			await expect(page.locator('#aside_feed a[href*="a=settings"]')).toBeAttached();
 			await expect(page.locator('main.post').getByRole('heading', { name: 'Article notes' })).toBeVisible();
 		});
 	});

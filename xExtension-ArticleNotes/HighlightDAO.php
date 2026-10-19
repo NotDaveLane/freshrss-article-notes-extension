@@ -27,10 +27,10 @@ final class HighlightDAO {
 	/** Stores a new highlight (its `id` is assigned by the database). */
 	public function insert(Highlight $highlight): void {
 		$this->execute('INSERT INTO ' . $this->table . ' (uuid, entry_id, url, normalized_url, url_hash, title, entry_guid, '
-			. 'entry_link, entry_title, entry_author, entry_date, feed_id, feed_name, feed_url, source, selector, color, note, '
+			. 'entry_link, entry_title, entry_author, entry_date, feed_id, feed_name, feed_url, source, selector, quote, color, note, '
 			. 'created_at, updated_at, deleted_at, label_applied, label_id) VALUES (:uuid, :entry_id, :url, :normalized_url, '
 			. ':url_hash, :title, :entry_guid, :entry_link, :entry_title, :entry_author, :entry_date, :feed_id, :feed_name, '
-			. ':feed_url, :source, :selector, :color, :note, :created_at, :updated_at, NULL, 0, NULL)', [
+			. ':feed_url, :source, :selector, :quote, :color, :note, :created_at, :updated_at, NULL, 0, NULL)', [
 			':uuid' => $highlight->uuid,
 			':entry_id' => $highlight->entryId,
 			':url' => $highlight->url,
@@ -47,6 +47,7 @@ final class HighlightDAO {
 			':feed_url' => $highlight->feedUrl,
 			':source' => $highlight->source,
 			':selector' => json_encode($highlight->selector, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_THROW_ON_ERROR),
+			':quote' => $highlight->selector['quote']['exact'],
 			':color' => $highlight->color,
 			':note' => $highlight->note,
 			':created_at' => $highlight->createdAt,
@@ -124,6 +125,16 @@ final class HighlightDAO {
 		return $this->fetch('SELECT ' . self::COLUMNS . ' FROM ' . $this->table
 			. ' WHERE entry_id IS NULL AND url_hash=:hash AND deleted_at IS NULL ORDER BY created_at ASC, id ASC',
 			[':hash' => UrlNormalizer::hash($normalizedUrl)]);
+	}
+
+	/**
+	 * The highlights matching a WHERE condition built by the caller (never from user input: values go in `$values`), oldest first.
+	 *
+	 * @param array<string,int|string> $values
+	 * @return list<Highlight>
+	 */
+	public function search(string $where, array $values): array {
+		return $this->fetch('SELECT ' . self::COLUMNS . ' FROM ' . $this->table . ' WHERE ' . $where . ' ORDER BY created_at ASC, id ASC', $values);
 	}
 
 	/**

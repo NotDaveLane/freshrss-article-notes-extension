@@ -19,6 +19,9 @@ fetch and analyze them later.
 - **Highlights**: select text in an article to highlight it in one of five colours, with an optional note; they come
   back when you return to the article — see [Using highlights](#using-highlights). Also available through the API: passages
   selected on an article or any web page — see [Highlights](#highlights).
+- **A Notes page** listing everything you annotated — article notes, page notes and highlights — grouped by article or
+  page, with search, filters, in-place editing and export to Markdown or W3C Web Annotation JSON — see
+  [The Notes page](#the-notes-page).
 - Per-user data, SQLite / MySQL / MariaDB / PostgreSQL, English interface; licensed AGPL-3.0-or-later like FreshRSS.
 
 | The note under its article | Annotated articles in the sidebar | Per-user settings |
@@ -110,6 +113,28 @@ buttons mark it yellow, green, blue, pink or purple, and **Add note** highlights
 - Highlights made on the original web page (for example by a browser extension using the [API](#highlights)) are drawn in
   FreshRSS too when their text is found in the article.
 - The "Annotated" label is applied with the first note or highlight of an article, as for notes.
+
+## The Notes page
+
+![The Notes page](docs/screenshots/notes-page.png)
+
+Configuration → **Notes** (also linked from the settings page and from the **Annotations** panel under an article, as "All
+my notes") lists everything you annotated, for any signed-in user. Annotations are grouped by article or web page, the most
+recently annotated first, 25 groups per page. A group shows the title (a link to the article in FreshRSS, or to the page in a
+new tab), the feed or site, the publication date, your note, and your highlights in document order with their colour, quote
+and note. Articles that FreshRSS has purged are marked "Article no longer in FreshRSS"; highlights whose passage is no longer
+in the article text are marked **Passage not found**. Each highlight of a FreshRSS article has an **Open article at this
+highlight** link that opens the article and scrolls to it. Notes and quotes are always shown as text, never as HTML.
+
+- **Search** looks in notes, highlight quotes and titles (case-insensitively; `%` and `_` are ordinary characters).
+- **Filters** — kind (article notes, page notes, highlights), colour, feed and "only with a note" — combine with each other
+  and with the search, and stay in the address when you turn pages.
+- **Edit** opens a form under a note or highlight: change the text, change a highlight's colour, or delete it. The same rules
+  as elsewhere apply (20,000 characters; the "Annotated" label follows your notes and highlights).
+- **Export** downloads what the current search and filters match, as **Markdown** (grouped like the page, quotes as
+  blockquotes) or as **JSON in the [W3C Web Annotation](https://www.w3.org/TR/annotation-model/) format** (an
+  `AnnotationCollection` with one `Annotation` per note or highlight: the URL as the target `source`,
+  `TextQuoteSelector` / `TextPositionSelector` for highlights, `motivation` `commenting` / `highlighting`).
 
 ## Configuration
 

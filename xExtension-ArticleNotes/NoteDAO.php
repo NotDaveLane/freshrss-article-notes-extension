@@ -138,6 +138,16 @@ final class NoteDAO {
 	}
 
 	/**
+	 * The notes matching a WHERE condition built by the caller (never from user input: values go in `$values`), oldest first.
+	 *
+	 * @param array<string,int|string> $values
+	 * @return list<Note>
+	 */
+	public function search(string $where, array $values): array {
+		return $this->fetch('SELECT ' . self::COLUMNS . ' FROM ' . $this->table . ' WHERE ' . $where . ' ORDER BY created_at ASC, id ASC', $values);
+	}
+
+	/**
 	 * Notes (tombstones included) positioned after `($since, $afterId)` in `(updated_at, id)` order, so
 	 * `$afterId = 0` returns everything updated at or after `$since`. Page by passing the last note's values.
 	 *

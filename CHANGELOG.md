@@ -42,6 +42,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   article note and the highlights in reading order, with a "Jump to" action and orphaned highlights flagged "Passage not
   found" (`highlighting-ui` OpenSpec capability).
 
+- The Notes page (Configuration → Notes, `?c=ArticleNotes&a=notes`): everything the user annotated — article notes, page
+  notes and highlights — grouped by article or page (most recent first, 25 per page), with search over notes, quotes and
+  titles, filters (kind, colour, feed, has a note) that survive pagination, edit-in-place (note text, highlight colour,
+  delete) through `NoteService` / `HighlightService`, an "Open article at this highlight" link that opens the article and
+  scrolls to the highlight, "Passage not found" for highlights whose quote left the article, and export of the filtered
+  annotations as Markdown or W3C Web Annotation JSON-LD (`WebAnnotation`, reusable by the API). Linked from the
+  Configuration menu, the settings page and the article Annotations panel ("All my notes") (`notes-page` OpenSpec
+  capability).
+- Migration `0007`: highlights keep their selected text in a `quote` column, searchable by the Notes page.
+
 ### Changed
 
 - The "Annotated" label now follows article notes and highlights together: it is applied with an article's first note or

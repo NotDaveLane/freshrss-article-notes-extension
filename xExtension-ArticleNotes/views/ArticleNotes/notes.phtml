@@ -1,0 +1,188 @@
+<?php
+	/** @var FreshRSS_View $this */
+	$this->partial('aside_configure');
+
+	$page = FreshExtension_ArticleNotes_Controller::page();
+	$filter = $page->filter;
+	$e = static fn (string $text): string => htmlspecialchars($text, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
+	$t = static fn (string $key, string|int ...$args): string => $e(_t('ext.article_notes.notes.' . $key, ...$args));
+	$notesUrl = static fn (array $params): string => Minz_Url::display(['c' => 'ArticleNotes', 'a' => 'notes', 'params' => $params]);
+	$web = static fn (string $url): bool => preg_match('#^https?://#i', $url) === 1;
+	$date = static fn (int $timestamp): string => $e(date('Y-m-d', $timestamp));
+	$back = http_build_query($filter->toParams() + ($page->page > 1 ? ['page' => (string)$page->page] : []));
+	$colors = ArticleNotes\Highlight::COLORS;
+	$colorName = static fn (string $color): string => $e(_t('ext.article_notes.highlight.color_' . $color));
+
+	/** The hidden fields and the buttons of the form that edits one annotation. */
+	$editForm = static function (array $fields, string $note, ?string $color) use ($e, $t, $back, $colors, $colorName): void {
+		?>
+		<details class="articlenotes-notes-edit">
+			<summary class="btn"><?= $t('edit') ?></summary>
+			<form method="post" action="<?= Minz_Url::display(['c' => 'ArticleNotes', 'a' => 'notesEdit']) ?>">
+				<input type="hidden" name="_csrf" value="<?= FreshRSS_Auth::csrfToken() ?>" />
+				<input type="hidden" name="back" value="<?= $e($back) ?>" />
+				<?php foreach ($fields as $name => $value) { ?>
+					<input type="hidden" name="<?= $e($name) ?>" value="<?= $e($value) ?>" />
+				<?php } ?>
+				<textarea name="note" class="articlenotes-textarea" rows="4" maxlength="<?= ArticleNotes\NoteService::MAX_LENGTH ?>"
+					aria-label="<?= $t('highlight_note') ?>"><?= $e($note) ?></textarea>
+				<?php if ($color !== null) { ?>
+					<label class="articlenotes-notes-color"><?= $e(_t('ext.article_notes.highlight.color')) ?>
+						<select name="color">
+							<?php foreach ($colors as $option) { ?>
+								<option value="<?= $e($option) ?>"<?= $option === $color ? ' selected="selected"' : '' ?>><?= $colorName($option) ?></option>
+							<?php } ?>
+						</select>
+					</label>
+				<?php } ?>
+				<div class="articlenotes-actions">
+					<button type="submit" name="op" value="save" class="btn btn-important"><?= $t('save') ?></button>
+					<button type="submit" name="op" value="delete" class="btn"><?= $t('delete') ?></button>
+				</div>
+			</form>
+		</details>
+		<?php
+	};
+?>
+
+<main class="post articlenotes-notes">
+	<h1><?= $t('title') ?></h1>
+
+	<form method="get" action="<?= Minz_Url::display(['c' => 'ArticleNotes', 'a' => 'notes']) ?>" class="articlenotes-notes-filters" role="search"
+		aria-label="<?= $t('filters') ?>">
+		<input type="hidden" name="c" value="ArticleNotes" />
+		<input type="hidden" name="a" value="notes" />
+		<label class="articlenotes-notes-search"><span><?= $t('search') ?></span>
+			<input type="search" name="q" value="<?= $e($filter->query) ?>" maxlength="<?= ArticleNotes\NotesFilter::MAX_QUERY_LENGTH ?>"
+				placeholder="<?= $t('search_placeholder') ?>" />
+		</label>
+		<label><span><?= $t('kind') ?></span>
+			<select name="kind">
+				<option value=""><?= $t('kind_all') ?></option>
+				<?php foreach (ArticleNotes\NotesFilter::KINDS as $kind) { ?>
+					<option value="<?= $e($kind) ?>"<?= $kind === $filter->kind ? ' selected="selected"' : '' ?>><?= $t('kind_' . $kind) ?></option>
+				<?php } ?>
+			</select>
+		</label>
+		<label><span><?= $t('color') ?></span>
+			<select name="color">
+				<option value=""><?= $t('color_all') ?></option>
+				<?php foreach ($colors as $color) { ?>
+					<option value="<?= $e($color) ?>"<?= $color === $filter->color ? ' selected="selected"' : '' ?>><?= $colorName($color) ?></option>
+				<?php } ?>
+			</select>
+		</label>
+		<label><span><?= $t('feed') ?></span>
+			<select name="feed">
+				<option value=""><?= $t('feed_all') ?></option>
+				<?php foreach ($page->feeds as $feedId => $feedName) { ?>
+					<option value="<?= $feedId ?>"<?= $feedId === $filter->feedId ? ' selected="selected"' : '' ?>><?= $e($feedName) ?></option>
+				<?php } ?>
+			</select>
+		</label>
+		<label class="articlenotes-notes-check">
+			<input type="checkbox" name="has_note" value="1"<?= $filter->hasNote ? ' checked="checked"' : '' ?> /> <?= $t('has_note') ?>
+		</label>
+		<div class="articlenotes-actions">
+			<button type="submit" class="btn btn-important"><?= $t('apply') ?></button>
+			<?php if (!$filter->isEmpty()) { ?>
+				<a class="btn" href="<?= $notesUrl([]) ?>"><?= $t('clear') ?></a>
+			<?php } ?>
+		</div>
+	</form>
+
+	<p class="articlenotes-notes-summary">
+		<?= $t('summary', $page->total) ?>
+		<span class="articlenotes-notes-export"><?= $t('export') ?>:
+			<a href="<?= Minz_Url::display(['c' => 'ArticleNotes', 'a' => 'notesExport', 'params' => $filter->toParams() + ['format' => 'markdown']]) ?>"
+				rel="nofollow"><?= $t('export_markdown') ?></a> ·
+			<a href="<?= Minz_Url::display(['c' => 'ArticleNotes', 'a' => 'notesExport', 'params' => $filter->toParams() + ['format' => 'json']]) ?>"
+				rel="nofollow"><?= $t('export_json') ?></a>
+		</span>
+	</p>
+
+	<?php if ($page->groups === []) { ?>
+		<p class="alert alert-warn"><?= $filter->isEmpty() ? $t('empty') : $t('no_results') ?></p>
+	<?php } ?>
+
+	<?php foreach ($page->groups as $group) {
+		$entryUrl = $group->entryId === null ? '' : Minz_Url::display(['c' => 'index', 'a' => 'normal', 'params' => [
+			'get' => 'a', 'search' => 'e:' . $group->entryId, 'state' => (string)FreshRSS_Entry::STATE_ALL]]);
+		$title = $group->title !== '' ? $group->title : ($group->url !== '' ? $group->url : _t('ext.article_notes.notes.untitled'));
+		?>
+		<section class="articlenotes-notes-group" data-kind="<?= $group->isPage() ? 'page' : 'article' ?>">
+			<header class="articlenotes-notes-header">
+				<h2>
+					<?php if ($group->exists && $group->entryId !== null) { ?>
+						<a href="<?= $entryUrl ?>"><?= $e($title) ?></a>
+					<?php } elseif ($web($group->url)) { ?>
+						<a href="<?= $e($group->url) ?>" target="_blank" rel="noopener noreferrer"><?= $e($title) ?></a>
+					<?php } else { ?>
+						<?= $e($title) ?>
+					<?php } ?>
+				</h2>
+				<p class="articlenotes-notes-meta">
+					<?php if ($group->isPage()) { ?>
+						<span><?= $group->host() !== '' ? $e($group->host()) : $t('web_page') ?></span>
+					<?php } else { ?>
+						<?php if ($group->feedName !== '') { ?><span><?= $e($group->feedName) ?></span><?php } ?>
+						<?php if ($group->date > 0) { ?><time datetime="<?= $e(date('c', $group->date)) ?>"><?= $date($group->date) ?></time><?php } ?>
+						<?php if (!$group->exists) { ?><span class="articlenotes-orphan"><?= $t('purged') ?></span><?php } ?>
+					<?php } ?>
+				</p>
+			</header>
+
+			<?php if ($group->note !== null) { ?>
+				<div class="articlenotes-notes-note">
+					<h3><?= $group->isPage() ? $t('page_note') : $t('article_note') ?></h3>
+					<div class="articlenotes-note-text"><?= nl2br($e($group->note->note), false) ?></div>
+					<?php $editForm($group->isPage()
+						? ['type' => 'page', 'url' => $group->note->entryLink]
+						: ['type' => 'article', 'id' => (string)$group->entryId], $group->note->note, null); ?>
+				</div>
+			<?php } ?>
+
+			<?php if ($group->highlights !== []) { ?>
+				<ol class="articlenotes-hl-list articlenotes-notes-highlights">
+					<?php foreach ($group->highlights as $highlight) { ?>
+						<li class="articlenotes-hl-item" data-color="<?= $e($highlight->color) ?>" data-uuid="<?= $e($highlight->uuid) ?>">
+							<div class="articlenotes-hl-head">
+								<span class="articlenotes-swatch articlenotes-swatch-static" data-color="<?= $e($highlight->color) ?>" aria-hidden="true"></span>
+								<span class="articlenotes-hl-color"><?= $colorName($highlight->color) ?></span>
+								<?php if ($group->isOrphaned($highlight)) { ?>
+									<span class="articlenotes-orphan"><?= $e(_t('ext.article_notes.highlight.orphan')) ?></span>
+								<?php } ?>
+							</div>
+							<blockquote class="articlenotes-hl-quote"><?= $e($highlight->selector['quote']['exact']) ?></blockquote>
+							<?php if ($highlight->note !== '') { ?>
+								<p class="articlenotes-hl-note"><?= nl2br($e($highlight->note), false) ?></p>
+							<?php } ?>
+							<div class="articlenotes-actions">
+								<?php if ($group->exists && $group->entryId !== null) { ?>
+									<a class="btn articlenotes-notes-jump" href="<?= Minz_Url::display(['c' => 'index', 'a' => 'normal', 'params' => [
+										'get' => 'a', 'search' => 'e:' . $group->entryId, 'state' => (string)FreshRSS_Entry::STATE_ALL,
+										'articlenotes_hl' => $highlight->uuid]]) ?>"
+										aria-label="<?= $t('open_highlight_label', mb_strimwidth($highlight->selector['quote']['exact'], 0, 40, '…', 'UTF-8')) ?>"><?= $t('open_highlight') ?></a>
+								<?php } ?>
+							</div>
+							<?php $editForm(['type' => 'highlight', 'uuid' => $highlight->uuid], $highlight->note, $highlight->color); ?>
+						</li>
+					<?php } ?>
+				</ol>
+			<?php } ?>
+		</section>
+	<?php } ?>
+
+	<?php if ($page->pages() > 1) {
+		$params = $filter->toParams(); ?>
+		<nav class="articlenotes-notes-pagination" aria-label="<?= $t('pagination', $page->page, $page->pages()) ?>">
+			<?php if ($page->page > 1) { ?>
+				<a class="btn" rel="prev" href="<?= $notesUrl($params + ['page' => (string)($page->page - 1)]) ?>"><?= $t('previous') ?></a>
+			<?php } ?>
+			<span><?= $t('pagination', $page->page, $page->pages()) ?></span>
+			<?php if ($page->page < $page->pages()) { ?>
+				<a class="btn" rel="next" href="<?= $notesUrl($params + ['page' => (string)($page->page + 1)]) ?>"><?= $t('next') ?></a>
+			<?php } ?>
+		</nav>
+	<?php } ?>
+</main>

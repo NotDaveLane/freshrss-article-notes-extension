@@ -20,12 +20,18 @@ require_once __DIR__ . '/NoteBlock.php';
 require_once __DIR__ . '/NoteDAO.php';
 require_once __DIR__ . '/NoteException.php';
 require_once __DIR__ . '/NoteService.php';
+require_once __DIR__ . '/NotesBrowser.php';
+require_once __DIR__ . '/NotesExport.php';
+require_once __DIR__ . '/NotesFilter.php';
+require_once __DIR__ . '/NotesGroup.php';
+require_once __DIR__ . '/NotesPage.php';
 require_once __DIR__ . '/Settings.php';
 require_once __DIR__ . '/Storage.php';
 require_once __DIR__ . '/UrlIndex.php';
 require_once __DIR__ . '/UrlLookup.php';
 require_once __DIR__ . '/UrlMatch.php';
 require_once __DIR__ . '/UrlNormalizer.php';
+require_once __DIR__ . '/WebAnnotation.php';
 
 final class ArticleNotesExtension extends Minz_Extension {
 	public const MIN_FRESHRSS_VERSION = '1.27.0';
@@ -101,12 +107,16 @@ final class ArticleNotesExtension extends Minz_Extension {
 		return $entry;
 	}
 
-	/** The entry of the Configuration menu that leads to the user's settings page. */
+	/** The entries of the Configuration menu that lead to the user's settings page and to the Notes page. */
 	public function menuEntry(): string {
-		$active = Minz_Request::controllerName() === 'ArticleNotes' && Minz_Request::actionName() === 'settings';
-		return '<li class="item' . ($active ? ' active' : '') . '"><a href="'
-			. Minz_Url::display(['c' => 'ArticleNotes', 'a' => 'settings']) . '">'
-			. htmlspecialchars(_t('ext.article_notes.settings.menu'), ENT_QUOTES, 'UTF-8') . '</a></li>';
+		$entries = '';
+		foreach (['settings' => 'settings', 'notes' => 'notes'] as $action => $key) {
+			$active = Minz_Request::controllerName() === 'ArticleNotes' && Minz_Request::actionName() === $action;
+			$entries .= '<li class="item' . ($active ? ' active' : '') . '"><a href="'
+				. Minz_Url::display(['c' => 'ArticleNotes', 'a' => $action]) . '">'
+				. htmlspecialchars(_t('ext.article_notes.' . $key . '.menu'), ENT_QUOTES, 'UTF-8') . '</a></li>';
+		}
+		return $entries;
 	}
 
 	/** The current user's settings. */
@@ -183,6 +193,7 @@ final class ArticleNotesExtension extends Minz_Extension {
 			'maxLength' => ArticleNotes\NoteService::MAX_LENGTH,
 			'saveUrl' => Minz_Url::display(['c' => 'ArticleNotes', 'a' => 'save'], 'php'),
 			'deleteUrl' => Minz_Url::display(['c' => 'ArticleNotes', 'a' => 'delete'], 'php'),
+			'notesUrl' => Minz_Url::display(['c' => 'ArticleNotes', 'a' => 'notes'], 'php'),
 			'highlightsUrl' => Minz_Url::display(['c' => 'ArticleNotes', 'a' => 'highlights'], 'php'),
 			'highlightCreateUrl' => Minz_Url::display(['c' => 'ArticleNotes', 'a' => 'highlightCreate'], 'php'),
 			'highlightUpdateUrl' => Minz_Url::display(['c' => 'ArticleNotes', 'a' => 'highlightUpdate'], 'php'),
@@ -220,6 +231,7 @@ final class ArticleNotesExtension extends Minz_Extension {
 				'jumpTo' => _t('ext.article_notes.highlight.jump_to'),
 				'jumpToLabel' => _t('ext.article_notes.highlight.jump_to_label'),
 				'edit' => _t('ext.article_notes.highlight.edit'),
+				'allMyNotes' => _t('ext.article_notes.notes.all_my_notes'),
 				'colorYellow' => _t('ext.article_notes.highlight.color_yellow'),
 				'colorGreen' => _t('ext.article_notes.highlight.color_green'),
 				'colorBlue' => _t('ext.article_notes.highlight.color_blue'),
