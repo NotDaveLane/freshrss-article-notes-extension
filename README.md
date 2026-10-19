@@ -20,7 +20,8 @@ authenticated FreshRSS API endpoint so other systems can fetch and analyze them 
 
 ## Requirements
 
-- FreshRSS **1.27.0 or newer** (tested with 1.30.1).
+- FreshRSS **1.27.0 or newer** (tested with 1.30.1). On older versions the extension logs a warning and
+  does not register its API endpoint.
 - API access enabled (Configuration → Authentication → "Allow API access", plus an API password
   in your profile) to use the notes API.
 
@@ -31,6 +32,14 @@ authenticated FreshRSS API endpoint so other systems can fetch and analyze them 
    (in the official Docker image: `/var/www/FreshRSS/extensions`).
 3. As an **administrator**, open Configuration → Extensions and enable **ArticleNotes**. It is a
    *system* extension, so it is enabled once for the whole instance.
+
+## Upgrading
+
+Replace the `xExtension-ArticleNotes/` directory with the new release. Nothing else is needed: the
+extension tracks a schema version per user and applies any missing database migrations automatically,
+the first time it uses its storage and during FreshRSS's regular feed refresh (cron). Versions and
+changes are listed in [CHANGELOG.md](CHANGELOG.md). Disabling the extension keeps your data; removing it
+through FreshRSS's uninstall drops its tables and settings for every user.
 
 ## Development
 
@@ -66,6 +75,12 @@ bin/ci --all-dbs     # also run the integration tests on MariaDB and PostgreSQL
 Single runs: `bin/phpunit tests/Unit/MetadataTest.php`, `TEST_DB=postgres bin/phpunit --testsuite integration`,
 `bin/e2e specs/smoke.spec.ts`, `bin/lint`. End-to-end tests use a throwaway user subscribed to the local
 fixture feed, never the live feeds.
+
+### Releasing
+
+Maintainers: bump `version` in `xExtension-ArticleNotes/metadata.json`, move the `[Unreleased]` entries of
+`CHANGELOG.md` under a new `## [X.Y.Z] - YYYY-MM-DD` heading, commit, tag `vX.Y.Z`, then run `bin/package`
+to build `dist/ArticleNotes-X.Y.Z.zip` (it contains only `xExtension-ArticleNotes/`).
 
 See [AGENTS.md](AGENTS.md) for conventions, specs and the full command list.
 
