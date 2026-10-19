@@ -69,9 +69,12 @@ final class HighlightsMigrationTest extends TestCase {
 			. 'color, note, created_at, updated_at) VALUES (:uuid, :entry_id, :url, :normalized, :hash, :title, :guid, :link, :entry_title, :author, 1, 2, '
 			. ":feed, :feed_url, 'page', :selector, 'yellow', :note, 5, 6)");
 		self::assertNotFalse($statement);
-		$statement->execute([':uuid' => $uuid, ':entry_id' => $entryId, ':url' => 'https://example.org/a', ':normalized' => 'https://example.org/a', ':entry_title' => 't', ':hash' => 'h1',
+		$statement->execute([
+			':uuid' => $uuid, ':entry_id' => $entryId, ':url' => 'https://example.org/a', ':normalized' => 'https://example.org/a',
+			':entry_title' => 't', ':hash' => 'h1',
 			':title' => 'é title', ':guid' => 'g', ':link' => 'https://example.org/a', ':author' => 'a', ':feed' => 'f',
-			':feed_url' => 'http://f/', ':selector' => '{"quote":{"exact":"x"}}', ':note' => $note]);
+			':feed_url' => 'http://f/', ':selector' => '{"quote":{"exact":"x"}}', ':note' => $note,
+		]);
 	}
 
 	public function testCreatesTheTableAndKeepsNotesUntouched(): void {
