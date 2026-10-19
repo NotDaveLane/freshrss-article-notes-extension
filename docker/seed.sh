@@ -1,5 +1,5 @@
 #!/bin/sh
-# Idempotent dev seeding: enable ArticleNotes, subscribe to the seed feeds, fetch them.
+# Idempotent dev seeding: enable ArticleNotes, allow the fixtures host, subscribe to the seed feeds, fetch them.
 # Runs on every boot; each step is safe to repeat. Failures (e.g. no internet) never
 # prevent the instance from becoming healthy.
 set -u
@@ -21,6 +21,9 @@ done
 
 echo 'seed: enabling ArticleNotes'
 run php /opt/dev/enable-extension.php ArticleNotes || echo 'seed: could not enable the extension' >&2
+
+echo 'seed: allowing the fixtures host (local test feed)'
+run php /opt/dev/allow-fixtures.php || echo 'seed: could not allow the fixtures host' >&2
 
 echo 'seed: importing feeds (existing subscriptions are not duplicated)'
 run php -f cli/import-for-user.php -- --user "$DEV_USER" --filename /opt/dev/seed-feeds.opml \

@@ -1,0 +1,12 @@
+#!/usr/bin/env bash
+# Run PHPUnit without coverage, for fast red/green loops. Arguments are passed to phpunit:
+#   bin/phpunit tests/Unit/MetadataTest.php
+#   bin/phpunit --filter testVersionIsSemver
+#   TEST_DB=postgres bin/phpunit --testsuite integration     (sqlite | mariadb | postgres)
+set -uo pipefail
+source "$(dirname "${BASH_SOURCE[0]}")/lib-common.sh"
+ensure_vendor || exit 1
+case "${TEST_DB:-sqlite}" in
+	mariadb|postgres) docker compose --profile db-matrix up -d --wait "$TEST_DB" >&2 || exit 1 ;;
+esac
+dev vendor/bin/phpunit --no-coverage "$@"

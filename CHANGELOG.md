@@ -13,3 +13,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Dockerized FreshRSS development instance with a seeded admin user, Hacker News
   and Lobsters feeds, and a local fixture feed for automated tests.
 - Project documentation and the `dev-environment` OpenSpec capability.
+- Test and quality toolchain: `dev` tooling image, PHPUnit (unit + integration, coverage in
+  `coverage/index.html`), PHPStan level 10, PHP_CodeSniffer in FreshRSS's style, Playwright end-to-end
+  tests, a SQLite/MariaDB/PostgreSQL database matrix, and the `bin/ci` entry point with the `bin/phpunit`,
+  `bin/e2e` and `bin/lint` wrappers (`toolchain` OpenSpec capability).

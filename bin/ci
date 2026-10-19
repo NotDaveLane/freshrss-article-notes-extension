@@ -1,0 +1,61 @@
+#!/usr/bin/env bash
+# Full suite, run from the host (everything executes in containers):
+#   PHP_CodeSniffer -> PHPStan -> PHPUnit with coverage (coverage/index.html) -> Playwright.
+#   bin/ci            SQLite only (fast)
+#   bin/ci --all-dbs  also run the integration suite against MariaDB and PostgreSQL
+# Prerequisite: docker compose up --build -d --wait
+# Exits non-zero if any step failed; every step runs even after a failure.
+set -uo pipefail
+source "$(dirname "${BASH_SOURCE[0]}")/lib-common.sh"
+
+all_dbs=0
+for arg in "$@"; do
+	case "$arg" in
+		--all-dbs) all_dbs=1 ;;
+		-h|--help) sed -n '2,8p' "$0" | sed 's/^# \{0,1\}//'; exit 0 ;;
+		*) echo "error: unknown option: $arg (see bin/ci --help)" >&2; exit 2 ;;
+	esac
+done
+
+require_stack
+docker compose build dev >&2 || { echo 'error: could not build the dev image' >&2; exit 2; }
+ensure_vendor || { echo 'error: composer install failed' >&2; exit 2; }
+
+declare -a names=() results=()
+step() {
+	local name="$1"; shift
+	echo; echo "=== $name ==="
+	if "$@"; then results+=("PASS"); else results+=("FAIL"); fi
+	names+=("$name")
+}
+
+# phpunit_db <engine> [--coverage]: whole suite with coverage, else the integration suite only.
+phpunit_db() {
+	if [ "${2:-}" = --coverage ]; then TEST_DB="$1" dev vendor/bin/phpunit
+	else TEST_DB="$1" dev vendor/bin/phpunit --testsuite integration --no-coverage; fi
+}
+
+step 'phpcs' dev vendor/bin/phpcs
+step 'phpstan' dev vendor/bin/phpstan analyse --no-progress --memory-limit=1G
+rm -rf coverage
+step 'phpunit (sqlite, coverage)' phpunit_db sqlite --coverage
+if [ "$all_dbs" = 1 ]; then
+	if docker compose --profile db-matrix up -d --wait mariadb postgres >&2; then
+		step 'phpunit integration (mariadb)' phpunit_db mariadb
+		step 'phpunit integration (postgres)' phpunit_db postgres
+	else
+		names+=('db-matrix services'); results+=("FAIL")
+	fi
+	docker compose --profile db-matrix rm -sf mariadb postgres >/dev/null 2>&1
+fi
+step 'e2e (playwright)' bin/e2e
+
+echo; echo '=== summary ==='
+failed=0
+for i in "${!names[@]}"; do
+	printf '  %-4s %s\n' "${results[$i]}" "${names[$i]}"
+	[ "${results[$i]}" = PASS ] || failed=1
+done
+[ -f coverage/index.html ] && echo "  coverage report: $ROOT/coverage/index.html"
+if [ "$failed" = 0 ]; then echo 'bin/ci: OK'; else echo 'bin/ci: FAILED'; fi
+exit "$failed"

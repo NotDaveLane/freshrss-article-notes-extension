@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ruleset name="ArticleNotes">
+	<description>FreshRSS's own coding standard (tabs, PSR-12 based), applied to the extension and its tests.</description>
+	<file>xExtension-ArticleNotes</file>
+	<file>tests</file>
+	<exclude-pattern>*/tests/e2e/node_modules/*</exclude-pattern>
+	<arg name="colors"/>
+	<arg name="basepath" value="."/>
+	<!-- FreshRSS ships phpcs.xml at the root of the source tree inside the dev image. -->
+	<rule ref="/var/www/FreshRSS/phpcs.xml">
+		<exclude-pattern>/extensions/*</exclude-pattern>
+	</rule>
+</ruleset>

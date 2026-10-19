@@ -1,0 +1,25 @@
+parameters:
+	phpVersion:
+		min: 80100	# FreshRSS 1.27 requires PHP 8.1
+		max: 80499
+	level: 10
+	paths:
+		- xExtension-ArticleNotes
+		- tests
+	excludePaths:
+		- tests/e2e/node_modules (?)
+	scanDirectories:
+		- /var/www/FreshRSS
+	scanFiles:
+		- /var/www/FreshRSS/constants.php
+	bootstrapFiles:
+		- /var/www/FreshRSS/constants.php
+		- /var/www/FreshRSS/lib/lib_rss.php
+	checkMissingOverrideMethodAttribute: true
+	checkImplicitMixed: true
+	reportAnyTypeWideningInVarTag: true
+	treatPhpDocTypesAsCertain: false
+includes:
+	- vendor/phpstan/phpstan-phpunit/extension.neon
+	- vendor/phpstan/phpstan-phpunit/rules.neon
+	- vendor/phpstan/phpstan-strict-rules/rules.neon
