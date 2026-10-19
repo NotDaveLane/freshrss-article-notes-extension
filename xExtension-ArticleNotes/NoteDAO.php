@@ -28,8 +28,54 @@ final class NoteDAO {
 		return $rows[0] ?? null;
 	}
 
+	/** The page note (a note without article) at a normalized URL. */
+	public function findPage(string $normalizedUrl, bool $includeDeleted = false): ?Note {
+		$rows = $this->fetch(
+			'SELECT ' . self::COLUMNS . ' FROM ' . $this->table . ' WHERE page_url_hash=:hash'
+				. ($includeDeleted ? '' : ' AND deleted_at IS NULL'),
+			[':hash' => UrlNormalizer::hash($normalizedUrl)],
+		);
+		return $rows[0] ?? null;
+	}
+
+	/**
+	 * Creates the page note at `$note->normalizedUrl`, or updates it (reviving a tombstone). `id` and `createdAt` of an
+	 * existing row are kept. The page URL is stored in `entry_link` and the page title in `entry_title`.
+	 */
+	public function upsertPage(Note $note): void {
+		$hash = UrlNormalizer::hash($note->normalizedUrl);
+		$values = [
+			':note' => $note->note,
+			':updated_at' => $note->updatedAt,
+			':entry_link' => $note->entryLink,
+			':entry_title' => $note->entryTitle,
+			':normalized_url' => $note->normalizedUrl,
+			':url_hash' => $hash,
+			':page_url_hash' => $hash,
+		];
+		if ($this->findPage($note->normalizedUrl, true) !== null) {
+			$this->execute('UPDATE ' . $this->table . ' SET note=:note, updated_at=:updated_at, deleted_at=NULL, '
+				. 'entry_link=:entry_link, entry_title=:entry_title, normalized_url=:normalized_url, url_hash=:url_hash '
+				. 'WHERE page_url_hash=:page_url_hash', $values);
+			return;
+		}
+		$this->execute('INSERT INTO ' . $this->table . ' (entry_id, note, created_at, updated_at, deleted_at, entry_guid, '
+			. 'entry_link, entry_title, entry_author, entry_date, feed_id, feed_name, feed_url, label_applied, normalized_url, '
+			. 'url_hash, page_url_hash) VALUES (NULL, :note, :created_at, :updated_at, NULL, \'\', :entry_link, :entry_title, '
+			. '\'\', 0, 0, \'\', \'\', 0, :normalized_url, :url_hash, :page_url_hash)', $values + [':created_at' => $note->updatedAt]);
+	}
+
+	/** @return bool whether a live page note was tombstoned */
+	public function softDeletePage(string $normalizedUrl, int $now): bool {
+		return $this->execute(
+			'UPDATE ' . $this->table . ' SET deleted_at=:now, updated_at=:now_updated WHERE page_url_hash=:hash AND deleted_at IS NULL',
+			[':now' => $now, ':now_updated' => $now, ':hash' => UrlNormalizer::hash($normalizedUrl)],
+		) > 0;
+	}
+
 	/** Creates the note of `$note->entryId`, or updates it (reviving a tombstone). `id` and `createdAt` of an existing row are kept. */
 	public function upsert(Note $note): void {
+		$entryId = $note->entryId ?? throw new \InvalidArgumentException('An article note needs an article');
 		$values = [
 			':note' => $note->note,
 			':updated_at' => $note->updatedAt,
@@ -43,10 +89,10 @@ final class NoteDAO {
 			':feed_url' => $note->feedUrl,
 			':normalized_url' => $note->normalizedUrl,
 			':url_hash' => $note->normalizedUrl === '' ? '' : UrlNormalizer::hash($note->normalizedUrl),
-			':entry_id' => $note->entryId,
+			':entry_id' => $entryId,
 		];
 		$insertValues = $values + [':created_at' => $note->updatedAt];
-		if ($this->find($note->entryId, true) !== null) {
+		if ($this->find($entryId, true) !== null) {
 			$this->execute('UPDATE ' . $this->table . ' SET note=:note, updated_at=:updated_at, deleted_at=NULL, '
 				. 'entry_guid=:entry_guid, entry_link=:entry_link, entry_title=:entry_title, entry_author=:entry_author, '
 				. 'entry_date=:entry_date, feed_id=:feed_id, feed_name=:feed_name, feed_url=:feed_url, '
@@ -85,7 +131,7 @@ final class NoteDAO {
 	 */
 	public function findByUrlHash(string $urlHash, int $limit): array {
 		return $this->fetch(
-			'SELECT ' . self::COLUMNS . ' FROM ' . $this->table . ' WHERE url_hash=:url_hash AND deleted_at IS NULL'
+			'SELECT ' . self::COLUMNS . ' FROM ' . $this->table . ' WHERE url_hash=:url_hash AND entry_id IS NOT NULL AND deleted_at IS NULL'
 				. ' ORDER BY entry_date DESC, id DESC LIMIT ' . max(0, $limit),
 			[':url_hash' => $urlHash],
 		);
@@ -149,7 +195,7 @@ final class NoteDAO {
 		while (is_array($row = $statement->fetch(\PDO::FETCH_ASSOC))) {
 			/** @var non-empty-array<string,string|int|null> $row */
 			$notes[] = new Note(
-				(int)$row['id'], (string)$row['entry_id'], (string)$row['note'], (int)$row['created_at'], (int)$row['updated_at'],
+				(int)$row['id'], $row['entry_id'] === null ? null : (string)$row['entry_id'], (string)$row['note'], (int)$row['created_at'], (int)$row['updated_at'],
 				$row['deleted_at'] === null ? null : (int)$row['deleted_at'],
 				(string)$row['entry_guid'], (string)$row['entry_link'], (string)$row['entry_title'], (string)$row['entry_author'],
 				(int)$row['entry_date'], (int)$row['feed_id'], (string)$row['feed_name'], (string)$row['feed_url'],
