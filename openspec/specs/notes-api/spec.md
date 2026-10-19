@@ -9,7 +9,7 @@ An authenticated JSON API for other systems to fetch and sync each user's notes 
 ### Requirement: API routing
 
 The extension SHALL answer `p/api/misc.php/ArticleNotes/<path>` (and `p/api/misc.php/<path>?ext=ArticleNotes`) through
-the `ApiMisc` hook with the versioned paths `v1/status`, `v1/notes`, `v1/lookup` and `v1/notes/<entry_id>` (a trailing slash is
+the `ApiMisc` hook with the versioned paths `v1/status`, `v1/notes`, `v1/lookup`, `v1/page-notes` and `v1/notes/<entry_id>` (a trailing slash is
 accepted), and SHALL answer 404 `not_found` to any other path, even without credentials.
 
 #### Scenario: Unknown path
@@ -22,17 +22,13 @@ accepted), and SHALL answer 404 `not_found` to any other path, even without cred
 
 ### Requirement: Methods per path
 
-Every path SHALL accept `GET` and `HEAD` (`HEAD` answers like `GET` without a body); `v1/notes/<entry_id>` SHALL also accept
+Every path SHALL accept `GET` and `HEAD` (`HEAD` answers like `GET` without a body); `v1/notes/<entry_id>` and `v1/page-notes` SHALL also accept
 `PUT` and `DELETE`. Any other method on a path SHALL answer 405 `method_not_allowed` with an `Allow` header listing the
 accepted methods (`GET, HEAD` or `GET, HEAD, PUT, DELETE`), before credentials are checked.
 
 #### Scenario: Write method on a read-only path
 - **WHEN** a client sends `POST`, `PUT`, `PATCH` or `DELETE` to `v1/notes`, `v1/status` or `v1/lookup`
 - **THEN** the response is 405 with error code `method_not_allowed` and `Allow: GET, HEAD`
-
-#### Scenario: Unsupported method on a note
-- **WHEN** a client sends `POST` or `PATCH` to `v1/notes/<entry_id>`
-- **THEN** the response is 405 with `Allow: GET, HEAD, PUT, DELETE`
 
 ### Requirement: JSON responses
 
@@ -121,9 +117,9 @@ and 404 `not_found` when the user has no live note on it.
 
 ### Requirement: Note object
 
-A note SHALL be serialized as `id`, `entry_id` (string), `greader_item_id`
+A note SHALL be serialized as `id`, `entry_id` (string), `kind` (`"article"` or `"page"`), `greader_item_id`
 (`tag:google.com,2005:reader/item/<16 hex digits of entry_id>`), `url` (the article's original URL), `normalized_url` (its
-normalized form, or null), `note` (null when deleted), `created_at`, `updated_at`, `deleted_at` (Unix seconds or null) with
+normalized form, or null), `title`, `note` (null when deleted), `created_at`, `updated_at`, `deleted_at` (Unix seconds or null) with
 ISO 8601 UTC `*_iso` counterparts, `label_applied`, and `article`. Single-note responses SHALL carry an `ETag` header.
 
 #### Scenario: Live note
@@ -146,3 +142,19 @@ The API SHALL only ever read the authenticated user's notes.
 #### Scenario: Another user's note
 - **WHEN** user B requests the entry id of user A's note, or lists notes
 - **THEN** B gets 404 for A's note and A's notes never appear in B's list or note count
+
+### Requirement: Page note object
+
+For a page note, `entry_id`, `greader_item_id` and `article` SHALL be null, `url` SHALL be the page URL and `title` the page title (null when it has none).
+
+#### Scenario: Page note
+- **WHEN** a client fetches a page note
+- **THEN** `kind` is `"page"`, `entry_id` and `article` are null, and `url`/`title` describe the page
+
+### Requirement: Page notes in the listing
+
+`GET v1/notes` SHALL list the user's page notes together with the article notes, tombstones included, in the same order.
+
+#### Scenario: Page note in the listing
+- **WHEN** a client lists notes and the user has a page note
+- **THEN** it appears with `kind` `"page"`, `entry_id` null and `article` null, and article notes have `kind` `"article"`

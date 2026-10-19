@@ -17,7 +17,7 @@ final class LabelApplier {
 
 	/** Labels the article of a note that was just created or revived, when the user wants it. */
 	public function noteSaved(Note $note, bool $created): void {
-		if (!$created || !$this->settings->labelEnabled()) {
+		if ($note->entryId === null || !$created || !$this->settings->labelEnabled()) {
 			return;
 		}
 		$tags = \FreshRSS_Factory::createTagDao($this->user);
@@ -40,7 +40,7 @@ final class LabelApplier {
 
 	/** Removes the label the extension applied to the article of a deleted note (never one the user added). */
 	public function noteDeleted(Note $note): void {
-		if (!$note->labelApplied) {
+		if ($note->entryId === null || !$note->labelApplied) {
 			return;
 		}
 		if ($note->labelId !== null) {
