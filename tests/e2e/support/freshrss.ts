@@ -53,3 +53,21 @@ export async function openArticle(page: Page, title: string): Promise<Locator> {
 	}).toPass();
 	return article;
 }
+
+/**
+ * A second throwaway user created by bin/e2e for the full-journey spec: subscribed to the local fixture feed,
+ * with no API password (the spec sets one through the Profile page) and no notes from other specs.
+ */
+export function journeyUser(): Credentials {
+	const user = process.env.E2E_JOURNEY_USER;
+	const password = process.env.E2E_JOURNEY_PASSWORD;
+	if (!user || !password) {
+		throw new Error('E2E_JOURNEY_USER/E2E_JOURNEY_PASSWORD are not set; run the suite through bin/e2e or bin/ci.');
+	}
+	return { user, password };
+}
+
+/** HTTP Basic authorization header. */
+export function basicAuth(user: string, password: string): Record<string, string> {
+	return { Authorization: 'Basic ' + Buffer.from(`${user}:${password}`).toString('base64') };
+}

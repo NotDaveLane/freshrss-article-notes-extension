@@ -1,12 +1,8 @@
 import { expect, test, type APIResponse } from '@playwright/test';
-import { openArticle, signIn, throwawayApiPassword, throwawayUser } from '../support/freshrss';
+import { basicAuth as basic, openArticle, signIn, throwawayApiPassword, throwawayUser } from '../support/freshrss';
 
 const API = '/api/misc.php/ArticleNotes/v1';
 const TITLE = 'The hidden costs of microservices';
-
-function basic(user: string, password: string): Record<string, string> {
-	return { Authorization: 'Basic ' + Buffer.from(`${user}:${password}`).toString('base64') };
-}
 
 interface ApiNote {
 	entry_id: string;
