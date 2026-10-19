@@ -44,10 +44,11 @@ Useful: `docker compose exec freshrss php cli/actualize-user.php --user admin`,
 Prerequisite: the dev stack is up (`docker compose up --build -d --wait`); `bin/ci` exits 2 with a message otherwise.
 
 ```sh
-bin/ci                 # phpcs, PHPStan, PHPUnit + coverage (coverage/index.html), Playwright; SQLite only
+bin/ci                 # phpcs, PHPStan, ESLint, PHPUnit + coverage (coverage/index.html), Playwright
+                       # (anchoring.js coverage in coverage/js/index.html); SQLite only
 bin/ci --all-dbs       # same, plus the integration suite on MariaDB and PostgreSQL
 bin/ci --compat        # bin/ci --all-dbs on FreshRSS 1.27.1 and 1.30.1 (COMPAT_VERSIONS), throwaway stacks; no dev stack needed
-bin/lint               # phpcs + PHPStan only
+bin/lint               # phpcs + PHPStan + ESLint (xExtension-ArticleNotes/static/) only
 bin/phpunit            # whole PHPUnit suite, no coverage
 bin/phpunit tests/Unit/MetadataTest.php           # one file
 bin/phpunit --filter testVersionIsSemver          # one test
@@ -68,6 +69,9 @@ bin/package && bin/verify-release                 # build the zip, install it in
   user (`tests/Support/TestEnvironment.php`); nothing touches the dev instance. E2E tests get a
   per-run throwaway user subscribed to `http://fixtures/feed.xml` (`E2E_USER`/`E2E_PASSWORD`/`E2E_API_PASSWORD`), never
   the live feeds, plus one without an API password for the full-journey spec (`E2E_JOURNEY_USER`/`E2E_JOURNEY_PASSWORD`).
+- `static/anchoring.js` (shared highlight anchoring library, plain ES module, no build) is unit-tested in Chromium by
+  `tests/e2e/specs/anchoring.spec.ts` (the `e2e` service mounts the extension read-only at `/extension`); ESLint's config
+  is `tests/e2e/eslint.config.mjs`.
 - PHPStan is level 10 with no baseline; phpcs uses FreshRSS's own `phpcs.xml`. Fix findings, don't suppress them.
 - **Red/green TDD**: write the failing test first (`bin/phpunit <file>` / `bin/e2e <spec>`), see it fail for the
   right reason, make it pass, then run `bin/ci` (and `bin/ci --all-dbs` when touching storage code) before committing.

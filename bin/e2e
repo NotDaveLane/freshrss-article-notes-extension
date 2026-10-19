@@ -35,7 +35,11 @@ create_user() {
 create_user "$E2E_USER" "$E2E_PASSWORD" --api-password "$E2E_API_PASSWORD" || exit 1
 create_user "$E2E_JOURNEY_USER" "$E2E_JOURNEY_PASSWORD" || exit 1
 
-docker compose run --rm --no-deps -T \
+# The anchoring library's JavaScript coverage goes to coverage/js/ (owned by you).
+rm -rf coverage/js && mkdir -p coverage/js
+docker compose run --rm --no-deps -T -v "$ROOT/coverage/js:/coverage/js" -e JS_COVERAGE_DIR=/coverage/js \
+	-e HOST_UID="$(id -u)" -e HOST_GID="$(id -g)" \
 	-e E2E_USER="$E2E_USER" -e E2E_PASSWORD="$E2E_PASSWORD" -e E2E_API_PASSWORD="$E2E_API_PASSWORD" \
 	-e E2E_JOURNEY_USER="$E2E_JOURNEY_USER" -e E2E_JOURNEY_PASSWORD="$E2E_JOURNEY_PASSWORD" \
-	e2e sh -c 'npm ci --no-audit --no-fund --loglevel=error && npx playwright test "$@"' sh "$@"
+	e2e sh -c 'npm ci --no-audit --no-fund --loglevel=error && npx playwright test "$@"; status=$?
+		chown -R "$HOST_UID:$HOST_GID" /coverage/js; exit $status' sh "$@"

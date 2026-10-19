@@ -15,6 +15,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   capabilities).
 - URL normalization (`UrlNormalizer`) and a per-user URL index (migration `0004`, `articlenotes_url`), kept current by
   FreshRSS's user maintenance and filled lazily on lookups; notes store their normalized URL.
+- Anchoring library `static/anchoring.js` for highlights: a dependency-free ES module that describes a text selection as
+  a W3C Web Annotation-style selector (quote with prefix/suffix context, and position), anchors a selector again
+  (position, then context-scored quote search, then whitespace-insensitive search; `null` when the passage is gone),
+  and draws and removes overlapping `<mark>` highlights. Reusable by third-party clients (README "Anchoring library",
+  `anchoring` OpenSpec capability).
+- ESLint for the extension's JavaScript (`bin/lint`, `bin/ci`), and JavaScript coverage of the anchoring library in
+  `coverage/js/index.html`.
 
 - Page notes: one note for a web page URL that matches no FreshRSS article (migration `0005`: `entry_id` becomes
   nullable, page notes are unique per normalized URL). API: `GET`/`PUT`/`DELETE v1/page-notes?url=`, `page_note` in

@@ -325,6 +325,51 @@ curl -u alice:my-api-password -X DELETE -G …/v1/page-notes --data-urlencode 'u
   [lookup](#looking-up-a-page) returns the article (with its note) in `matches` and the page note in `page_note`.
 - `GET v1/notes` lists page notes with the article notes (`kind`: `"page"`, tombstones included).
 
+## Anchoring library
+
+`xExtension-ArticleNotes/static/anchoring.js` is the small JavaScript library that ArticleNotes uses to turn a text
+selection into a highlight **selector** and to find that selector again in a page. It is a single, dependency-free ES
+module (no build step), meant to be reused by other clients, such as a browser extension that highlights the original
+web page: copy the file into your project (it is AGPL-3.0-or-later), or load it from your FreshRSS instance at
+`https://freshrss.example.net/ext.php?f=xExtension-ArticleNotes/static/anchoring.js` (no sign-in needed). Use the same
+library on both sides so that positions mean the same thing.
+
+```js
+import { describe, anchor, highlight, textOf, AnchoringError } from './anchoring.js';
+
+const root = document.querySelector('article');          // the container of the article text
+const selector = describe(window.getSelection().getRangeAt(0), root);
+// {quote: {exact: 'brown fox', prefix: 'The quick ', suffix: ' jumps over'}, position: {start: 10, end: 19}}
+
+const range = anchor(selector, root);                     // a DOM Range, or null: "passage not found"
+if (range !== null) {
+	const drawn = highlight(range, { id: 42, color: 'yellow' });  // <mark class="articlenotes-hl" data-id="42" data-color="yellow">
+	drawn.remove();                                        // restores the original DOM
+}
+```
+
+- `describe(range, root)` returns the selector of a DOM `Range` inside `root`. `exact` is the selected text with
+  whitespace collapsed; `prefix` and `suffix` are up to 64 characters of the text around it; `position` holds offsets
+  into `textOf(root)`. It throws an `AnchoringError` whose `code` is `empty`, `too-long` (more than 2,000 characters) or
+  `outside-root`.
+- `anchor(selector, root)` finds a selector: at `position` if the text there still is `exact`, otherwise at the
+  occurrence of `exact` whose surroundings best match `prefix` and `suffix` (the position only breaks ties), otherwise
+  the same search ignoring whitespace. It returns `null` when the passage is gone: keep such a highlight and show it as
+  "passage not found". Malformed selectors throw an `AnchoringError` with code `invalid-selector`.
+- `highlight(range, attrs)` wraps the text of the range in `<mark class="articlenotes-hl">` elements, with `attrs` as
+  `data-*` attributes, using DOM operations only (stored text is never parsed as HTML). Highlights may overlap. It
+  returns `{marks, remove()}`. Anchor each highlight right before drawing it: drawing moves text nodes, which collapses
+  other ranges you already hold.
+- `textOf(root)` is the text the positions count in (UTF-16 code units, like DOM offsets): the text nodes of `root`
+  without `<script>`, `<style>`, hidden elements and ArticleNotes' own UI (elements with `data-articlenotes-ui`), with a
+  line break at block boundaries and `<br>`. It follows every change inside `root`, but not styles changed from outside
+  it (a class on an ancestor, a new stylesheet) that hide or show parts of it.
+- Lengths are counted in characters (Unicode code points): `exact` is 1–2,000 characters, `prefix` and `suffix` at most
+  64.
+
+The selector mirrors the [W3C Web Annotation](https://www.w3.org/TR/annotation-model/#selectors) `TextQuoteSelector`
+(`quote`) and `TextPositionSelector` (`position`).
+
 ## Upgrading
 
 Replace the `xExtension-ArticleNotes/` directory with the new release (unpack the new zip over it, `git pull` and copy
@@ -395,11 +440,11 @@ docker compose down -v     # stop and reset everything (fresh install on next st
 
 ### Tests and quality checks
 
-With the stack up, one command runs everything in containers (code style, static analysis, PHPUnit with
-coverage, Playwright end-to-end tests):
+With the stack up, one command runs everything in containers (code style, static analysis, ESLint, PHPUnit with
+coverage, Playwright end-to-end tests, including the anchoring library's tests in a real browser):
 
 ```sh
-bin/ci               # SQLite only; HTML coverage report in coverage/index.html
+bin/ci               # SQLite only; HTML coverage in coverage/index.html (PHP) and coverage/js/index.html (anchoring.js)
 bin/ci --all-dbs     # also run the integration tests on MariaDB and PostgreSQL
 bin/ci --compat      # the matrix: bin/ci --all-dbs on FreshRSS 1.27.1 and 1.30.1, each in a throwaway stack
 ```

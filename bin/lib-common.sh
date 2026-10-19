@@ -17,6 +17,13 @@ ensure_vendor() {
 	fi
 }
 
+# ESLint on the extension's JavaScript (xExtension-ArticleNotes/static/), in the e2e (Node) container.
+eslint_js() {
+	docker compose run --rm --no-deps -T -w /extension e2e sh -c \
+		'cd /e2e && npm ci --no-audit --no-fund --no-update-notifier --loglevel=error >&2 && cd /extension \
+			&& /e2e/node_modules/.bin/eslint --config /e2e/eslint.config.mjs --max-warnings 0 static'
+}
+
 # Succeeds when the FreshRSS dev instance is up and healthy.
 stack_is_up() {
 	local id
