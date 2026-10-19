@@ -2,6 +2,8 @@ import { defineConfig } from '@playwright/test';
 
 export default defineConfig({
 	testDir: './specs',
+	globalSetup: './support/coverage-setup.ts',
+	globalTeardown: './support/coverage-teardown.ts',
 	fullyParallel: false,
 	workers: 1,
 	retries: 0,

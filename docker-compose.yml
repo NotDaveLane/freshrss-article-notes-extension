@@ -69,6 +69,8 @@ services:
     volumes:
       - ./tests/e2e:/e2e
       - e2e-node-modules:/e2e/node_modules
+      # The extension's static files, for the anchoring library's tests and ESLint (bin/lint).
+      - ./xExtension-ArticleNotes:/extension:ro
     environment:
       BASE_URL: http://freshrss
       FRESHRSS_DEV_USER: ${FRESHRSS_DEV_USER:-admin}

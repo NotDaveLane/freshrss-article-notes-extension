@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# PHP_CodeSniffer (FreshRSS style) + PHPStan. Extra arguments go to phpcs, e.g. `bin/lint --report=full`.
+# PHP_CodeSniffer (FreshRSS style) + PHPStan + ESLint (the extension's JavaScript). Extra arguments go to phpcs, e.g. `bin/lint --report=full`.
 set -uo pipefail
 source "$(dirname "${BASH_SOURCE[0]}")/lib-common.sh"
 ensure_vendor || exit 1
@@ -8,4 +8,6 @@ echo '==> phpcs'
 dev vendor/bin/phpcs "$@" || status=1
 echo '==> phpstan'
 dev vendor/bin/phpstan analyse --no-progress --memory-limit=1G || status=1
+echo '==> eslint'
+eslint_js || status=1
 exit "$status"
