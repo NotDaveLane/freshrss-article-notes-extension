@@ -196,6 +196,20 @@ final class NoteServiceTest extends TestCase {
 		self::assertSame(['saved:a', 'saved:b', 'deleted:tombstone'], $events);
 	}
 
+	public function testSavedListenersAreToldWhetherTheNoteWasCreated(): void {
+		$entryId = $this->addEntry();
+		$service = $this->service();
+		$flags = [];
+		$service->onSaved(static function (ArticleNotes\Note $note, bool $created) use (&$flags): void {
+			$flags[] = $created;
+		});
+		$service->save($entryId, 'a');
+		$service->save($entryId, 'b');
+		$service->delete($entryId);
+		$service->save($entryId, 'c');
+		self::assertSame([true, false, true], $flags);
+	}
+
 	public function testChangedSinceIsOrderedAndIncludesTombstones(): void {
 		$time = 1;
 		$service = $this->service(static function () use (&$time): int {

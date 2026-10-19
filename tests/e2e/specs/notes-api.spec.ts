@@ -13,6 +13,7 @@ interface ApiNote {
 	greader_item_id: string;
 	note: string | null;
 	deleted_at: number | null;
+	label_applied: boolean;
 	article: { title: string; url: string; exists: boolean; feed: { url: string } };
 }
 
@@ -41,6 +42,7 @@ test('a note saved in the UI is served by the API, then synced as a tombstone', 
 	expect(note).toBeDefined();
 	expect(note?.note).toBe('API note\nfrom the UI');
 	expect(note?.article.exists).toBe(true);
+	expect(note?.label_applied).toBe(true);	// the "Annotated" label is on by default
 	expect(note?.article.feed.url).toBe('http://fixtures/feed.xml');
 	expect(note?.greader_item_id).toMatch(/^tag:google\.com,2005:reader\/item\/[0-9a-f]{16}$/);
 	expect(typeof list.server_time).toBe('number');

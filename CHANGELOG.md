@@ -28,6 +28,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   keyboard accessible) in the normal, reading and global views and for dynamically loaded articles; the note is
   shown under the article (escaped); `save`/`delete` JSON endpoints with CSRF protection
   (`note-editor` OpenSpec capability).
+- Settings and label: a per-user settings page in the Configuration menu ("Add a label to articles I annotate",
+  "Label name", API endpoint URL); annotating an article applies the "Annotated" label (created when missing) and
+  deleting the note removes only the label the extension applied; migration `0003` (`label_id`)
+  (`settings-and-label` OpenSpec capability).
 - Notes API: read-only JSON on `p/api/misc.php/ArticleNotes/v1/` (`status`, `notes` with `since`, `limit`,
   `continuation` and `include_deleted` for incremental sync with tombstones, `notes/<entry_id>`), authenticated with
   the FreshRSS API password (HTTP Basic) or a Google Reader API token (`notes-api` OpenSpec capability).
