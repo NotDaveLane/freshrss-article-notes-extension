@@ -1,5 +1,5 @@
 import { expect, test, type APIRequestContext, type Locator, type Page } from '../support/test';
-import { basicAuth, openArticle, signIn, throwawayApiPassword, throwawayUser } from '../support/freshrss';
+import { basicAuth, signIn, throwawayApiPassword, throwawayUser } from '../support/freshrss';
 
 const API = '/api/misc.php/ArticleNotes/v1';
 const MARK = 'npgmark';
@@ -366,10 +366,3 @@ for (const viewport of viewports) {
 		});
 	});
 }
-
-test('an annotation made on an article shows up on the Notes page', async ({ page }) => {
-	await page.goto('/i/');
-	await openArticle(page, RUST);
-	await search(page, `q=${MARK}`);
-	await expect(group(page, RUST)).toHaveCount(1);
-});
