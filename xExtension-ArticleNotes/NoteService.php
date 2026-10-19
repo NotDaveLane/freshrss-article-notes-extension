@@ -93,9 +93,23 @@ final class NoteService {
 		return true;
 	}
 
-	/** @return list<Note> */
-	public function changedSince(int $since, int $limit, int $afterId = 0): array {
-		return $this->dao()->listChangedSince($since, $limit, $afterId);
+	/**
+	 * Notes (tombstones included unless `$includeDeleted` is false) after `($since, $afterId)` in `(updated_at, id)` order.
+	 *
+	 * @return list<Note>
+	 */
+	public function changedSince(int $since, int $limit, int $afterId = 0, bool $includeDeleted = true): array {
+		return $this->dao()->listChangedSince($since, $limit, $afterId, $includeDeleted);
+	}
+
+	/**
+	 * The given article ids that FreshRSS still has (articles can be purged after being annotated).
+	 *
+	 * @param list<string> $entryIds
+	 * @return list<string>
+	 */
+	public function existingEntryIds(array $entryIds): array {
+		return $this->dao()->existingEntryIds($entryIds);
 	}
 
 	public function count(): int {

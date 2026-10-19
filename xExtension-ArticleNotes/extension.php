@@ -2,6 +2,10 @@
 
 declare(strict_types=1);
 
+require_once __DIR__ . '/Api.php';
+require_once __DIR__ . '/ApiRequest.php';
+require_once __DIR__ . '/ApiResponse.php';
+require_once __DIR__ . '/InvalidParameterException.php';
 require_once __DIR__ . '/Migration.php';
 require_once __DIR__ . '/Migrator.php';
 require_once __DIR__ . '/Note.php';
@@ -46,8 +50,15 @@ final class ArticleNotesExtension extends Minz_Extension {
 		}
 	}
 
-	/** Placeholder for the notes API (ApiMisc hook, FreshRSS >= 1.27.0). */
+	/** Answers `p/api/misc.php/ArticleNotes/...` (ApiMisc hook, FreshRSS >= 1.27.0). */
 	public function handleApi(): void {
+		$request = ArticleNotes\ApiRequest::fromGlobals($this->getName());
+		$this->api()->handle($request)->send($request->method !== 'HEAD');
+	}
+
+	/** The read-only notes API; it authenticates the user itself. */
+	public function api(): ArticleNotes\Api {
+		return new ArticleNotes\Api($this->getName(), $this->getVersion(), fn (): ArticleNotes\NoteService => $this->noteService());
 	}
 
 	/** Appends the user's note, when there is one, to the article content. */

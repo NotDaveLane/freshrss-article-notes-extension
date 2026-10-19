@@ -1,22 +1,10 @@
 import { expect, test, type Locator, type Page } from '@playwright/test';
-import { signIn, throwawayUser } from '../support/freshrss';
+import { openArticle, signIn, throwawayUser } from '../support/freshrss';
 
 const viewports = [
 	{ name: 'mobile 390x844', width: 390, height: 844 },
 	{ name: 'desktop 1440x900', width: 1440, height: 900 },
 ];
-
-/** Opens an article by title in the normal view and returns its element. */
-async function openArticle(page: Page, title: string): Promise<Locator> {
-	const article = page.locator('.flux', { hasText: title }).first();
-	await expect(async () => {
-		if (!/current/.test((await article.getAttribute('class')) ?? '')) {
-			await article.locator('.flux_header .title').click();
-		}
-		await expect(article).toHaveClass(/current/, { timeout: 1000 });
-	}).toPass();
-	return article;
-}
 
 function trigger(article: Locator): Locator {
 	return article.locator('.articlenotes-trigger');
