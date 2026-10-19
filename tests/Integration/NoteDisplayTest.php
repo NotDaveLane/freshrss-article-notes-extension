@@ -7,6 +7,8 @@ use PHPUnit\Framework\TestCase;
 
 final class NoteDisplayTest extends TestCase {
 	private ArticleNotesExtension $extension;
+	/** @var list<int> */
+	private array $feedIds = [];
 
 	#[\Override]
 	protected function setUp(): void {
@@ -23,12 +25,21 @@ final class NoteDisplayTest extends TestCase {
 		]);
 	}
 
+	#[\Override]
+	protected function tearDown(): void {
+		foreach ($this->feedIds as $feedId) {
+			FreshRSS_Factory::createFeedDao()->deleteFeed($feedId);	// also removes its entries
+		}
+		$this->feedIds = [];
+	}
+
 	private function entry(): FreshRSS_Entry {
 		$feed = new FreshRSS_Feed('http://fixtures/display-feed.xml', false);
 		$feed->_name('Display Feed');
 		$feed->_categoryId(FreshRSS_CategoryDAO::DEFAULTCATEGORYID);
 		$feedId = FreshRSS_Factory::createFeedDao()->addFeedObject($feed);
 		self::assertIsInt($feedId);
+		$this->feedIds[] = $feedId;
 		$id = (string)(1720000000000000 + random_int(0, 999999));
 		self::assertTrue(FreshRSS_Factory::createEntryDao()->addEntry([
 			'id' => $id, 'guid' => 'guid-' . $id, 'title' => 'Display', 'author' => 'A', 'content' => '<p>Body</p>',

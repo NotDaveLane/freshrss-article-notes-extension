@@ -26,6 +26,11 @@ final class ControllerTest extends TestCase {
 	}
 
 	#[\Override]
+	public static function tearDownAfterClass(): void {
+		FreshRSS_Factory::createFeedDao()->deleteFeed(self::$feedId);	// also removes its entries
+	}
+
+	#[\Override]
 	protected function setUp(): void {
 		Minz_User::change(TestEnvironment::USER);
 		cliInitUser(TestEnvironment::USER);

@@ -2,8 +2,8 @@
 .articlenotes-note {
 	margin: 1.5rem 0 0.5rem;
 	padding: 0.75rem 1rem;
-	border: 1px solid var(--border-color, #ccc);
-	border-left: 4px solid var(--frss-accent-color, #0062be);
+	border: 1px solid var(--frss-border-color, #ccc);
+	border-left-width: 4px;
 	border-radius: 4px;
 	background: var(--frss-background-color-transparent, rgba(128, 128, 128, 0.1));
 	color: inherit;
@@ -29,7 +29,7 @@
 .articlenotes-editor {
 	margin: 1rem 0;
 	padding: 0.75rem 1rem;
-	border: 1px solid var(--border-color, #ccc);
+	border: 1px solid var(--frss-border-color, #ccc);
 	border-radius: 4px;
 	box-sizing: border-box;
 	max-width: 100%;
@@ -57,7 +57,7 @@
 }
 
 .articlenotes-counter-over {
-	color: #c0392b;
+	color: var(--frss-border-color-error, #c0392b);
 	font-weight: bold;
 	opacity: 1;
 }
@@ -65,9 +65,9 @@
 .articlenotes-error {
 	margin: 0.5rem 0;
 	padding: 0.5rem 0.75rem;
-	border: 1px solid #c0392b;
+	border: 1px solid var(--frss-border-color-error, #c0392b);
 	border-radius: 4px;
-	background: rgba(192, 57, 43, 0.12);
+	background: var(--frss-background-color-error-transparent, rgba(192, 57, 43, 0.12));
 	color: inherit;
 }
 
