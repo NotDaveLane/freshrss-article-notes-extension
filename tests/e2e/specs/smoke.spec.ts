@@ -13,7 +13,7 @@ test('the dev admin can sign in and ArticleNotes is enabled', async ({ page }) =
 
 test('the throwaway user sees the local fixture feed articles', async ({ page }) => {
 	await signIn(page, throwawayUser());
-	await page.goto('/i/');
+	await page.goto('/i/?state=3');	// all articles: other specs mark some as read
 	await expect(page.locator('.flux').first()).toBeVisible();
 	await expect(page.locator('#stream')).toContainText('Rust 1.90 stabilizes async closures');
 });

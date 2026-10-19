@@ -5,6 +5,7 @@ declare(strict_types=1);
 require_once __DIR__ . '/Migration.php';
 require_once __DIR__ . '/Migrator.php';
 require_once __DIR__ . '/Note.php';
+require_once __DIR__ . '/NoteBlock.php';
 require_once __DIR__ . '/NoteDAO.php';
 require_once __DIR__ . '/NoteException.php';
 require_once __DIR__ . '/NoteService.php';
@@ -22,6 +23,10 @@ final class ArticleNotesExtension extends Minz_Extension {
 		parent::init();
 
 		$this->registerTranslates();
+		$this->registerController('ArticleNotes');
+		$this->registerViews();
+		Minz_View::appendStyle($this->getFileUrl('article-notes.css'));
+		Minz_View::appendScript($this->getFileUrl('article-notes.js'));
 		$this->registerHooks(FRESHRSS_VERSION);
 	}
 
@@ -31,6 +36,8 @@ final class ArticleNotesExtension extends Minz_Extension {
 
 	public function registerHooks(string $freshrssVersion): void {
 		$this->registerHook(Minz_HookType::FreshrssUserMaintenance, [$this, 'ensureSchema']);
+		$this->registerHook(Minz_HookType::EntryBeforeDisplay, [$this, 'appendNote']);
+		$this->registerHook(Minz_HookType::JsVars, [$this, 'jsVars']);
 		if (self::isSupportedFreshRss($freshrssVersion)) {
 			$this->registerHook(Minz_HookType::ApiMisc, [$this, 'handleApi']);
 		} else {
@@ -41,6 +48,51 @@ final class ArticleNotesExtension extends Minz_Extension {
 
 	/** Placeholder for the notes API (ApiMisc hook, FreshRSS >= 1.27.0). */
 	public function handleApi(): void {
+	}
+
+	/** Appends the user's note, when there is one, to the article content. */
+	public function appendNote(FreshRSS_Entry $entry): FreshRSS_Entry {
+		if (!FreshRSS_Auth::hasAccess()) {
+			return $entry;
+		}
+		try {
+			$note = $this->noteService()->get($entry->id());
+		} catch (\Throwable $exception) {
+			Minz_Log::error('ArticleNotes cannot load the note of article ' . $entry->id() . ': ' . $exception->getMessage());
+			return $entry;
+		}
+		if ($note !== null) {
+			$entry->_content($entry->originalContent() . ArticleNotes\NoteBlock::html($note));
+		}
+		return $entry;
+	}
+
+	/**
+	 * Settings and translated strings for the editor script (`context.extensions.ArticleNotes`).
+	 *
+	 * @param array<string,mixed> $vars
+	 * @return array<string,mixed>
+	 */
+	public function jsVars(array $vars): array {
+		$vars['ArticleNotes'] = [
+			'enabled' => FreshRSS_Auth::hasAccess(),
+			'maxLength' => ArticleNotes\NoteService::MAX_LENGTH,
+			'saveUrl' => Minz_Url::display(['c' => 'ArticleNotes', 'a' => 'save'], 'php'),
+			'deleteUrl' => Minz_Url::display(['c' => 'ArticleNotes', 'a' => 'delete'], 'php'),
+			'i18n' => [
+				'action' => _t('ext.article_notes.note.action'),
+				'actionTitle' => _t('ext.article_notes.note.action_title'),
+				'label' => _t('ext.article_notes.note.label'),
+				'save' => _t('ext.article_notes.note.save'),
+				'cancel' => _t('ext.article_notes.note.cancel'),
+				'delete' => _t('ext.article_notes.note.delete'),
+				'confirmDelete' => _t('ext.article_notes.note.confirm_delete'),
+				'counter' => _t('ext.article_notes.note.counter'),
+				'saving' => _t('ext.article_notes.note.saving'),
+				'network' => _t('ext.article_notes.error.network'),
+			],
+		];
+		return $vars;
 	}
 
 	/**

@@ -24,3 +24,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Note storage: per-user `articlenotes_note` table (migration `0002`) with article snapshots and deletion
   tombstones, `NoteDAO` and `NoteService` (validation, 20,000-character limit, save/delete listeners)
   (`notes-storage` OpenSpec capability).
+- Note editor: a "Note" action on every article opens an inline editor (add, edit, delete, character counter,
+  keyboard accessible) in the normal, reading and global views and for dynamically loaded articles; the note is
+  shown under the article (escaped); `save`/`delete` JSON endpoints with CSRF protection
+  (`note-editor` OpenSpec capability).
