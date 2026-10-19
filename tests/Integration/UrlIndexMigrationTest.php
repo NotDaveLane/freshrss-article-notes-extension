@@ -79,7 +79,7 @@ final class UrlIndexMigrationTest extends TestCase {
 		self::assertSame('https://example.org/migrated', $notes[11]['normalized_url']);
 		self::assertSame(UrlNormalizer::hash('https://example.org/migrated'), $notes[11]['url_hash']);
 		self::assertSame('https://example.org/from-guid', $notes[12]['normalized_url'], 'GUID URL when there is no link; tombstones too');
-		self::assertSame('', $notes[13]['normalized_url']);
+		self::assertEmpty($notes[13]['normalized_url']);
 		self::assertSame('', $notes[13]['url_hash']);
 
 		$probe = $this->pdo->query('SELECT entry_id, source, url_hash, link, guid FROM ' . $this->prefix . 'articlenotes_url');

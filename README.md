@@ -276,6 +276,8 @@ Writes follow the rules of the UI: the text is trimmed, at most 20,000 character
 empty text deletes the note (`204`). Annotating an article applies the "Annotated" label, as in the UI. An unknown
 article answers `404`.
 
+- A `PUT` or `DELETE` without `If-Match` overwrites or deletes whatever note is there, and the check and the write are not
+  one atomic step: clients that may race with other edits (the FreshRSS UI, another device) should send `If-Match`.
 - The body must be `application/json` (`415` otherwise), at most 64 KB (`413`), valid JSON (`400 invalid_json`) and an
   object with a string `note` (`400 invalid_body`).
 - **Optimistic concurrency.** Note responses carry an `ETag`. Send it back as `If-Match` with `PUT` or `DELETE` to change

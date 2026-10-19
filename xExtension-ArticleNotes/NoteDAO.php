@@ -155,7 +155,7 @@ final class NoteDAO {
 				(int)$row['entry_date'], (int)$row['feed_id'], (string)$row['feed_name'], (string)$row['feed_url'],
 				(int)$row['label_applied'] === 1,
 				$row['label_id'] === null ? null : (int)$row['label_id'],
-				(string)$row['normalized_url'],
+				(string)($row['normalized_url'] ?? ''),
 			);
 		}
 		return $notes;
