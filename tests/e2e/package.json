@@ -9,6 +9,7 @@
 	"devDependencies": {
 		"@eslint/js": "10.0.1",
 		"@playwright/test": "1.55.0",
+		"@seriousme/openapi-schema-validator": "2.11.0",
 		"eslint": "10.0.1",
 		"globals": "17.3.0",
 		"monocart-coverage-reports": "3.0.0"

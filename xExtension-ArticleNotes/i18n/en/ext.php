@@ -104,6 +104,13 @@ return array(
 			'previous' => 'Previous',
 			'next' => 'Next',
 		),
+		'cors' => array(
+			'heading' => 'Allowed client origins',
+			'label' => 'Allowed client origins',
+			'help' => 'Web pages that may call the ArticleNotes API from a browser, one origin per line, for example https://notes.example.com, moz-extension://<uuid> or chrome-extension://<id>. Leave empty to send no CORS headers (browser extensions with host permissions for this FreshRSS do not need any). Wildcards are not accepted.',
+			'saved' => 'The allowed client origins were saved.',
+			'invalid' => 'Not saved: these lines are not an exact origin (scheme and host, optionally a port, no path and no wildcard): %s',
+		),
 		'error' => array(
 			'signed_out' => 'You must be signed in to edit notes.',
 			'csrf' => 'The security token is invalid. Reload the page and try again.',

@@ -278,7 +278,7 @@ for (const viewport of viewports) {
 			expect(json.status()).toBe(200);
 			expect(json.headers()['content-type']).toContain('application/ld+json');
 			const collection = (await json.json()) as { '@context': string; type: string; first: { items: Record<string, any>[] } };
-			expect(collection['@context']).toBe('http://www.w3.org/ns/anna.jsonld');
+			expect(collection['@context']).toBe('http://www.w3.org/ns/anno.jsonld');
 			expect(collection.type).toBe('AnnotationCollection');
 			const quotes = collection.first.items.map((item) => item.target.selector[0].exact);
 			expect(quotes.sort()).toEqual(['async closure ergonomics', `${MARK} other quote`, `${MARK} page quote`, `ghostquote ${MARK} vanished`].sort());

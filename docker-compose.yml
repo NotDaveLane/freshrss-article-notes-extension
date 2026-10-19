@@ -71,6 +71,10 @@ services:
       - e2e-node-modules:/e2e/node_modules
       # The extension's static files, for the anchoring library's tests and ESLint (bin/lint).
       - ./xExtension-ArticleNotes:/extension:ro
+      # The reference client and example page (served to the browser by their tests, linted by bin/lint).
+      - ./examples:/examples:ro
+      # The API description, validated against the OpenAPI 3.1 schema.
+      - ./docs:/docs:ro
     environment:
       BASE_URL: http://freshrss
       FRESHRSS_DEV_USER: ${FRESHRSS_DEV_USER:-admin}

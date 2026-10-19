@@ -16,9 +16,31 @@ final class Api {
 	private const GREADER_ITEM_PREFIX = 'tag:google.com,2005:reader/item/';
 
 	/**
+	 * Every path of the API (below `ArticleNotes/`) with the methods it answers besides `HEAD` (answered like `GET`) and
+	 * `OPTIONS` (CORS preflight, see {@see Cors}). `{name}` is a path parameter. `docs/openapi.yaml` describes exactly these.
+	 */
+	public const ROUTES = [
+		'v1/status' => ['GET'],
+		'v1/openapi.json' => ['GET'],
+		'v1/notes' => ['GET'],
+		'v1/notes/{entry_id}' => ['GET', 'PUT', 'DELETE'],
+		'v1/lookup' => ['GET'],
+		'v1/page-notes' => ['GET', 'PUT', 'DELETE'],
+		'v1/highlights' => ['GET', 'POST'],
+		'v1/highlights/{uuid}' => ['GET', 'PATCH', 'DELETE'],
+		'v1/annotations' => ['GET'],
+		'v1/annotated' => ['GET'],
+	];
+	/** Paths that need no authentication. */
+	private const PUBLIC_ROUTES = ['v1/openapi.json'];
+	private const PARAMETER_PATTERNS = ['entry_id' => '\d{1,20}', 'uuid' => '[0-9a-fA-F-]{1,64}'];
+
+	/**
 	 * @param \Closure():NoteService $noteService the note service of the user authenticated by {@see handle()}
 	 * @param \Closure():HighlightService $highlightService the highlight service of that user
 	 * @param (\Closure():int)|null $clock current Unix time (default: time())
+	 * @param (\Closure():list<string>)|null $allowedOrigins the client origins allowed by CORS (default: none)
+	 * @param (\Closure():array<string,mixed>)|null $openApi the OpenAPI description served at `v1/openapi.json`
 	 */
 	public function __construct(
 		private readonly string $extensionName,
@@ -26,48 +48,80 @@ final class Api {
 		private readonly \Closure $noteService,
 		private readonly \Closure $highlightService,
 		private readonly ?\Closure $clock = null,
+		private readonly ?\Closure $allowedOrigins = null,
+		private readonly ?\Closure $openApi = null,
 	) {
 	}
 
 	public function handle(ApiRequest $request): ApiResponse {
-		$path = trim($request->path, '/');
-		$read = null;
-		$routes = [];
-		if ($path === 'v1/status') {
-			$read = fn (): ApiResponse => $this->status();
-		} elseif ($path === 'v1/notes') {
-			$read = fn (): ApiResponse => $this->listNotes($request->query);
-		} elseif ($path === 'v1/lookup') {
-			$read = fn (): ApiResponse => $this->lookup($request->query);
-		} elseif ($path === 'v1/page-notes') {
-			$read = fn (): ApiResponse => $this->onePageNote($request->query);
-			$routes['PUT'] = fn (): ApiResponse => $this->putPageNote($request);
-			$routes['DELETE'] = fn (): ApiResponse => $this->deletePageNote($request);
-		} elseif ($path === 'v1/highlights') {
-			$read = fn (): ApiResponse => $this->listHighlights($request->query);
-			$routes['POST'] = fn (): ApiResponse => $this->createHighlight($request);
-		} elseif (preg_match('#^v1/highlights/([0-9a-fA-F-]{1,64})$#', $path, $matches) === 1) {
-			$uuid = $matches[1];
-			$read = fn (): ApiResponse => $this->oneHighlight($uuid);
-			$routes['PATCH'] = fn (): ApiResponse => $this->patchHighlight($uuid, $request);
-			$routes['DELETE'] = fn (): ApiResponse => $this->deleteHighlight($uuid, $request);
-		} elseif (preg_match('#^v1/notes/(\d{1,20})$#', $path, $matches) === 1) {
-			$entryId = $matches[1];
-			$read = fn (): ApiResponse => $this->oneNote($entryId);
-			$routes['PUT'] = fn (): ApiResponse => $this->putNote($entryId, $request);
-			$routes['DELETE'] = fn (): ApiResponse => $this->deleteNote($entryId, $request);
-		} else {
+		$origin = Cors::allowedOrigin(Cors::normalize($request->origin ?? ''), $this->allowedOrigins === null ? [] : ($this->allowedOrigins)());
+		$response = $this->dispatch($request, $origin);
+		return $origin === null ? $response : new ApiResponse($response->status, $response->body, $response->headers + Cors::responseHeaders($origin));
+	}
+
+	/**
+	 * The route table entry of a path.
+	 *
+	 * @return array{string,string}|null the template and the value of its path parameter ('' when it has none), null for an unknown path
+	 */
+	private static function match(string $path): ?array {
+		foreach (array_keys(self::ROUTES) as $template) {
+			$pattern = preg_replace_callback('/\{(\w+)\}/', static fn (array $m): string => '(' . self::PARAMETER_PATTERNS[$m[1]] . ')', $template);
+			if (preg_match('#^' . $pattern . '$#', $path, $matches) === 1) {
+				return [$template, $matches[1] ?? ''];
+			}
+		}
+		return null;
+	}
+
+	private function dispatch(ApiRequest $request, ?string $corsOrigin): ApiResponse {
+		$matched = self::match(trim($request->path, '/'));
+		if ($matched === null) {
 			return ApiResponse::error(404, 'not_found', 'Unknown API path.');
 		}
-		$routes = ['GET' => $read, 'HEAD' => $read] + $routes;
+		[$template, $parameter] = $matched;
+		$query = $request->query;
 
+		$handlers = [
+			'v1/status' => ['GET' => fn (): ApiResponse => $this->status()],
+			'v1/openapi.json' => ['GET' => fn (): ApiResponse => $this->openApiDocument()],
+			'v1/notes' => ['GET' => fn (): ApiResponse => $this->listNotes($query)],
+			'v1/notes/{entry_id}' => [
+				'GET' => fn (): ApiResponse => $this->oneNote($parameter),
+				'PUT' => fn (): ApiResponse => $this->putNote($parameter, $request),
+				'DELETE' => fn (): ApiResponse => $this->deleteNote($parameter, $request),
+			],
+			'v1/lookup' => ['GET' => fn (): ApiResponse => $this->lookup($query)],
+			'v1/page-notes' => [
+				'GET' => fn (): ApiResponse => $this->onePageNote($query),
+				'PUT' => fn (): ApiResponse => $this->putPageNote($request),
+				'DELETE' => fn (): ApiResponse => $this->deletePageNote($request),
+			],
+			'v1/highlights' => [
+				'GET' => fn (): ApiResponse => $this->listHighlights($query),
+				'POST' => fn (): ApiResponse => $this->createHighlight($request),
+			],
+			'v1/highlights/{uuid}' => [
+				'GET' => fn (): ApiResponse => $this->oneHighlight($parameter),
+				'PATCH' => fn (): ApiResponse => $this->patchHighlight($parameter, $request),
+				'DELETE' => fn (): ApiResponse => $this->deleteHighlight($parameter, $request),
+			],
+			'v1/annotations' => ['GET' => fn (): ApiResponse => $this->listAnnotations($query)],
+			'v1/annotated' => ['GET' => fn (): ApiResponse => $this->listAnnotated($query)],
+		];
+		$routes = ['GET' => $handlers[$template]['GET'], 'HEAD' => $handlers[$template]['GET']] + $handlers[$template];
+
+		if ($request->method === 'OPTIONS' && $corsOrigin !== null) {
+			return new ApiResponse(204, [], ['Cache-Control' => 'no-store']
+				+ Cors::preflightHeaders($corsOrigin, array_merge(array_keys($routes), ['OPTIONS'])));
+		}
 		if (!isset($routes[$request->method])) {
 			$allow = implode(', ', array_keys($routes));
 			return ApiResponse::error(405, 'method_not_allowed', 'Use one of: ' . $allow . '.', ['Allow' => $allow]);
 		}
 		$route = $routes[$request->method];
 
-		if ($this->authenticate($request->authorization) === null) {
+		if (!in_array($template, self::PUBLIC_ROUTES, true) && $this->authenticate($request->authorization) === null) {
 			\Minz_User::change();
 			\FreshRSS_Context::clearUserConf();
 			return ApiResponse::error(401, 'unauthorized',
@@ -510,6 +564,205 @@ final class Api {
 
 	public static function iso(int $timestamp): string {
 		return gmdate(DATE_ATOM, $timestamp);
+	}
+
+	private function openApiDocument(): ApiResponse {
+		if ($this->openApi === null) {
+			return ApiResponse::error(404, 'not_found', 'No API description is available.');
+		}
+		return ApiResponse::ok(($this->openApi)());
+	}
+
+	/**
+	 * The user's notes and highlights as W3C Web Annotation JSON-LD (live ones only: the model has no tombstones).
+	 * Either every annotation changed since a time, paged like `v1/notes`, or those of one article (`entry_id`) or page (`url`).
+	 *
+	 * @param array<string,string> $query
+	 */
+	private function listAnnotations(array $query): ApiResponse {
+		if (($query['format'] ?? 'w3c') !== 'w3c') {
+			throw new InvalidParameterException('"format" must be "w3c".');
+		}
+		if (isset($query['entry_id']) && isset($query['url'])) {
+			throw new InvalidParameterException('Give "entry_id" or "url", not both.');
+		}
+		$serverTime = $this->now();
+		$continuation = null;
+		if (isset($query['entry_id']) || isset($query['url'])) {
+			$annotations = $this->annotationsOfTarget($query);
+		} else {
+			[$annotations, $continuation] = $this->annotationsPage($query);
+		}
+		$collection = WebAnnotation::collection($annotations);
+		if ($continuation !== null) {
+			unset($collection['total']);	// the page, not the collection
+		}
+		return ApiResponse::ok($collection + ['continuation' => $continuation, 'server_time' => $serverTime])
+			->withHeader('Content-Type', 'application/ld+json; profile="' . WebAnnotation::CONTEXT . '"; charset=UTF-8');
+	}
+
+	/**
+	 * @param array<string,string> $query
+	 * @return list<array<string,mixed>>
+	 */
+	private function annotationsOfTarget(array $query): array {
+		$notes = $this->service();
+		if (isset($query['entry_id'])) {
+			if (preg_match('/^[1-9]\d{0,19}$/', $query['entry_id']) !== 1) {
+				throw new InvalidParameterException('"entry_id" must be an article id.');
+			}
+			$note = $notes->get($query['entry_id']);
+			$highlights = $this->highlights()->forEntry($query['entry_id']);
+			$noteList = $note === null ? [] : [$note];
+		} else {
+			$normalized = self::pageUrl($query);
+			$noteList = array_map(static fn (UrlMatch $match): ?Note => $match->note, (new UrlLookup($notes))->find($normalized)['matches']);
+			$pageNote = $notes->getPageNote($normalized);
+			$noteList = array_values(array_filter([...$noteList, $pageNote]));
+			$highlights = $this->highlights()->forUrl($query['url'] ?? '');
+		}
+		return [
+			...array_map(WebAnnotation::fromNote(...), $noteList),
+			...array_map(WebAnnotation::fromHighlight(...), $highlights),
+		];
+	}
+
+	/**
+	 * One page of annotations changed since a time, notes and highlights merged in `(updated_at, notes first, id)` order.
+	 *
+	 * @param array<string,string> $query
+	 * @return array{list<array<string,mixed>>,?string} the annotations and the continuation
+	 */
+	private function annotationsPage(array $query): array {
+		$limit = self::intParameter($query, 'limit', 1, self::MAX_LIMIT) ?? self::DEFAULT_LIMIT;
+		$since = self::intParameter($query, 'since', 0, PHP_INT_MAX) ?? 0;
+		$cursor = [$since, 0, $since, 0];	// last consumed (updated_at, id) of the notes, then of the highlights
+		if (isset($query['continuation'])) {
+			$decoded = base64_decode(strtr($query['continuation'], '-_', '+/'), true);
+			if ($decoded === false || preg_match('/^(\d{1,18}):(\d{1,18}):(\d{1,18}):(\d{1,18})$/', $decoded, $matches) !== 1) {
+				throw new InvalidParameterException('"continuation" must be a value returned by a previous request.');
+			}
+			$cursor = [(int)$matches[1], (int)$matches[2], (int)$matches[3], (int)$matches[4]];
+		}
+		$items = [];
+		foreach ($this->service()->changedSince($cursor[0], $limit + 1, $cursor[1], false) as $note) {
+			$items[] = [$note->updatedAt, 0, $note->id, $note];
+		}
+		foreach ($this->highlights()->changedSince($cursor[2], $limit + 1, $cursor[3], false) as $highlight) {
+			$items[] = [$highlight->updatedAt, 1, $highlight->id, $highlight];
+		}
+		usort($items, static fn (array $a, array $b): int => [$a[0], $a[1], $a[2]] <=> [$b[0], $b[1], $b[2]]);
+		$more = count($items) > $limit;
+		$annotations = [];
+		foreach (array_slice($items, 0, $limit) as [$updatedAt, $kind, $id, $item]) {
+			$annotations[] = $item instanceof Note ? WebAnnotation::fromNote($item) : WebAnnotation::fromHighlight($item);
+			$cursor = $kind === 0 ? [$updatedAt, $id, $cursor[2], $cursor[3]] : [$cursor[0], $cursor[1], $updatedAt, $id];
+		}
+		$continuation = $more ? rtrim(strtr(base64_encode(implode(':', $cursor)), '+/', '-_'), '=') : null;
+		return [$annotations, $continuation];
+	}
+
+	/**
+	 * Every article and page the user annotated (live annotations only), most recently annotated first.
+	 *
+	 * @param array<string,string> $query
+	 */
+	private function listAnnotated(array $query): ApiResponse {
+		$serverTime = $this->now();
+		$limit = self::intParameter($query, 'limit', 1, self::MAX_LIMIT) ?? self::DEFAULT_LIMIT;
+		$since = self::intParameter($query, 'since', 0, PHP_INT_MAX);
+		$kind = match ($query['kind'] ?? null) {
+			null => null,
+			'article' => 'article',
+			'page' => 'page',
+			default => throw new InvalidParameterException('"kind" must be "article" or "page".'),
+		};
+		$feedId = self::intParameter($query, 'feed_id', 1, PHP_INT_MAX);
+		$after = null;
+		$first = !isset($query['continuation']);
+		if (!$first) {
+			[$since, $after, $kind, $feedId] = self::decodeAnnotatedContinuation($query['continuation']);
+		}
+
+		$service = $this->service();
+		$targets = new AnnotatedTargets($service->pdo());
+		$found = $targets->page($since ?? 0, $limit + 1, $after, $kind, $feedId);
+		$continuation = null;
+		if (count($found) > $limit) {
+			$found = array_slice($found, 0, $limit);
+			$last = $found[$limit - 1];
+			$continuation = self::encodeAnnotatedContinuation($since ?? 0, $last, $kind, $feedId);
+		}
+		$existing = array_flip($service->existingEntryIds(array_values(array_filter(
+			array_map(static fn (AnnotatedTarget $target): ?string => $target->entryId, $found),
+			static fn (?string $id): bool => $id !== null,
+		))));
+		$body = ['targets' => array_map(
+			static fn (AnnotatedTarget $target): array => self::targetJson($target, isset($existing[$target->entryId ?? ''])), $found,
+		)];
+		if ($since !== null && $first) {
+			$body['removed'] = array_map(static fn (array $gone): array => [
+				'kind' => $gone['entry_id'] === null ? 'page' : 'article',
+				'entry_id' => $gone['entry_id'],
+				'greader_item_id' => $gone['entry_id'] === null ? null : self::greaderItemId($gone['entry_id']),
+				'url' => $gone['url'],
+				'normalized_url' => $gone['normalized_url'],
+			], $targets->removedSince($since, $kind, $feedId));
+		}
+		return ApiResponse::ok($body + ['continuation' => $continuation, 'server_time' => $serverTime]);
+	}
+
+	/** @return array<string,mixed> */
+	private static function targetJson(AnnotatedTarget $target, bool $articleExists): array {
+		$note = $target->note;
+		return [
+			'kind' => $target->isPage() ? 'page' : 'article',
+			'entry_id' => $target->entryId,
+			'greader_item_id' => $target->entryId === null ? null : self::greaderItemId($target->entryId),
+			'url' => $target->url,
+			'normalized_url' => $target->normalizedUrl === '' ? null : $target->normalizedUrl,
+			'title' => $target->title === '' ? null : $target->title,
+			'article' => $target->isPage() ? null : [
+				'guid' => $target->guid,
+				'url' => $target->url,
+				'title' => $target->title,
+				'author' => $target->author,
+				'published_at' => $target->entryDate,
+				'published_at_iso' => self::iso($target->entryDate),
+				'feed' => ['id' => $target->feedId, 'name' => $target->feedName, 'url' => $target->feedUrl],
+				'exists' => $articleExists,
+			],
+			'note' => $note === null ? null : self::noteJson($note, $articleExists),
+			'highlight_count' => $target->highlightCount,
+			'highlight_colors' => $target->colors,
+			'first_annotated_at' => $target->firstAt,
+			'first_annotated_at_iso' => self::iso($target->firstAt),
+			'last_annotated_at' => $target->lastAt,
+			'last_annotated_at_iso' => self::iso($target->lastAt),
+		];
+	}
+
+	private static function encodeAnnotatedContinuation(int $since, AnnotatedTarget $last, ?string $kind, ?int $feedId): string {
+		return rtrim(strtr(base64_encode(implode(':', [
+			$since, $last->lastAt, $last->entryId ?? '0', $last->pageHash, $kind === null ? '-' : $kind[0], $feedId ?? 0,
+		])), '+/', '-_'), '=');
+	}
+
+	/**
+	 * @return array{?int,array{int,int,string},'article'|'page'|null,?int} since, position of the last target, kind, feed id
+	 * @throws InvalidParameterException
+	 */
+	private static function decodeAnnotatedContinuation(string $continuation): array {
+		$decoded = base64_decode(strtr($continuation, '-_', '+/'), true);
+		if ($decoded === false || preg_match('/^(\d{1,18}):(\d{1,18}):(\d{1,20}):([0-9a-f]{0,40}):([-ap]):(\d{1,18})$/', $decoded, $m) !== 1) {
+			throw new InvalidParameterException('"continuation" must be a value returned by a previous request.');
+		}
+		$kind = match ($m[5]) {
+			'a' => 'article',
+			'p' => 'page',
+			default => null,
+		};
+		return [(int)$m[1], [(int)$m[2], (int)$m[3], $m[4]], $kind, (int)$m[6] === 0 ? null : (int)$m[6]];
 	}
 
 	/** @param array<string,string> $query */

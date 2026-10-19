@@ -1,0 +1,907 @@
+openapi: 3.1.0
+info:
+  title: ArticleNotes API
+  version: 1.1.0
+  summary: Personal notes and highlights on FreshRSS articles and web pages.
+  description: |
+    The `v1` API of the FreshRSS ArticleNotes extension. Every path lives below
+    `<FreshRSS base URL>/api/misc.php/ArticleNotes/`. A user only ever reads or writes their own annotations.
+
+    **Authentication.** HTTP Basic with the user name and the FreshRSS *API password* (Configuration → Profile → "API
+    password", never the web login password), or a Google Reader `GoogleLogin auth=<user>/<token>` token from FreshRSS's
+    ClientLogin. The API password also grants Google Reader and Fever API access to the account: use HTTPS outside
+    localhost. Only `GET v1/openapi.json` needs no credentials.
+
+    **Concurrency.** Single notes and highlights carry an `ETag` response header. Send it back as `If-Match` on `PUT`,
+    `PATCH` and `DELETE`; a changed object answers `412 precondition_failed`, and the client refetches.
+
+    **Paging and sync.** List endpoints return a `continuation` (null on the last page) and the `server_time` to use as the
+    next `since`. New keys may appear in objects in later versions; ignore what you do not know.
+
+    **CORS.** Browser pages are only allowed when an administrator lists their origin; see the `Origin` handling in the
+    README ("Building a client"). Allowed origins get `Access-Control-*` headers and `OPTIONS` preflights answer `204`.
+  license:
+    name: AGPL-3.0-or-later
+    identifier: AGPL-3.0-or-later
+servers:
+  - url: https://freshrss.example.net/api/misc.php/ArticleNotes
+    description: Your FreshRSS instance (the served description names its actual URL).
+security:
+  - basicAuth: []
+  - googleLogin: []
+tags:
+  - name: status
+  - name: notes
+  - name: lookup
+  - name: page notes
+  - name: highlights
+  - name: annotations
+  - name: description
+paths:
+  /v1/status:
+    get:
+      tags: [status]
+      operationId: getStatus
+      summary: Check the credentials and get the extension version.
+      responses:
+        '200':
+          description: The authenticated user and the API version.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Status'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+  /v1/openapi.json:
+    get:
+      tags: [description]
+      operationId: getOpenApi
+      summary: This description, as JSON.
+      security: []
+      responses:
+        '200':
+          description: The OpenAPI 3.1 document, naming this instance in `servers`.
+          content:
+            application/json:
+              schema:
+                type: object
+  /v1/notes:
+    get:
+      tags: [notes]
+      operationId: listNotes
+      summary: List article and page notes, oldest change first (sync).
+      description: Ordered by `updated_at`, then `id`. With `since`, deleted notes (tombstones) are included unless `include_deleted=0`.
+      parameters:
+        - $ref: '#/components/parameters/Limit'
+        - $ref: '#/components/parameters/Since'
+        - name: include_deleted
+          in: query
+          description: '`1` to include tombstones, `0` to leave them out. Default: `1` when `since` is given, else `0`.'
+          schema: {type: integer, enum: [0, 1]}
+        - $ref: '#/components/parameters/Continuation'
+      responses:
+        '200':
+          description: A page of notes.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [notes, continuation, server_time]
+                properties:
+                  notes:
+                    type: array
+                    items: {$ref: '#/components/schemas/Note'}
+                  continuation: {$ref: '#/components/schemas/Continuation'}
+                  server_time: {$ref: '#/components/schemas/ServerTime'}
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+  /v1/notes/{entry_id}:
+    parameters:
+      - $ref: '#/components/parameters/EntryId'
+    get:
+      tags: [notes]
+      operationId: getNote
+      summary: The live note of an article.
+      responses:
+        '200':
+          $ref: '#/components/responses/NoteResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    put:
+      tags: [notes]
+      operationId: putNote
+      summary: Create or replace the note of an article.
+      description: Empty text (after trimming) deletes the note and answers `204`. Send `If-Match` to avoid overwriting a newer version; `If-Match` on an article without note fails with `412`.
+      parameters:
+        - $ref: '#/components/parameters/IfMatch'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [note]
+              properties:
+                note: {$ref: '#/components/schemas/NoteText'}
+      responses:
+        '200':
+          $ref: '#/components/responses/NoteResponse'
+        '201':
+          $ref: '#/components/responses/NoteCreated'
+        '204':
+          $ref: '#/components/responses/NoContent'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '412':
+          $ref: '#/components/responses/PreconditionFailed'
+        '413':
+          $ref: '#/components/responses/PayloadTooLarge'
+        '415':
+          $ref: '#/components/responses/UnsupportedMediaType'
+        '422':
+          $ref: '#/components/responses/Unprocessable'
+    delete:
+      tags: [notes]
+      operationId: deleteNote
+      summary: Delete the note of an article (keeps a tombstone).
+      parameters:
+        - $ref: '#/components/parameters/IfMatch'
+      responses:
+        '204':
+          $ref: '#/components/responses/NoContent'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '412':
+          $ref: '#/components/responses/PreconditionFailed'
+  /v1/lookup:
+    get:
+      tags: [lookup]
+      operationId: lookup
+      summary: What does the user have on this web page?
+      description: Finds the FreshRSS articles behind a URL (matching the normalized URL) with their notes and highlights, plus the page note and page highlights of the URL itself.
+      parameters:
+        - $ref: '#/components/parameters/Url'
+      responses:
+        '200':
+          description: The lookup result.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Lookup'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+  /v1/page-notes:
+    get:
+      tags: [page notes]
+      operationId: getPageNote
+      summary: The note of a web page that is no FreshRSS article.
+      parameters:
+        - $ref: '#/components/parameters/Url'
+      responses:
+        '200':
+          $ref: '#/components/responses/NoteResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    put:
+      tags: [page notes]
+      operationId: putPageNote
+      summary: Create or replace a page note.
+      description: Empty text deletes it (`204`). A URL that is a FreshRSS article answers `409 url_is_article`; use `PUT v1/notes/{entry_id}`.
+      parameters:
+        - $ref: '#/components/parameters/Url'
+        - $ref: '#/components/parameters/IfMatch'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [note]
+              properties:
+                note: {$ref: '#/components/schemas/NoteText'}
+                title:
+                  type: string
+                  maxLength: 500
+                  description: Page title snapshot.
+      responses:
+        '200':
+          $ref: '#/components/responses/NoteResponse'
+        '201':
+          $ref: '#/components/responses/NoteCreated'
+        '204':
+          $ref: '#/components/responses/NoContent'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '412':
+          $ref: '#/components/responses/PreconditionFailed'
+        '413':
+          $ref: '#/components/responses/PayloadTooLarge'
+        '415':
+          $ref: '#/components/responses/UnsupportedMediaType'
+        '422':
+          $ref: '#/components/responses/Unprocessable'
+    delete:
+      tags: [page notes]
+      operationId: deletePageNote
+      summary: Delete a page note.
+      parameters:
+        - $ref: '#/components/parameters/Url'
+        - $ref: '#/components/parameters/IfMatch'
+      responses:
+        '204':
+          $ref: '#/components/responses/NoContent'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '412':
+          $ref: '#/components/responses/PreconditionFailed'
+  /v1/highlights:
+    get:
+      tags: [highlights]
+      operationId: listHighlights
+      summary: List highlights, by target or changed since a time.
+      description: With `entry_id` or `url`, the live highlights of that article or page in document order. Otherwise a sync page ordered by `updated_at`, then `id`, with tombstones when `since` is given (as for `v1/notes`).
+      parameters:
+        - name: entry_id
+          in: query
+          description: Article id. Not together with `url`.
+          schema: {type: string, pattern: '^[1-9][0-9]{0,19}$'}
+        - name: url
+          in: query
+          description: Page URL (an article with that URL, else a page). Not together with `entry_id`.
+          schema: {type: string}
+        - $ref: '#/components/parameters/Limit'
+        - $ref: '#/components/parameters/Since'
+        - name: include_deleted
+          in: query
+          schema: {type: integer, enum: [0, 1]}
+        - $ref: '#/components/parameters/Continuation'
+      responses:
+        '200':
+          description: Highlights (`continuation` and `server_time` only in sync mode).
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [highlights]
+                properties:
+                  highlights:
+                    type: array
+                    items: {$ref: '#/components/schemas/Highlight'}
+                  continuation: {$ref: '#/components/schemas/Continuation'}
+                  server_time: {$ref: '#/components/schemas/ServerTime'}
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+    post:
+      tags: [highlights]
+      operationId: createHighlight
+      summary: Create a highlight (idempotent by uuid).
+      description: The same `uuid` on the same target returns the existing highlight with `200`; on another target, or of a deleted highlight, `409 uuid_conflict`. Give `entry_id` or `url`.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/HighlightInput'
+      responses:
+        '200':
+          $ref: '#/components/responses/HighlightResponse'
+        '201':
+          $ref: '#/components/responses/HighlightCreated'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '413':
+          $ref: '#/components/responses/PayloadTooLarge'
+        '415':
+          $ref: '#/components/responses/UnsupportedMediaType'
+        '422':
+          $ref: '#/components/responses/Unprocessable'
+  /v1/highlights/{uuid}:
+    parameters:
+      - $ref: '#/components/parameters/Uuid'
+    get:
+      tags: [highlights]
+      operationId: getHighlight
+      summary: One live highlight.
+      responses:
+        '200':
+          $ref: '#/components/responses/HighlightResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    patch:
+      tags: [highlights]
+      operationId: updateHighlight
+      summary: Change the note and/or color of a highlight.
+      description: 'The selector is immutable (`400 selector_immutable`): delete the highlight and create a new one.'
+      parameters:
+        - $ref: '#/components/parameters/IfMatch'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              minProperties: 1
+              properties:
+                note:
+                  type: string
+                  maxLength: 20000
+                  description: Empty string clears the note.
+                color: {$ref: '#/components/schemas/Color'}
+      responses:
+        '200':
+          $ref: '#/components/responses/HighlightResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '412':
+          $ref: '#/components/responses/PreconditionFailed'
+        '413':
+          $ref: '#/components/responses/PayloadTooLarge'
+        '415':
+          $ref: '#/components/responses/UnsupportedMediaType'
+        '422':
+          $ref: '#/components/responses/Unprocessable'
+    delete:
+      tags: [highlights]
+      operationId: deleteHighlight
+      summary: Delete a highlight (keeps a tombstone).
+      parameters:
+        - $ref: '#/components/parameters/IfMatch'
+      responses:
+        '204':
+          $ref: '#/components/responses/NoContent'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '412':
+          $ref: '#/components/responses/PreconditionFailed'
+  /v1/annotations:
+    get:
+      tags: [annotations]
+      operationId: listAnnotations
+      summary: Notes and highlights as W3C Web Annotation JSON-LD.
+      description: |
+        Live notes and highlights (the W3C model has no tombstones) as an `AnnotationCollection`. With `entry_id` or `url`:
+        everything on that article or page. Otherwise the annotations changed at or after `since`, merged in
+        `updated_at` order and paged with `limit` / `continuation`. `continuation` and `server_time` are extra members.
+      parameters:
+        - name: format
+          in: query
+          description: Only `w3c` exists.
+          schema: {type: string, enum: [w3c], default: w3c}
+        - name: entry_id
+          in: query
+          schema: {type: string, pattern: '^[1-9][0-9]{0,19}$'}
+        - name: url
+          in: query
+          schema: {type: string}
+        - $ref: '#/components/parameters/Limit'
+        - $ref: '#/components/parameters/Since'
+        - $ref: '#/components/parameters/Continuation'
+      responses:
+        '200':
+          description: A W3C annotation collection.
+          content:
+            application/ld+json:
+              schema:
+                $ref: '#/components/schemas/AnnotationCollection'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+  /v1/annotated:
+    get:
+      tags: [annotations]
+      operationId: listAnnotated
+      summary: Every article and page the user annotated.
+      description: |
+        One entry per target with a live note or highlight, independent of the "Annotated" label, most recently annotated
+        first (`last_annotated_at` descending, then article id and page key descending). With `since`, only targets with an
+        annotation created, edited or deleted at or after it, and a `removed` list (first page only) of targets that no
+        longer have any live annotation.
+      parameters:
+        - $ref: '#/components/parameters/Limit'
+        - $ref: '#/components/parameters/Since'
+        - name: kind
+          in: query
+          schema: {type: string, enum: [article, page]}
+        - name: feed_id
+          in: query
+          description: Only articles of this FreshRSS feed.
+          schema: {type: integer, minimum: 1}
+        - $ref: '#/components/parameters/Continuation'
+      responses:
+        '200':
+          description: A page of annotated targets.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [targets, continuation, server_time]
+                properties:
+                  targets:
+                    type: array
+                    items: {$ref: '#/components/schemas/AnnotatedTarget'}
+                  removed:
+                    type: array
+                    description: Present when `since` is given (first page only).
+                    items: {$ref: '#/components/schemas/RemovedTarget'}
+                  continuation: {$ref: '#/components/schemas/Continuation'}
+                  server_time: {$ref: '#/components/schemas/ServerTime'}
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+components:
+  securitySchemes:
+    basicAuth:
+      type: http
+      scheme: basic
+      description: FreshRSS user name and API password (not the web password).
+    googleLogin:
+      type: apiKey
+      in: header
+      name: Authorization
+      description: '`GoogleLogin auth=<user>/<token>`, the token returned by FreshRSS''s Google Reader ClientLogin.'
+  parameters:
+    EntryId:
+      name: entry_id
+      in: path
+      required: true
+      description: FreshRSS article id.
+      schema: {type: string, pattern: '^[0-9]{1,20}$'}
+    Uuid:
+      name: uuid
+      in: path
+      required: true
+      schema: {type: string, pattern: '^[0-9a-fA-F-]{1,64}$'}
+    Url:
+      name: url
+      in: query
+      required: true
+      description: 'An http or https page URL (normalized by the server: fragment, tracking parameters, `www.` and scheme are ignored).'
+      schema: {type: string}
+    IfMatch:
+      name: If-Match
+      in: header
+      description: The `ETag` last seen. Mismatch answers `412`; `*` matches any existing object.
+      schema: {type: string}
+    Limit:
+      name: limit
+      in: query
+      description: Page size, 1 to 500 (default 100).
+      schema: {type: integer, minimum: 1, maximum: 500, default: 100}
+    Since:
+      name: since
+      in: query
+      description: Unix time; only what changed at or after it.
+      schema: {type: integer, minimum: 0}
+    Continuation:
+      name: continuation
+      in: query
+      description: The `continuation` of the previous page (it keeps that request's filters).
+      schema: {type: string}
+  headers:
+    ETag:
+      description: Version of the object, to send back as `If-Match`.
+      schema: {type: string}
+  responses:
+    NoContent:
+      description: Done; no body.
+    NoteResponse:
+      description: The note.
+      headers:
+        ETag: {$ref: '#/components/headers/ETag'}
+      content:
+        application/json:
+          schema: {$ref: '#/components/schemas/NoteEnvelope'}
+    NoteCreated:
+      description: The note was created.
+      headers:
+        ETag: {$ref: '#/components/headers/ETag'}
+      content:
+        application/json:
+          schema: {$ref: '#/components/schemas/NoteEnvelope'}
+    HighlightResponse:
+      description: The highlight.
+      headers:
+        ETag: {$ref: '#/components/headers/ETag'}
+      content:
+        application/json:
+          schema: {$ref: '#/components/schemas/HighlightEnvelope'}
+    HighlightCreated:
+      description: The highlight was created.
+      headers:
+        ETag: {$ref: '#/components/headers/ETag'}
+      content:
+        application/json:
+          schema: {$ref: '#/components/schemas/HighlightEnvelope'}
+    BadRequest:
+      description: "`invalid_parameter`, `invalid_json`, `invalid_body`, `invalid_field`, `invalid_uuid`, `invalid_target`, `invalid_url`, `selector_immutable`."
+      content:
+        application/json:
+          schema: {$ref: '#/components/schemas/Error'}
+    Unauthorized:
+      description: Missing or wrong credentials (`unauthorized`).
+      headers:
+        WWW-Authenticate:
+          schema: {type: string}
+      content:
+        application/json:
+          schema: {$ref: '#/components/schemas/Error'}
+    NotFound:
+      description: Unknown path, article, note or highlight (`not_found`).
+      content:
+        application/json:
+          schema: {$ref: '#/components/schemas/Error'}
+    Conflict:
+      description: "`url_is_article` or `uuid_conflict`."
+      content:
+        application/json:
+          schema: {$ref: '#/components/schemas/Error'}
+    PreconditionFailed:
+      description: "`precondition_failed`: the object changed since the `If-Match` version. Refetch it."
+      content:
+        application/json:
+          schema: {$ref: '#/components/schemas/Error'}
+    PayloadTooLarge:
+      description: "`payload_too_large`: bodies are limited to 65,536 bytes."
+      content:
+        application/json:
+          schema: {$ref: '#/components/schemas/Error'}
+    UnsupportedMediaType:
+      description: "`unsupported_media_type`: send `Content-Type: application/json`."
+      content:
+        application/json:
+          schema: {$ref: '#/components/schemas/Error'}
+    Unprocessable:
+      description: "`note_too_long`, `title_too_long`, `invalid_selector`, `invalid_source`, `invalid_color`, `too_many_highlights`."
+      content:
+        application/json:
+          schema: {$ref: '#/components/schemas/Error'}
+  schemas:
+    Error:
+      type: object
+      required: [error]
+      properties:
+        error:
+          type: object
+          required: [code, message]
+          properties:
+            code:
+              type: string
+              examples: [not_found]
+            message: {type: string}
+    Continuation:
+      type: [string, 'null']
+      description: Pass as `continuation` to get the next page; null on the last page.
+    ServerTime:
+      type: integer
+      description: Server Unix time when the page was read; use it as the next `since`.
+    NoteText:
+      type: string
+      maxLength: 20000
+      description: Plain text, stored as entered. Always escape it when you display it.
+    Color:
+      type: string
+      enum: [yellow, green, blue, pink, purple]
+      default: yellow
+    Status:
+      type: object
+      required: [extension, version, api_version, user, note_count]
+      properties:
+        extension: {type: string, examples: [ArticleNotes]}
+        version: {type: string, examples: [1.1.0]}
+        api_version: {type: integer, examples: [1]}
+        user: {type: string}
+        note_count:
+          type: integer
+          description: 'Live notes.'
+    Feed:
+      type: object
+      required: [id, name, url]
+      properties:
+        id: {type: integer}
+        name: {type: string}
+        url: {type: string}
+    ArticleSnapshot:
+      type: object
+      description: The article as it was when the annotation was last saved; it outlives the article.
+      required: [guid, url, title, author, published_at, published_at_iso, feed, exists]
+      properties:
+        guid: {type: string}
+        url: {type: string}
+        title: {type: string}
+        author: {type: string}
+        published_at: {type: integer}
+        published_at_iso: {type: string, format: date-time}
+        feed: {$ref: '#/components/schemas/Feed'}
+        exists:
+          type: boolean
+          description: 'Whether FreshRSS still has the article.'
+    Note:
+      type: object
+      required: [id, entry_id, kind, greader_item_id, url, normalized_url, note, created_at, updated_at, deleted_at, label_applied, title, article]
+      properties:
+        id: {type: integer}
+        entry_id:
+          type: [string
+          'null']
+          description: 'Null on a page note.'
+        kind: {type: string, enum: [article, page]}
+        greader_item_id: {type: [string, 'null']}
+        url: {type: string}
+        normalized_url: {type: [string, 'null']}
+        note:
+          type: [string
+          'null']
+          description: 'Null on a deleted note.'
+        created_at: {type: integer}
+        created_at_iso: {type: string, format: date-time}
+        updated_at: {type: integer}
+        updated_at_iso: {type: string, format: date-time}
+        deleted_at: {type: [integer, 'null']}
+        deleted_at_iso: {type: [string, 'null'], format: date-time}
+        label_applied: {type: boolean}
+        title: {type: [string, 'null']}
+        article:
+          oneOf:
+            - $ref: '#/components/schemas/ArticleSnapshot'
+            - type: 'null'
+    NoteEnvelope:
+      type: object
+      required: [note]
+      properties:
+        note: {$ref: '#/components/schemas/Note'}
+    Selector:
+      type: object
+      description: Modeled on the W3C Web Annotation selectors. The server validates and stores it; clients anchor it.
+      required: [quote]
+      properties:
+        quote:
+          type: object
+          required: [exact]
+          properties:
+            exact:
+              type: string
+              minLength: 1
+              maxLength: 2000
+              description: 'The selected text, whitespace collapsed.'
+            prefix: {type: string, maxLength: 64}
+            suffix: {type: string, maxLength: 64}
+        position:
+          type: object
+          required: [start, end]
+          description: Character offsets into the container's text content; only meaningful within the same `source`.
+          properties:
+            start: {type: integer, minimum: 0}
+            end: {type: integer, minimum: 0}
+    HighlightInput:
+      type: object
+      properties:
+        uuid:
+          type: string
+          format: uuid
+          description: 'A client-generated UUID v4; makes creation idempotent.'
+        entry_id:
+          type: string
+          pattern: '^[1-9][0-9]{0,19}$'
+          description: 'A FreshRSS article. Give this or `url`.'
+        url:
+          type: string
+          description: 'An article with that URL, else a page.'
+        title:
+          type: string
+          maxLength: 500
+          description: 'Page title snapshot.'
+        source:
+          type: string
+          enum: [freshrss, page]
+          description: '`freshrss`: selected in FreshRSS''s rendering of the article; `page`: on the original web page.'
+        selector: {$ref: '#/components/schemas/Selector'}
+        color: {$ref: '#/components/schemas/Color'}
+        note: {$ref: '#/components/schemas/NoteText'}
+      required: [source, selector]
+    Highlight:
+      type: object
+      required: [id, uuid, kind, entry_id, greader_item_id, url, normalized_url, title, source, selector, color, note, created_at, updated_at, deleted_at, label_applied, article]
+      properties:
+        id: {type: integer}
+        uuid: {type: string, format: uuid}
+        kind: {type: string, enum: [highlight]}
+        entry_id: {type: [string, 'null']}
+        greader_item_id: {type: [string, 'null']}
+        url: {type: string}
+        normalized_url: {type: string}
+        title: {type: [string, 'null']}
+        source: {type: string, enum: [freshrss, page]}
+        selector: {$ref: '#/components/schemas/Selector'}
+        color: {$ref: '#/components/schemas/Color'}
+        note: {type: [string, 'null']}
+        created_at: {type: integer}
+        created_at_iso: {type: string, format: date-time}
+        updated_at: {type: integer}
+        updated_at_iso: {type: string, format: date-time}
+        deleted_at: {type: [integer, 'null']}
+        deleted_at_iso: {type: [string, 'null'], format: date-time}
+        label_applied: {type: boolean}
+        article:
+          oneOf:
+            - $ref: '#/components/schemas/ArticleSnapshot'
+            - type: 'null'
+    HighlightEnvelope:
+      type: object
+      required: [highlight]
+      properties:
+        highlight: {$ref: '#/components/schemas/Highlight'}
+    Lookup:
+      type: object
+      required: [url, normalized_url, page_note, page_highlights, index_complete, matches]
+      properties:
+        url: {type: string}
+        normalized_url: {type: string}
+        index_complete:
+          type: boolean
+          description: 'False while articles remain to be indexed; a later lookup may find more.'
+        page_note:
+          oneOf:
+            - $ref: '#/components/schemas/Note'
+            - type: 'null'
+        page_highlights:
+          type: array
+          items: {$ref: '#/components/schemas/Highlight'}
+        matches:
+          type: array
+          maxItems: 20
+          items:
+            type: object
+            required: [entry_id, greader_item_id, title, url, published_at, feed, note, highlights]
+            properties:
+              entry_id: {type: string}
+              greader_item_id: {type: string}
+              title: {type: string}
+              url: {type: string}
+              published_at: {type: integer}
+              feed: {$ref: '#/components/schemas/Feed'}
+              note:
+                oneOf:
+                  - $ref: '#/components/schemas/Note'
+                  - type: 'null'
+              highlights:
+                type: array
+                items: {$ref: '#/components/schemas/Highlight'}
+    AnnotatedTarget:
+      type: object
+      required: [kind, entry_id, greader_item_id, url, normalized_url, title, article, note, highlight_count, highlight_colors, first_annotated_at, last_annotated_at]
+      properties:
+        kind: {type: string, enum: [article, page]}
+        entry_id: {type: [string, 'null']}
+        greader_item_id: {type: [string, 'null']}
+        url: {type: string}
+        normalized_url: {type: [string, 'null']}
+        title: {type: [string, 'null']}
+        article:
+          oneOf:
+            - $ref: '#/components/schemas/ArticleSnapshot'
+            - type: 'null'
+        note:
+          description: The article note or page note, or null.
+          oneOf:
+            - $ref: '#/components/schemas/Note'
+            - type: 'null'
+        highlight_count: {type: integer, minimum: 0}
+        highlight_colors:
+          type: array
+          items: {$ref: '#/components/schemas/Color'}
+        first_annotated_at: {type: integer}
+        first_annotated_at_iso: {type: string, format: date-time}
+        last_annotated_at:
+          type: integer
+          description: 'Latest `updated_at` of the target''s live note and highlights.'
+        last_annotated_at_iso: {type: string, format: date-time}
+    RemovedTarget:
+      type: object
+      required: [kind, entry_id, greader_item_id, url, normalized_url]
+      properties:
+        kind: {type: string, enum: [article, page]}
+        entry_id: {type: [string, 'null']}
+        greader_item_id: {type: [string, 'null']}
+        url: {type: string}
+        normalized_url: {type: string}
+    AnnotationCollection:
+      type: object
+      description: A W3C Web Annotation `AnnotationCollection` (https://www.w3.org/TR/annotation-model/).
+      required: ['@context', type, first]
+      properties:
+        '@context': {type: string}
+        type: {type: string, enum: [AnnotationCollection]}
+        label: {type: string}
+        total:
+          type: integer
+          description: 'Omitted when the result is paged.'
+        first:
+          type: object
+          required: [type, items]
+          properties:
+            type: {type: string, enum: [AnnotationPage]}
+            items:
+              type: array
+              items: {$ref: '#/components/schemas/WebAnnotation'}
+        continuation: {$ref: '#/components/schemas/Continuation'}
+        server_time: {$ref: '#/components/schemas/ServerTime'}
+    WebAnnotation:
+      type: object
+      required: [id, type, motivation, created, modified, target]
+      properties:
+        id:
+          type: string
+          description: '`urn:articlenotes:note:<id>` for notes, `urn:uuid:<uuid>` for highlights.'
+        type: {type: string, enum: [Annotation]}
+        motivation:
+          oneOf:
+            - type: string
+            - type: array
+              items: {type: string}
+        created: {type: string, format: date-time}
+        modified: {type: string, format: date-time}
+        body:
+          type: object
+          properties:
+            type: {type: string, enum: [TextualBody]}
+            value: {type: string}
+            format: {type: string}
+        target:
+          type: object
+          required: [source]
+          properties:
+            source: {type: string}
+            selector:
+              type: array
+              items:
+                type: object
+                required: [type]
+                properties:
+                  type: {type: string, enum: [TextQuoteSelector, TextPositionSelector]}
+                  exact: {type: string}
+                  prefix: {type: string}
+                  suffix: {type: string}
+                  start: {type: integer}
+                  end: {type: integer}

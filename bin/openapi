@@ -1,0 +1,7 @@
+#!/usr/bin/env bash
+# Regenerates xExtension-ArticleNotes/openapi.json (served at v1/openapi.json) from docs/openapi.yaml, the source of truth.
+# A PHPUnit test fails when the two drift apart.
+set -euo pipefail
+source "$(dirname "${BASH_SOURCE[0]}")/lib-common.sh"
+ensure_vendor
+dev php bin/openapi.php /workspace
