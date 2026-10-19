@@ -7,12 +7,16 @@ namespace ArticleNotes;
 /** Reads and writes one user's notes table. Timestamps are Unix seconds. */
 final class NoteDAO {
 	private const COLUMNS = 'id, entry_id, note, created_at, updated_at, deleted_at, entry_guid, entry_link, entry_title, '
-		. 'entry_author, entry_date, feed_id, feed_name, feed_url, label_applied, label_id';
+		. 'entry_author, entry_date, feed_id, feed_name, feed_url, label_applied, label_id, normalized_url';
 
 	private readonly string $table;
 
 	public function __construct(private readonly \Minz_Pdo $pdo) {
 		$this->table = $pdo->prefix() . 'articlenotes_note';
+	}
+
+	public function pdo(): \Minz_Pdo {
+		return $this->pdo;
 	}
 
 	public function find(string $entryId, bool $includeDeleted = false): ?Note {
@@ -37,20 +41,22 @@ final class NoteDAO {
 			':feed_id' => $note->feedId,
 			':feed_name' => $note->feedName,
 			':feed_url' => $note->feedUrl,
+			':normalized_url' => $note->normalizedUrl,
+			':url_hash' => $note->normalizedUrl === '' ? '' : UrlNormalizer::hash($note->normalizedUrl),
 			':entry_id' => $note->entryId,
 		];
 		$insertValues = $values + [':created_at' => $note->updatedAt];
 		if ($this->find($note->entryId, true) !== null) {
 			$this->execute('UPDATE ' . $this->table . ' SET note=:note, updated_at=:updated_at, deleted_at=NULL, '
 				. 'entry_guid=:entry_guid, entry_link=:entry_link, entry_title=:entry_title, entry_author=:entry_author, '
-				. 'entry_date=:entry_date, feed_id=:feed_id, feed_name=:feed_name, feed_url=:feed_url '
-				. 'WHERE entry_id=:entry_id', $values);
+				. 'entry_date=:entry_date, feed_id=:feed_id, feed_name=:feed_name, feed_url=:feed_url, '
+				. 'normalized_url=:normalized_url, url_hash=:url_hash WHERE entry_id=:entry_id', $values);
 			return;
 		}
 		$this->execute('INSERT INTO ' . $this->table . ' (entry_id, note, created_at, updated_at, deleted_at, entry_guid, '
-			. 'entry_link, entry_title, entry_author, entry_date, feed_id, feed_name, feed_url, label_applied) '
+			. 'entry_link, entry_title, entry_author, entry_date, feed_id, feed_name, feed_url, label_applied, normalized_url, url_hash) '
 			. 'VALUES (:entry_id, :note, :created_at, :updated_at, NULL, :entry_guid, :entry_link, :entry_title, '
-			. ':entry_author, :entry_date, :feed_id, :feed_name, :feed_url, 0)', $insertValues);
+			. ':entry_author, :entry_date, :feed_id, :feed_name, :feed_url, 0, :normalized_url, :url_hash)', $insertValues);
 	}
 
 	/** @return bool whether a live note was tombstoned */
@@ -70,6 +76,19 @@ final class NoteDAO {
 		}
 		$this->execute('UPDATE ' . $this->table . ' SET label_applied=1, label_id=:label_id WHERE entry_id=:entry_id',
 			[':label_id' => $labelId, ':entry_id' => $entryId]);
+	}
+
+	/**
+	 * The live notes of articles whose normalized URL has the given hash, most recently published first.
+	 *
+	 * @return list<Note>
+	 */
+	public function findByUrlHash(string $urlHash, int $limit): array {
+		return $this->fetch(
+			'SELECT ' . self::COLUMNS . ' FROM ' . $this->table . ' WHERE url_hash=:url_hash AND deleted_at IS NULL'
+				. ' ORDER BY entry_date DESC, id DESC LIMIT ' . max(0, $limit),
+			[':url_hash' => $urlHash],
+		);
 	}
 
 	/**
@@ -136,6 +155,7 @@ final class NoteDAO {
 				(int)$row['entry_date'], (int)$row['feed_id'], (string)$row['feed_name'], (string)$row['feed_url'],
 				(int)$row['label_applied'] === 1,
 				$row['label_id'] === null ? null : (int)$row['label_id'],
+				(string)$row['normalized_url'],
 			);
 		}
 		return $notes;

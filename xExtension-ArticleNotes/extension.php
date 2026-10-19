@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 require_once __DIR__ . '/Api.php';
+require_once __DIR__ . '/ApiException.php';
 require_once __DIR__ . '/ApiRequest.php';
 require_once __DIR__ . '/ApiResponse.php';
 require_once __DIR__ . '/InvalidParameterException.php';
@@ -16,9 +17,15 @@ require_once __DIR__ . '/NoteException.php';
 require_once __DIR__ . '/NoteService.php';
 require_once __DIR__ . '/Settings.php';
 require_once __DIR__ . '/Storage.php';
+require_once __DIR__ . '/UrlIndex.php';
+require_once __DIR__ . '/UrlLookup.php';
+require_once __DIR__ . '/UrlMatch.php';
+require_once __DIR__ . '/UrlNormalizer.php';
 
 final class ArticleNotesExtension extends Minz_Extension {
 	public const MIN_FRESHRSS_VERSION = '1.27.0';
+	/** Articles indexed per user maintenance run. */
+	private const MAINTENANCE_INDEX_BATCH = 2000;
 	private const SCHEMA_VERSION_KEY = 'schema_version';
 
 	/** @var array<string,bool> per-request memo: user => migrated successfully */
@@ -45,7 +52,8 @@ final class ArticleNotesExtension extends Minz_Extension {
 	 * names to its cases.
 	 */
 	public function registerHooks(string $freshrssVersion): void {
-		$this->registerHook('freshrss_user_maintenance', [$this, 'ensureSchema']);
+		$this->registerHook('freshrss_user_maintenance', [$this, 'maintain']);
+		$this->registerHook('entry_before_update', [$this, 'entryBeforeUpdate']);
 		$this->registerHook('entry_before_display', [$this, 'appendNote']);
 		$this->registerHook('js_vars', [$this, 'jsVars']);
 		$this->registerHook('menu_configuration_entry', [$this, 'menuEntry']);
@@ -55,6 +63,36 @@ final class ArticleNotesExtension extends Minz_Extension {
 			Minz_Log::warning('ArticleNotes requires FreshRSS ' . self::MIN_FRESHRSS_VERSION . ' or newer (running '
 				. $freshrssVersion . '): the API endpoint is disabled.');
 		}
+	}
+
+	/**
+	 * User maintenance (after FreshRSS refreshed the feeds, and from `cli/actualize-user.php`): migrates the user's
+	 * schema, then keeps the URL index current. FreshRSS renumbers new articles when it commits them, so they cannot
+	 * be indexed from the `entry_before_add` hook: this indexes them once they are stored.
+	 */
+	public function maintain(): void {
+		if (!$this->ensureSchema()) {
+			return;
+		}
+		try {
+			$index = $this->noteService()->urlIndex();
+			$index->prune();
+			$index->backfill(self::MAINTENANCE_INDEX_BATCH);
+		} catch (\Throwable $exception) {
+			Minz_Log::error('ArticleNotes cannot update the URL index: ' . $exception->getMessage());
+		}
+	}
+
+	/** An updated article may have a new link: its index rows are dropped and rebuilt by the next {@see maintain()}. */
+	public function entryBeforeUpdate(FreshRSS_Entry $entry): FreshRSS_Entry {
+		try {
+			if ($this->ensureSchema()) {
+				$this->noteService()->urlIndex()->forgetByGuid($entry->feedId(), $entry->guid());
+			}
+		} catch (\Throwable $exception) {
+			Minz_Log::error('ArticleNotes cannot update the URL index of an article: ' . $exception->getMessage());
+		}
+		return $entry;
 	}
 
 	/** The entry of the Configuration menu that leads to the user's settings page. */
