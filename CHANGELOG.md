@@ -45,6 +45,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - The API is no longer read-only: `v1/notes/<entry_id>` accepts `PUT` and `DELETE` (other paths still answer `405` to writes).
 - Note objects gain `url` and `normalized_url`; a note's `updated_at` now always increases when it is saved.
 
+### Fixed
+
+- The extension's pages (settings) no longer print "Warning: Undefined property: Minz_View::$rss_title" above FreshRSS's
+  header: the controller now renders with FreshRSS's view (`FreshRSS_ActionController`). The test suite now fails on PHP
+  warnings, notices and deprecations: in every end-to-end response, in FreshRSS's log after the end-to-end run
+  (`bin/check-php-log`), and in PHPUnit.
+
 ## [1.0.0] - 2026-10-19
 
 First public release.

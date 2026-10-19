@@ -1,5 +1,5 @@
 import { readFileSync } from 'node:fs';
-import { expect, test, type Page } from '@playwright/test';
+import { expect, test, type Page } from '../support/test';
 import { ANCHORING_URL, coverageReport } from '../support/coverage';
 
 // Unit tests of the anchoring library (xExtension-ArticleNotes/static/anchoring.js, mounted at /extension) in a real

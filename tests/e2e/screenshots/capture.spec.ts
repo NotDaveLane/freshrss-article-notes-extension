@@ -1,4 +1,4 @@
-import { expect, test, type Locator } from '@playwright/test';
+import { expect, test, type Locator } from '../support/test';
 import { admin, signIn } from '../support/freshrss';
 
 const dir = process.env.SCREENSHOT_DIR ?? '/screenshots';

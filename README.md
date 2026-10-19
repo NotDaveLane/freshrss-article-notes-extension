@@ -506,6 +506,9 @@ Single runs: `bin/phpunit tests/Unit/MetadataTest.php`, `TEST_DB=postgres bin/ph
 `FRESHRSS_VERSION=1.27.1 bin/phpunit`, `bin/e2e specs/full-journey.spec.ts`, `bin/lint`. End-to-end tests use throwaway
 users subscribed to the local fixture feed, never the live feeds.
 
+The suite fails on PHP warnings, notices and deprecations: in any response an end-to-end test receives, in PHPUnit, and in
+FreshRSS's log after the end-to-end run when they come from the extension's files or pages (`bin/check-php-log`).
+
 `bin/screenshots` refreshes the pictures in `docs/screenshots/` from the dev instance (seeded Hacker News content).
 
 ### Releasing

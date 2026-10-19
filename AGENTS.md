@@ -6,11 +6,12 @@ Guidance for AI coding agents (and humans) working in this repository.
 
 - `xExtension-ArticleNotes/` – the installable FreshRSS extension (`metadata.json`, `extension.php`, `i18n/`).
   Everything else at the root is development tooling.
-- `Dockerfile`, `docker-compose.yml`, `docker/` – dev FreshRSS image (stock FreshRSS + curl + seeding scripts).
-- `bin/` – host-side wrappers (`ci`, `phpunit`, `e2e`, `lint`, `package`, `verify-release`, `screenshots`); `tests/` –
-  `Unit/`, `Integration/`, `Support/`, `bootstrap.php`, `e2e/` (Playwright: `specs/` run by `bin/e2e`, `release/` by
-  `bin/verify-release`, `screenshots/` by `bin/screenshots`); `composer.json`, `phpunit.xml.dist`, `phpcs.xml`,
-  `phpstan.neon` – tooling config.
+- `Dockerfile`, `docker-compose.yml`, `docker/` – dev FreshRSS image (stock FreshRSS + curl + seeding scripts + error-log
+  format with the request URI).
+- `bin/` – host-side wrappers (`ci`, `phpunit`, `e2e`, `lint`, `check-php-log`, `package`, `verify-release`,
+  `screenshots`); `tests/` – `Unit/`, `Integration/`, `Support/`, `bootstrap.php`, `e2e/` (Playwright: `specs/` run by
+  `bin/e2e`, `release/` by `bin/verify-release`, `screenshots/` by `bin/screenshots`); `composer.json`,
+  `phpunit.xml.dist`, `phpcs.xml`, `phpstan.neon` – tooling config.
 - `docs/screenshots/` – README pictures (`bin/screenshots`); `docs/community-listing.md` – draft entry for
   FreshRSS/Extensions.
 - `tests/fixtures/feeds/feed.xml` – static fixture feed (stable GUIDs) served at `http://fixtures/feed.xml`.
@@ -48,6 +49,7 @@ bin/ci                 # phpcs, PHPStan, ESLint, PHPUnit + coverage (coverage/in
                        # (anchoring.js coverage in coverage/js/index.html); SQLite only
 bin/ci --all-dbs       # same, plus the integration suite on MariaDB and PostgreSQL
 bin/ci --compat        # bin/ci --all-dbs on FreshRSS 1.27.1 and 1.30.1 (COMPAT_VERSIONS), throwaway stacks; no dev stack needed
+bin/check-php-log      # PHP diagnostics caused by ArticleNotes in FreshRSS's container log (--since <time>)
 bin/lint               # phpcs + PHPStan + ESLint (xExtension-ArticleNotes/static/) only
 bin/phpunit            # whole PHPUnit suite, no coverage
 bin/phpunit tests/Unit/MetadataTest.php           # one file
@@ -72,6 +74,13 @@ bin/package && bin/verify-release                 # build the zip, install it in
 - `static/anchoring.js` (shared highlight anchoring library, plain ES module, no build) is unit-tested in Chromium by
   `tests/e2e/specs/anchoring.spec.ts` (the `e2e` service mounts the extension read-only at `/extension`); ESLint's config
   is `tests/e2e/eslint.config.mjs`.
+- **PHP diagnostics fail the suite.** Specs import `test`/`expect` (and Playwright types) from `tests/e2e/support/test.ts`,
+  never `@playwright/test`: its automatic fixture fails a test when any response (page, fetch, `request` fixture) contains
+  a PHP warning, notice, deprecation or error. `bin/ci` then runs `bin/check-php-log`, which fails on PHP diagnostics in the
+  FreshRSS container log during the e2e run that come from `xExtension-ArticleNotes/` or from requests to `c=ArticleNotes`
+  / `api/misc.php/ArticleNotes` (the dev image tags error-log lines with the request URI, `docker/apache-error-log.conf`;
+  other diagnostics are listed as ignored; documented exceptions go in the script's `ALLOW_LIST`). PHPUnit fails on
+  warnings, notices and deprecations.
 - PHPStan is level 10 with no baseline; phpcs uses FreshRSS's own `phpcs.xml`. Fix findings, don't suppress them.
 - **Red/green TDD**: write the failing test first (`bin/phpunit <file>` / `bin/e2e <spec>`), see it fail for the
   right reason, make it pass, then run `bin/ci` (and `bin/ci --all-dbs` when touching storage code) before committing.
@@ -80,6 +89,8 @@ bin/package && bin/verify-release                 # build the zip, install it in
 
 ## FreshRSS extension conventions
 
+- Controllers extend `FreshRSS_ActionController` (never `Minz_ActionController`): FreshRSS's layout needs a
+  `FreshRSS_View` and prints warnings with a plain `Minz_View`.
 - System extension (`"type": "system"`), enabled via `extensions_enabled`; per-user settings on the
   extension's own controller page linked via the `MenuConfigurationEntry` hook. API via the `api_misc` hook (FreshRSS ≥ 1.27.0).
 - Supported: FreshRSS ≥ 1.27.0. Use only APIs that 1.27 has, or fall back: register hooks by name (`'api_misc'`, not

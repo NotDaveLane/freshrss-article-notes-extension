@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 # Full suite, run from the host (everything executes in containers):
 #   PHP_CodeSniffer -> PHPStan -> ESLint -> PHPUnit with coverage (coverage/index.html) -> Playwright (with the
-#   anchoring library's JavaScript coverage in coverage/js/index.html).
+#   anchoring library's JavaScript coverage in coverage/js/index.html) -> PHP diagnostics caused by ArticleNotes in
+#   FreshRSS's log during the end-to-end run (bin/check-php-log).
 #   bin/ci            SQLite only (fast)
 #   bin/ci --all-dbs  also run the integration suite against MariaDB and PostgreSQL
 #   bin/ci --compat   version and database matrix: `bin/ci --all-dbs` once per FreshRSS version in
@@ -20,7 +21,7 @@ for arg in "$@"; do
 		--all-dbs) all_dbs=1 ;;
 		--compat) compat=1 ;;
 		--no-lint) lint=0 ;;
-		-h|--help) sed -n '2,13p' "$0" | sed 's/^# \{0,1\}//'; exit 0 ;;
+		-h|--help) sed -n '2,14p' "$0" | sed 's/^# \{0,1\}//'; exit 0 ;;
 		*) echo "error: unknown option: $arg (see bin/ci --help)" >&2; exit 2 ;;
 	esac
 done
@@ -79,7 +80,9 @@ if [ "$all_dbs" = 1 ]; then
 	fi
 	docker compose --profile db-matrix rm -sf mariadb postgres >/dev/null 2>&1
 fi
+e2e_since="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
 step 'e2e (playwright)' bin/e2e
+step 'php diagnostics (freshrss log)' bin/check-php-log --since "$e2e_since"
 
 echo; echo '=== summary ==='
 failed=0

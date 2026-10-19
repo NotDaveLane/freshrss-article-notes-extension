@@ -1,5 +1,6 @@
-import { expect, test, type Locator, type Page } from '@playwright/test';
+import { expect, test, type Locator, type Page } from '../support/test';
 import { signIn, throwawayUser } from '../support/freshrss';
+import { phpDiagnostics } from '../support/test';
 
 /** Opens an article by title in the normal view and returns its element. */
 async function openArticle(page: Page, title: string): Promise<Locator> {
@@ -38,9 +39,29 @@ test('a non-admin user sees the settings with their defaults and the API URL', a
 	await expect(page.getByLabel('Label name')).toHaveValue('Annotated');
 	await expect(page.getByLabel('Your API endpoint')).toHaveValue(/\/api\/misc\.php\/ArticleNotes\/$/);
 	await expect(page.locator('main')).toContainText('not touch articles that are already labelled');
-	// The dev instance shows PHP warnings: the page must render without any (e.g. a missing FreshRSS_View property).
-	await expect(page.locator('body')).not.toContainText(/(Warning|Notice|Deprecated): /);
 });
+
+for (const viewport of [{ width: 390, height: 844 }, { width: 1440, height: 900 }]) {
+	test.describe(`${viewport.width}x${viewport.height}`, () => {
+		test.use({ viewport });
+
+		test('the settings page renders inside FreshRSS\'s layout without PHP diagnostics', async ({ page }) => {
+			// The dev instance displays PHP diagnostics, e.g. the layout's `$this->rss_title` warning when the
+			// controller renders a plain Minz_View instead of a FreshRSS_View.
+			const response = await page.goto('/i/?c=ArticleNotes&a=settings');
+			expect(response?.status()).toBe(200);
+			const html = (await response?.text()) ?? '';
+			expect(phpDiagnostics(html)).toEqual([]);
+			expect(html.trimStart()).toMatch(/^<!DOCTYPE html>/i);
+			await expect(page.locator('body')).not.toContainText(/(Warning|Notice|Deprecated|Fatal error):/);
+			await expect(page).toHaveTitle(/Article notes/);
+			await expect(page.locator('header.header')).toBeVisible();
+			await expect(page.locator('header.header button.signout, header.header a.signout').first()).toBeAttached();
+			await expect(page.locator('#aside_feed a[href*="c=ArticleNotes"]')).toBeAttached();
+			await expect(page.locator('main.post').getByRole('heading', { name: 'Article notes' })).toBeVisible();
+		});
+	});
+}
 
 test('invalid names are refused and valid settings are confirmed', async ({ page }) => {
 	await openSettings(page);
