@@ -145,6 +145,9 @@ for (const viewport of viewports) {
 			await expect(action.locator('svg.articlenotes-icon')).toHaveAttribute('aria-hidden', 'true');
 			await expect(action).toHaveAccessibleName('Note');
 			await expect(action).toHaveAttribute('data-has-note', 'false');
+			await expect(action).toHaveCSS('padding-left', '8px');
+			await expect(action.locator('.articlenotes-icon-sheet')).toBeVisible();
+			await expect(action.locator('.articlenotes-icon-filled')).toBeHidden();
 
 			const actionBox = await action.boundingBox();
 			const dateBox = await article.locator('ul.bottom li.date .item-element').boundingBox();
@@ -163,6 +166,8 @@ for (const viewport of viewports) {
 			await expect(action).toHaveAttribute('data-has-note', 'true');
 			await expect(action).toHaveAttribute('title', 'Edit your note on this article');
 			await expect(action).toHaveCSS('font-weight', '700');
+			await expect(action.locator('.articlenotes-icon-filled')).toBeVisible();
+			await expect(action.locator('.articlenotes-icon-sheet')).toBeHidden();
 			await page.reload();
 			const reloaded = await openArticle(page, 'SQLite as an application file format, revisited');
 			await expect(trigger(reloaded)).toHaveAttribute('data-has-note', 'true');
