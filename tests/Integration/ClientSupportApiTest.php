@@ -111,7 +111,7 @@ final class ClientSupportApiTest extends TestCase {
 
 	/** @param list<string> $origins */
 	private function api(array $origins = []): Api {
-		return new Api('ArticleNotes', '1.1.0',
+		return new Api('ArticleNotes', '1.1.1',
 			fn (): NoteService => $this->notes(Minz_User::name() ?? self::USER),
 			fn (): HighlightService => $this->highlights(Minz_User::name() ?? self::USER),
 			fn (): int => $this->now,

@@ -43,7 +43,7 @@ test('before: ArticleNotes 1.0.0 is installed, enabled, and holds a note', async
 	expect((await request.get(`${API}/annotated`, { headers: auth })).status()).toBe(404);	// not in 1.0.0
 });
 
-test('after: 1.1.0 migrated the user, kept the note, and serves the new API', async ({ page, request }) => {
+test('after: the release migrated the user, kept the note, and serves the new API', async ({ page, request }) => {
 	test.skip(phase !== 'after');
 	const version = setting('RELEASE_VERSION');
 
