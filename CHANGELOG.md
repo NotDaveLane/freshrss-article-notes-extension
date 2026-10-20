@@ -26,6 +26,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - On touch screens the Notes page's Filters toggle, "only with a note" checkbox row, export links and buttons are at
   least 44px high.
 
+### Fixed
+
+- The Notes page summary reads "1 annotated article or page" for a single result, and the summary and the export links
+  are no longer shown when nothing is listed (they only downloaded an empty file).
+
 ## [1.1.1] - 2026-10-19
 
 ### Fixed

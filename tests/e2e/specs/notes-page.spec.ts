@@ -206,6 +206,26 @@ for (const viewport of viewports) {
 			await expect(page.getByText('Nothing matches these filters.')).toBeVisible();
 		});
 
+		test('counts the listed groups in a grammatical summary and offers exports only when something is listed', async ({ page }) => {
+			const summary = page.locator('.articlenotes-notes-summary');
+			const exports = page.getByRole('link', { name: /^(Markdown|JSON \(W3C Web Annotation\))$/ });
+			await search(page, `q=${MARK}`);
+			await expect(summary).toContainText('31 annotated articles and pages');
+			await expect(exports).toHaveCount(2);
+
+			await search(page, 'q=note-token-alpha');
+			await expect(summary).toContainText('1 annotated article or page');
+			await expect(summary).not.toContainText('articles');
+			await expect(exports).toHaveCount(2);
+
+			await search(page, `q=no-such-text-${MARK}-anywhere`);
+			await expect(page.getByText('Nothing matches these filters.')).toBeVisible();
+			await expect(summary).toHaveCount(0);
+			await expect(page.getByText(/annotated/)).toHaveCount(0);
+			await expect(exports).toHaveCount(0);
+			await expect(page.getByText('Export:')).toHaveCount(0);
+		});
+
 		test('treats % and _ in the search as plain characters', async ({ page }) => {
 			await search(page, '');
 			await applyFilters(page, { q: '100% of the sure_thing' });

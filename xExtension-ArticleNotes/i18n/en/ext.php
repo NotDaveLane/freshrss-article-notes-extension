@@ -67,6 +67,7 @@ return array(
 			'title' => 'Notes',
 			'all_my_notes' => 'All my notes',
 			'summary' => '%s annotated articles and pages',
+			'summary_one' => '1 annotated article or page',
 			'empty' => 'You have not annotated anything yet. Select text in an article to highlight it, or use the Note button to write a note.',
 			'no_results' => 'Nothing matches these filters.',
 			'filters' => 'Filters',

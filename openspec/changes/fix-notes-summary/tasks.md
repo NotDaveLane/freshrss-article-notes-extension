@@ -1,0 +1,3 @@
+- [x] Playwright test: summary for one and for many groups, no summary or export links when nothing matches
+- [x] Singular summary and hidden summary/export links in the view, `summary_one` translation
+- [x] Spec `notes-page` and CHANGELOG

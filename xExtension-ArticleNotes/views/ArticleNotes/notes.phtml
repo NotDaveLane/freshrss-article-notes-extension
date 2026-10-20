@@ -96,15 +96,17 @@
 		</div>
 	</form>
 
-	<p class="articlenotes-notes-summary">
-		<?= $t('summary', $page->total) ?>
-		<span class="articlenotes-notes-export"><?= $t('export') ?>:
-			<a href="<?= Minz_Url::display(['c' => 'ArticleNotes', 'a' => 'notesExport', 'params' => $filter->toParams() + ['format' => 'markdown']]) ?>"
-				rel="nofollow"><?= $t('export_markdown') ?></a> ·
-			<a href="<?= Minz_Url::display(['c' => 'ArticleNotes', 'a' => 'notesExport', 'params' => $filter->toParams() + ['format' => 'json']]) ?>"
-				rel="nofollow"><?= $t('export_json') ?></a>
-		</span>
-	</p>
+	<?php if ($page->total > 0) { ?>
+		<p class="articlenotes-notes-summary">
+			<?= $page->total === 1 ? $t('summary_one') : $t('summary', $page->total) ?>
+			<span class="articlenotes-notes-export"><?= $t('export') ?>:
+				<a href="<?= Minz_Url::display(['c' => 'ArticleNotes', 'a' => 'notesExport', 'params' => $filter->toParams() + ['format' => 'markdown']]) ?>"
+					rel="nofollow"><?= $t('export_markdown') ?></a> ·
+				<a href="<?= Minz_Url::display(['c' => 'ArticleNotes', 'a' => 'notesExport', 'params' => $filter->toParams() + ['format' => 'json']]) ?>"
+					rel="nofollow"><?= $t('export_json') ?></a>
+			</span>
+		</p>
+	<?php } ?>
 
 	<?php if ($page->groups === []) { ?>
 		<p class="alert alert-warn"><?= $filter->isEmpty() ? $t('empty') : $t('no_results') ?></p>
