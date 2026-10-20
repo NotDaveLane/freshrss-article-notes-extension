@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- On small screens, tapping a highlight no longer scrolls the page again on every tap: the page moves at most once, just
+  enough to show the highlight above the popover's bottom sheet, and not at all when the highlight is already visible.
+
 ## [1.1.0] - 2026-10-19
 
 ### Added

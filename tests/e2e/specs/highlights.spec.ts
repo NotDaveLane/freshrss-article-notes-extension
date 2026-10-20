@@ -257,6 +257,84 @@ test('on touch devices the toolbar is below the selection', async ({ browser }) 
 	await context.close();
 });
 
+/** Scrolls the page so the top of `mark` is `fromTop` pixels below the top of the viewport, with room to scroll either way. */
+async function scrollMarkTo(page: Page, mark: Locator, fromTop: number): Promise<number> {
+	await page.evaluate(() => {
+		document.body.style.paddingTop = '1500px';
+		document.body.style.paddingBottom = '1500px';
+	});
+	await mark.evaluate((el, y) => {
+		window.scrollBy(0, el.getBoundingClientRect().top - y);
+	}, fromTop);
+	return page.evaluate(() => window.scrollY);
+}
+
+test('tapping a highlight on mobile scrolls the page at most once, only to show it above the bottom sheet', async ({ browser, request }) => {
+	const id = await reset(request, articles.keyboard);
+	await createViaApi(request, id, { source: 'freshrss', selector: { quote: { exact: 'some distributions' } } });
+	const context = await browser.newContext({ viewport: { width: 390, height: 844 }, hasTouch: true, isMobile: true });
+	const page = await context.newPage();
+	await signIn(page, throwawayUser());
+	const article = await open(page, articles.keyboard);
+	const mark = marks(article).first();
+	await expect(mark).toBeVisible();
+
+	// Low in the viewport: the sheet would cover it, so the page scrolls just enough to show it above the sheet.
+	const before = await scrollMarkTo(page, mark, 844 - 80);
+	await mark.tap();
+	await expect(popover(page)).toBeVisible();
+	await expect(popover(page)).toBeFocused();
+	const sheet = (await popover(page).boundingBox())!;
+	expect((await mark.boundingBox())!.y + (await mark.boundingBox())!.height).toBeLessThanOrEqual(sheet.y);
+	const after = await page.evaluate(() => window.scrollY);
+	expect(after).toBeGreaterThan(before);
+
+	// Tapping it again, with the popover open or after closing it, leaves the page where it is.
+	await mark.tap();
+	await expect(popover(page)).toBeVisible();
+	expect(Math.abs(await page.evaluate(() => window.scrollY) - after)).toBeLessThanOrEqual(1);
+	await popover(page).getByRole('button', { name: 'Close' }).tap();
+	await expect(popover(page)).toHaveCount(0);
+	expect(Math.abs(await page.evaluate(() => window.scrollY) - after)).toBeLessThanOrEqual(1);
+	await mark.tap();
+	await expect(popover(page)).toBeVisible();
+	expect(Math.abs(await page.evaluate(() => window.scrollY) - after)).toBeLessThanOrEqual(1);
+	await page.keyboard.press('Escape');
+	await expect(popover(page)).toHaveCount(0);
+	await expect(mark).toBeFocused();
+	expect(Math.abs(await page.evaluate(() => window.scrollY) - after)).toBeLessThanOrEqual(1);
+
+	// Well above the sheet: the page does not move at all.
+	const top = await scrollMarkTo(page, mark, 60);
+	await mark.tap();
+	await expect(popover(page)).toBeVisible();
+	expect(await page.evaluate(() => window.scrollY)).toBe(top);
+	await mark.tap();
+	expect(await page.evaluate(() => window.scrollY)).toBe(top);
+	await context.close();
+});
+
+test('clicking a highlight twice on desktop does not scroll the page', async ({ page, request }) => {
+	await page.setViewportSize({ width: 1440, height: 900 });
+	const id = await reset(request, articles.keyboard);
+	await createViaApi(request, id, { source: 'freshrss', selector: { quote: { exact: 'some distributions' } } });
+	const article = await open(page, articles.keyboard);
+	const mark = marks(article).first();
+	const before = await scrollMarkTo(page, mark, 300);
+	await mark.click();
+	await expect(popover(page)).toBeVisible();
+	await expect(popover(page)).toBeFocused();
+	expect(await page.evaluate(() => window.scrollY)).toBe(before);
+	await mark.click();
+	await expect(popover(page)).toBeVisible();
+	expect(await page.evaluate(() => window.scrollY)).toBe(before);
+	// Next to the highlight, as before: just below it.
+	const box = (await popover(page).boundingBox())!;
+	const markBox = (await mark.boundingBox())!;
+	expect(box.y).toBeGreaterThan(markBox.y + markBox.height);
+	expect(box.y - (markBox.y + markBox.height)).toBeLessThan(40);
+});
+
 test('overlapping highlights are both drawn, after a reload too', async ({ page, request }) => {
 	const id = await reset(request, articles.overlap);
 	let article = await open(page, articles.overlap);
