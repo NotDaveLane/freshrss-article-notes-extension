@@ -167,10 +167,18 @@ test('selecting text in the note does not open the editor', async ({ page }) => 
 	const article = await openArticle(page, 'PHP 8.5 pipe operator in practice');
 	await saveNote(page, article, 'select these words');
 	const text = article.locator('.articlenotes-note-text');
-	const box = (await text.boundingBox())!;
-	await page.mouse.move(box.x + 2, box.y + box.height / 2);
+	// Drag across the words themselves, centred on screen (the block may sit in the Annotations panel if other specs
+	// highlighted the article).
+	const box = await text.evaluate((el) => {
+		el.scrollIntoView({ block: 'center' });
+		const range = document.createRange();
+		range.selectNodeContents(el);
+		const rect = range.getBoundingClientRect();
+		return { left: rect.left, right: rect.right, middle: rect.top + rect.height / 2 };
+	});
+	await page.mouse.move(box.left + 1, box.middle);
 	await page.mouse.down();
-	await page.mouse.move(box.x + box.width - 2, box.y + box.height / 2, { steps: 5 });
+	await page.mouse.move(box.right - 1, box.middle, { steps: 5 });
 	await page.mouse.up();
 	expect(await page.evaluate(() => window.getSelection()!.toString())).toContain('select');
 	await expect(article.locator('.articlenotes-editor')).toHaveCount(0);
