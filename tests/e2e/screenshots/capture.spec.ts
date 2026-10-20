@@ -80,6 +80,7 @@ test('highlight screenshot', async ({ page }) => {
 
 	// Leave the dev data as it was.
 	await article.locator('mark.articlenotes-hl').first().click();
+	page.once('dialog', (dialog) => dialog.accept());
 	await page.getByRole('dialog').getByRole('button', { name: 'Delete' }).click();
 	await expect(article.locator('mark.articlenotes-hl')).toHaveCount(0);
 });
