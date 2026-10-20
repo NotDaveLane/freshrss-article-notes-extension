@@ -137,6 +137,39 @@ for (const viewport of viewports) {
 			expect(response.ok()).toBe(true);
 		});
 
+		test('the footer Note action is spaced from the date, has an icon and shows when a note exists', async ({ page }) => {
+			await page.goto('/i/?state=3');
+			const article = await openArticle(page, 'SQLite as an application file format, revisited');
+			const action = trigger(article);
+			await expect(action).toBeVisible();
+			await expect(action.locator('svg.articlenotes-icon')).toHaveAttribute('aria-hidden', 'true');
+			await expect(action).toHaveAccessibleName('Note');
+			await expect(action).toHaveAttribute('data-has-note', 'false');
+
+			const actionBox = await action.boundingBox();
+			const dateBox = await article.locator('ul.bottom li.date .item-element').boundingBox();
+			expect(actionBox).not.toBeNull();
+			expect(dateBox).not.toBeNull();
+			if (actionBox === null || dateBox === null) {
+				return;
+			}
+			expect(dateBox.x - (actionBox.x + actionBox.width)).toBeGreaterThanOrEqual(8);
+			if (viewport.width < 600) {
+				expect(actionBox.width).toBeGreaterThanOrEqual(44);
+				expect(actionBox.height).toBeGreaterThanOrEqual(44);
+			}
+
+			await saveNote(page, article, `state ${viewport.width}`);
+			await expect(action).toHaveAttribute('data-has-note', 'true');
+			await expect(action).toHaveAttribute('title', 'Edit your note on this article');
+			await expect(action).toHaveCSS('font-weight', '700');
+			await page.reload();
+			const reloaded = await openArticle(page, 'SQLite as an application file format, revisited');
+			await expect(trigger(reloaded)).toHaveAttribute('data-has-note', 'true');
+			await deleteNote(page, reloaded);
+			await expect(trigger(reloaded)).toHaveAttribute('data-has-note', 'false');
+			await expect(trigger(reloaded)).toHaveAttribute('title', 'Add a note to this article');
+		});
 	});
 }
 

@@ -15,6 +15,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- The **Note** action in the article footer has a note icon, space between it and the date, and a 44x44 px tap target on
+  touch screens. It is bold with a filled icon when the article already has a note.
 - On small screens, closing the highlight popover (saving, closing, Escape, deleting or tapping outside it) returns the
   page to the reading position it had before the popover scrolled it, unless you scrolled the page while it was open.
 

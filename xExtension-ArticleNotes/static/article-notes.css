@@ -99,8 +99,52 @@
 	margin: 0;
 }
 
-.articlenotes-trigger[aria-expanded="true"] {
+/* The "Note" action in the article footer: an icon and a label like FreshRSS's own items, kept clear of the date. */
+.articlenotes-item {
+	margin-right: 0.75rem;
+}
+
+.articlenotes-trigger {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	gap: 0.3rem;
+	box-sizing: border-box;
+	padding: 0 0.5rem;
+	white-space: nowrap;
+}
+
+.articlenotes-icon {
+	flex: none;
+	width: 16px;
+	height: 16px;
+}
+
+.articlenotes-icon-sheet, .articlenotes-icon-lines {
+	fill: none;
+	stroke: currentColor;
+	stroke-width: 1.4;
+	stroke-linejoin: round;
+	stroke-linecap: round;
+}
+
+.articlenotes-trigger[data-has-note="true"] .articlenotes-icon-sheet {
+	fill: currentColor;
+}
+
+.articlenotes-trigger[data-has-note="true"] .articlenotes-icon-lines {
+	stroke: var(--frss-background-color, #fff);
+}
+
+.articlenotes-trigger[aria-expanded="true"], .articlenotes-trigger[data-has-note="true"] {
 	font-weight: bold;
+}
+
+@media (pointer: coarse), (max-width: 40em) {
+	.articlenotes-trigger {
+		min-width: 44px;
+		min-height: 44px;
+	}
 }
 
 .articlenotes-trigger:focus-visible {

@@ -304,6 +304,7 @@ final class ArticleNotesExtension extends Minz_Extension {
 			'i18n' => [
 				'action' => _t('ext.article_notes.note.action'),
 				'actionTitle' => _t('ext.article_notes.note.action_title'),
+				'actionTitleEdit' => _t('ext.article_notes.note.action_title_edit'),
 				'label' => _t('ext.article_notes.note.label'),
 				'save' => _t('ext.article_notes.note.save'),
 				'cancel' => _t('ext.article_notes.note.cancel'),
