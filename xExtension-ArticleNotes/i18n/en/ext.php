@@ -11,6 +11,7 @@ return array(
 			'updated' => 'Last updated %s',
 			'action' => 'Note',
 			'action_title' => 'Add or edit your note on this article',
+			'edit_hint' => 'Tap to edit note',
 			'label' => 'Your note on this article',
 			'save' => 'Save',
 			'cancel' => 'Cancel',

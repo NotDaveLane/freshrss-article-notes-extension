@@ -95,7 +95,9 @@ The files must be readable by the web server (`www-data` in the Docker image). T
 Open an article and click **Note** in its action bar (next to the read, favourite and sharing icons; also in the reading
 and global views). Type your note and press **Save**; **Cancel** (or Escape) closes the editor, and **Delete** removes an
 existing note. Notes are plain text of up to 20,000 characters, shown under the article in a "Your note" block with the
-time of the last update; HTML and Markdown are never rendered. Saving an empty note deletes it.
+time of the last update; HTML and Markdown are never rendered. Saving an empty note deletes it. To edit an existing note,
+you can also click or tap the "Your note" block itself (or focus it with Tab and press Enter); selecting text in it to copy
+it does not open the editor.
 
 ## Using highlights
 

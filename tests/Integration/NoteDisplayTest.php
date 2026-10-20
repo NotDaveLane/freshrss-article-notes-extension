@@ -61,6 +61,7 @@ final class NoteDisplayTest extends TestCase {
 		self::assertStringContainsString('&lt;b&gt;bold&lt;/b&gt; &amp; &quot;quoted&quot;<br>', $content);
 		self::assertStringNotContainsString('<b>', $content);
 		self::assertMatchesRegularExpression('#Last updated <time datetime="[^"]+">\d{4}-\d\d-\d\d \d\d:\d\d</time>#', $content);
+		self::assertStringContainsString('tabindex="0" title="Tap to edit note" aria-label="Tap to edit note"', $content);
 	}
 
 	public function testArticleWithoutNoteIsUntouched(): void {
