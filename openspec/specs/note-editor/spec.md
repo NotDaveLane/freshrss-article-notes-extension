@@ -35,14 +35,34 @@ textarea, Save and Cancel buttons, a Delete button when a note exists, and a cou
 - **WHEN** more articles are loaded into the stream
 - **THEN** their "Note" action works without reloading the page
 
+### Requirement: Edit from the note block
+
+Clicking or tapping an existing note block SHALL open the same editor as the "Note" action, both under the article and
+inside the Annotations panel, unless the click ends a text selection inside the block.
+
+#### Scenario: Open the editor from the note
+- **WHEN** a user clicks or taps an existing note block, under the article or inside the Annotations panel, on a desktop or
+  mobile screen
+- **THEN** the editor opens prefilled with the note and focused, saving updates the block, and the "Note" action keeps
+  opening and closing the editor as before
+
+#### Scenario: Selecting text in the note
+- **WHEN** a user selects text inside the note block
+- **THEN** the editor does not open, so the text can be copied
+
 ### Requirement: Editor accessibility
 
 The editor SHALL be keyboard accessible, move focus into the textarea when opened, return focus to the "Note" action when
-closed (Save, Cancel, Delete or Escape), and keep typing from triggering FreshRSS keyboard shortcuts.
+closed (Save, Cancel, Delete or Escape), and keep typing from triggering FreshRSS keyboard shortcuts. The note block SHALL
+be focusable, carry a translated "Tap to edit note" label and title, and open the editor on Enter or Space.
 
 #### Scenario: Cancel
 - **WHEN** the user presses Escape or Cancel in the editor
 - **THEN** the editor closes without saving and focus returns to the "Note" action
+
+#### Scenario: Keyboard on the note block
+- **WHEN** the user focuses the note block and presses Enter
+- **THEN** the editor opens with focus in the textarea, and Escape closes it and moves focus to the "Note" action
 
 ### Requirement: Save and delete endpoints
 

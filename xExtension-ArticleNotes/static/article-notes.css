@@ -8,6 +8,18 @@
 	background: var(--frss-background-color-transparent, rgba(128, 128, 128, 0.1));
 	color: inherit;
 	overflow-wrap: anywhere;
+	cursor: pointer;
+}
+
+@media (hover: hover) {
+	.articlenotes-note:hover {
+		background: var(--frss-darken-background-hover-transparent, rgba(128, 128, 128, 0.18));
+	}
+}
+
+.articlenotes-note:focus-visible {
+	outline: 2px solid currentColor;
+	outline-offset: 2px;
 }
 
 .articlenotes-note-title {

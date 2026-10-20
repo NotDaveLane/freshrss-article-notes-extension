@@ -174,7 +174,9 @@
 		} else {
 			content.appendChild(form);
 		}
-		trigger.setAttribute('aria-expanded', 'true');
+		if (trigger) {
+			trigger.setAttribute('aria-expanded', 'true');
+		}
 		updateCounter();
 		textarea.focus();
 		textarea.setSelectionRange(textarea.value.length, textarea.value.length);
@@ -209,6 +211,14 @@
 		root.querySelectorAll('ul.bottom').forEach(decorate);
 	}
 
+	/** The note block opens the same editor as the "Note" action, under the article or in the Annotations panel. */
+	function openFromNote(note) {
+		const flux = note.closest('.flux');
+		if (flux && !flux.querySelector('.articlenotes-editor')) {
+			openEditor(flux, flux.querySelector('.articlenotes-trigger'));
+		}
+	}
+
 	function start() {
 		scan(document.body);
 		// Articles arrive after page load (infinite scroll, global view panels): decorate whatever is added.
@@ -218,6 +228,15 @@
 			});
 		}).observe(document.body, { childList: true, subtree: true });
 		document.addEventListener('click', function (event) {
+			const note = event.target instanceof Element ? event.target.closest('.articlenotes-note') : null;
+			if (note) {
+				// Selecting text in the note (to copy it) ends with a click: leave it alone.
+				const selection = window.getSelection();
+				if (!selection || selection.isCollapsed) {
+					openFromNote(note);
+				}
+				return;
+			}
 			const trigger = event.target instanceof Element ? event.target.closest('.articlenotes-trigger') : null;
 			if (!trigger) {
 				return;
@@ -235,6 +254,12 @@
 			}
 		}, true);
 		document.addEventListener('keydown', function (event) {
+			if ((event.key === 'Enter' || event.key === ' ') && event.target instanceof Element && event.target.matches('.articlenotes-note')) {
+				event.preventDefault();
+				event.stopPropagation();
+				openFromNote(event.target);
+				return;
+			}
 			if (event.key === ' ' && event.target instanceof Element && event.target.closest('.articlenotes-trigger')) {
 				event.preventDefault();
 				event.stopPropagation();

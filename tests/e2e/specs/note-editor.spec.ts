@@ -1,5 +1,7 @@
 import { expect, test, type Locator, type Page } from '../support/test';
-import { openArticle, signIn, throwawayUser } from '../support/freshrss';
+import { basicAuth, openArticle, signIn, throwawayApiPassword, throwawayUser } from '../support/freshrss';
+
+const API = '/api/misc.php/ArticleNotes/v1';
 
 const viewports = [
 	{ name: 'mobile 390x844', width: 390, height: 844 },
@@ -17,6 +19,16 @@ async function saveNote(page: Page, article: Locator, text: string): Promise<voi
 	await editor.getByLabel('Your note on this article').fill(text);
 	await editor.getByRole('button', { name: 'Save' }).click();
 	await expect(editor).toHaveCount(0);
+}
+
+/** Deletes the article's note so the user shared by the specs is left as it was. */
+async function deleteNote(page: Page, article: Locator): Promise<void> {
+	if (await article.locator('.articlenotes-editor').count() === 0) {
+		await trigger(article).click();
+	}
+	page.once('dialog', (dialog) => dialog.accept());
+	await article.getByRole('button', { name: 'Delete' }).click();
+	await expect(article.locator('.articlenotes-note')).toHaveCount(0);
 }
 
 test.beforeEach(async ({ page }) => {
@@ -67,8 +79,103 @@ for (const viewport of viewports) {
 			await trigger(article).click();
 			await expect(article.getByRole('button', { name: 'Delete' })).toHaveCount(0);
 		});
+		test('tapping the note opens its editor', async ({ page }) => {
+			await page.goto('/i/?state=3');
+			const article = await openArticle(page, 'The hidden costs of microservices');
+			await saveNote(page, article, `tap me ${viewport.width}`);
+			const block = article.locator('.articlenotes-note');
+			await expect(block).toHaveAttribute('aria-label', 'Tap to edit note');
+			await block.locator('.articlenotes-note-text').click();
+			const textarea = article.locator('.articlenotes-editor').getByLabel('Your note on this article');
+			await expect(textarea).toBeFocused();
+			await expect(textarea).toHaveValue(`tap me ${viewport.width}`);
+			await expect(trigger(article)).toHaveAttribute('aria-expanded', 'true');
+			await textarea.fill(`tapped ${viewport.width}`);
+			await article.getByRole('button', { name: 'Save' }).click();
+			await expect(article.locator('.articlenotes-editor')).toHaveCount(0);
+			await expect(block).toContainText(`tapped ${viewport.width}`);
+			await expect(trigger(article)).toBeFocused();
+
+			// The footer link still toggles the editor.
+			await trigger(article).click();
+			await expect(article.locator('.articlenotes-editor')).toHaveCount(1);
+			await trigger(article).click();
+			await expect(article.locator('.articlenotes-editor')).toHaveCount(0);
+			await deleteNote(page, article);
+		});
+
+		test('tapping the note in the Annotations panel opens its editor', async ({ page, request }) => {
+			const auth = basicAuth(throwawayUser().user, throwawayApiPassword());
+			const lookup = await request.get(`${API}/lookup`, { headers: auth, params: { url: 'http://fixtures/articles/1' } });
+			expect(lookup.status()).toBe(200);
+			const id = ((await lookup.json()) as { matches: { entry_id: string }[] }).matches[0].entry_id;
+			const list = await request.get(`${API}/highlights`, { headers: auth, params: { entry_id: id } });
+			for (const highlight of ((await list.json()) as { highlights: { uuid: string }[] }).highlights) {
+				await request.delete(`${API}/highlights/${highlight.uuid}`, { headers: auth });
+			}
+			const created = await request.post(`${API}/highlights`, {
+				headers: { ...auth, 'Content-Type': 'application/json' },
+				data: { entry_id: id, source: 'freshrss', selector: { quote: { exact: 'compile times' } } },
+			});
+			expect(created.status()).toBe(201);
+
+			await page.goto('/i/?state=3');
+			const article = await openArticle(page, 'Rust 1.90 stabilizes async closures');
+			await expect(article.locator('mark.articlenotes-hl')).not.toHaveCount(0);
+			await saveNote(page, article, `panel note ${viewport.width}`);
+			const block = article.locator('.articlenotes-panel .articlenotes-note');
+			await expect(block).toContainText(`panel note ${viewport.width}`);
+			await block.locator('.articlenotes-note-title').click();
+			const textarea = article.locator('.articlenotes-editor').getByLabel('Your note on this article');
+			await expect(textarea).toBeFocused();
+			await expect(textarea).toHaveValue(`panel note ${viewport.width}`);
+			await textarea.fill(`panel edited ${viewport.width}`);
+			await article.getByRole('button', { name: 'Save' }).click();
+			await expect(article.locator('.articlenotes-panel .articlenotes-note')).toContainText(`panel edited ${viewport.width}`);
+			await deleteNote(page, article);
+			const response = await request.delete(`${API}/highlights/${((await created.json()) as { highlight: { uuid: string } }).highlight.uuid}`, { headers: auth });
+			expect(response.ok()).toBe(true);
+		});
+
 	});
 }
+
+test('the note opens its editor from the keyboard', async ({ page }) => {
+	await page.goto('/i/?state=3');
+	const article = await openArticle(page, 'Understanding Linux io_uring security trade-offs');
+	await saveNote(page, article, 'keyboard note');
+	const block = article.locator('.articlenotes-note');
+	await expect(block).toHaveAttribute('tabindex', '0');
+	await expect(block).toHaveAttribute('title', 'Tap to edit note');
+	await block.focus();
+	await page.keyboard.press('Enter');
+	const textarea = article.getByLabel('Your note on this article');
+	await expect(textarea).toBeFocused();
+	await expect(textarea).toHaveValue('keyboard note');
+	await page.keyboard.press('Escape');
+	await expect(article.locator('.articlenotes-editor')).toHaveCount(0);
+	await expect(trigger(article)).toBeFocused();
+
+	await block.focus();
+	await page.keyboard.press(' ');
+	await expect(textarea).toBeFocused();
+	await deleteNote(page, article);
+});
+
+test('selecting text in the note does not open the editor', async ({ page }) => {
+	await page.goto('/i/?state=3');
+	const article = await openArticle(page, 'PHP 8.5 pipe operator in practice');
+	await saveNote(page, article, 'select these words');
+	const text = article.locator('.articlenotes-note-text');
+	const box = (await text.boundingBox())!;
+	await page.mouse.move(box.x + 2, box.y + box.height / 2);
+	await page.mouse.down();
+	await page.mouse.move(box.x + box.width - 2, box.y + box.height / 2, { steps: 5 });
+	await page.mouse.up();
+	expect(await page.evaluate(() => window.getSelection()!.toString())).toContain('select');
+	await expect(article.locator('.articlenotes-editor')).toHaveCount(0);
+	await deleteNote(page, article);
+});
 
 test('cancel and Escape close the editor and return focus to the trigger', async ({ page }) => {
 	await page.goto('/i/?state=3');
