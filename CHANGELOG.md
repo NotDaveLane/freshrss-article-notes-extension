@@ -13,6 +13,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   **Note** action. The note block can also be focused with Tab and opened with Enter or Space; selecting text in it to
   copy it still works.
 
+### Changed
+
+- On small screens, closing the highlight popover (saving, closing, Escape, deleting or tapping outside it) returns the
+  page to the reading position it had before the popover scrolled it, unless you scrolled the page while it was open.
+
 ## [1.1.1] - 2026-10-19
 
 ### Fixed

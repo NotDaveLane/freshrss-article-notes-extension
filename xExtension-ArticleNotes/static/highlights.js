@@ -7,6 +7,7 @@
 	const MARK_SELECTOR = 'mark.articlenotes-hl';
 	const EXCERPT_LENGTH = 140;
 	const LABEL_EXCERPT_LENGTH = 60;
+	const SCROLL_KEYS = ['PageUp', 'PageDown', 'Home', 'End', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', ' '];
 
 	/** @type {WeakMap<Element, object>} per article element: its root, highlights and panel */
 	const states = new WeakMap();
@@ -433,7 +434,11 @@
 
 	// --- Popover ----------------------------------------------------------------------------------------------------
 
-	function closePopover(restoreFocus) {
+	/**
+	 * Closes the popover. Unless another popover replaces it, the page goes back to where it was before the popover scrolled
+	 * it above the bottom sheet, if the reader has not scrolled since.
+	 */
+	function closePopover(restoreFocus, replaced) {
 		if (!popover) {
 			return;
 		}
@@ -441,17 +446,49 @@
 		if (opener && !opener.isConnected && popover.state.panel) {	// the panel list was rebuilt
 			opener = popover.state.panel.querySelector('li[data-uuid="' + popover.item.data.uuid + '"] .articlenotes-edit');
 		}
+		const restoreScrollY = replaced ? null : popover.restoreScrollY;
+		popover.unwatch();
 		popover.el.remove();
 		popover = null;
 		if (restoreFocus && opener && opener.isConnected) {
 			opener.focus({ preventScroll: true });
 		}
+		if (restoreScrollY !== null) {
+			// After the caller's panel updates and any layout shift from the virtual keyboard closing.
+			window.requestAnimationFrame(function () {
+				if (!popover) {
+					window.scrollTo({ top: restoreScrollY, behavior: 'instant' });
+				}
+			});
+		}
+	}
+
+	/** Forgets the reading position to go back to as soon as the reader scrolls the page while the popover is open. */
+	function watchManualScroll(el) {
+		const scrolled = function (event) {
+			if (popover && popover.el === el && !(event.type === 'touchmove' && event.target instanceof Node && el.contains(event.target))) {
+				popover.restoreScrollY = null;
+			}
+		};
+		const key = function (event) {
+			if (SCROLL_KEYS.includes(event.key) && !(event.target instanceof Node && el.contains(event.target))) {
+				scrolled(event);
+			}
+		};
+		document.addEventListener('touchmove', scrolled, { passive: true });
+		document.addEventListener('wheel', scrolled, { passive: true });
+		document.addEventListener('keydown', key, true);
+		return function () {
+			document.removeEventListener('touchmove', scrolled, { passive: true });
+			document.removeEventListener('wheel', scrolled, { passive: true });
+			document.removeEventListener('keydown', key, true);
+		};
 	}
 
 	function openPopover(state, item, opener, focusNote) {
 		const config = settings();
 		const t = config.i18n;
-		closePopover(false);
+		closePopover(false, true);
 		const id = 'articlenotes-pop-' + item.data.uuid;
 		const el = element('div', 'articlenotes-popover', {
 			'data-articlenotes-ui': '', role: 'dialog', 'aria-label': t.popoverTitle, tabindex: '-1',
@@ -563,26 +600,32 @@
 		});
 
 		document.body.appendChild(el);
-		popover = { el: el, item: item, state: state, opener: opener };
+		popover = { el: el, item: item, state: state, opener: opener, restoreScrollY: null, unwatch: watchManualScroll(el) };
 		const rect = (opener && opener.getBoundingClientRect()) || state.root.getBoundingClientRect();
 		placeFloating(el, rect, true);
 		(focusNote ? textarea : el).focus({ preventScroll: true });
-		revealAboveSheet(el, rect);
+		const scrollY = window.scrollY;
+		if (revealAboveSheet(el, rect)) {
+			popover.restoreScrollY = scrollY;
+		}
 	}
 
 	/**
 	 * On small screens the popover is a bottom sheet (see article-notes.css): scrolls just enough to show the highlight above
-	 * it, and not at all when it already is, so tapping the same highlight again leaves the page where it is.
+	 * it, and not at all when it already is, so tapping the same highlight again leaves the page where it is. Returns
+	 * whether it scrolled.
 	 */
 	function revealAboveSheet(el, rect) {
 		if (window.getComputedStyle(el).position !== 'fixed') {
-			return;
+			return false;
 		}
 		const margin = 8;
 		const hidden = rect.bottom + margin - el.getBoundingClientRect().top;
+		const before = window.scrollY;
 		if (hidden > 0) {
 			window.scrollBy(0, Math.min(hidden, Math.max(0, rect.top - margin)));
 		}
+		return window.scrollY !== before;
 	}
 
 	// --- Annotations panel ------------------------------------------------------------------------------------------
