@@ -170,6 +170,99 @@ for (const viewport of viewports) {
 			await expect(trigger(reloaded)).toHaveAttribute('data-has-note', 'false');
 			await expect(trigger(reloaded)).toHaveAttribute('title', 'Add a note to this article');
 		});
+
+		test('the editor opens in place of the note, in view and aligned with the article text', async ({ page, request }) => {
+			const auth = basicAuth(throwawayUser().user, throwawayApiPassword());
+			const lookup = await request.get(`${API}/lookup`, { headers: auth, params: { url: 'http://fixtures/articles/5' } });
+			expect(lookup.status()).toBe(200);
+			const id = ((await lookup.json()) as { matches: { entry_id: string }[] }).matches[0].entry_id;
+			const list = await request.get(`${API}/highlights`, { headers: auth, params: { entry_id: id } });
+			for (const highlight of ((await list.json()) as { highlights: { uuid: string }[] }).highlights) {
+				await request.delete(`${API}/highlights/${highlight.uuid}`, { headers: auth });
+			}
+			const uuids: string[] = [];
+			for (const exact of ['single-file databases', 'stronger than ever']) {
+				const created = await request.post(`${API}/highlights`, {
+					headers: { ...auth, 'Content-Type': 'application/json' },
+					data: { entry_id: id, source: 'freshrss', selector: { quote: { exact } }, note: `highlight note on ${exact}` },
+				});
+				expect(created.status()).toBe(201);
+				uuids.push(((await created.json()) as { highlight: { uuid: string } }).highlight.uuid);
+			}
+
+			await page.goto('/i/?a=normal&state=3');
+			const article = await openArticle(page, 'SQLite as an application file format');
+			await expect(article.locator('.articlenotes-panel .articlenotes-hl-item')).toHaveCount(2);
+			const text = article.locator('.content .text');
+			// The article text column: the content box of .text, where the article's own text lines start and end.
+			const column = async (): Promise<{ left: number; right: number }> => text.evaluate((el) => {
+				const rect = el.getBoundingClientRect();
+				const style = getComputedStyle(el);
+				return {
+					left: rect.left + parseFloat(style.borderLeftWidth) + parseFloat(style.paddingLeft),
+					right: rect.right - parseFloat(style.borderRightWidth) - parseFloat(style.paddingRight),
+				};
+			});
+			const expectAligned = async (editor: Locator): Promise<void> => {
+				const box = (await editor.boundingBox())!;
+				const col = await column();
+				expect(Math.abs(box.x - col.left)).toBeLessThanOrEqual(1);
+				expect(Math.abs(box.x + box.width - col.right)).toBeLessThanOrEqual(1);
+			};
+
+			// Without a note: the editor opens above the Annotations panel.
+			await trigger(article).click();
+			const editor = article.locator('.articlenotes-editor');
+			await expect(editor).toBeInViewport({ ratio: 0.99 });
+			expect(await editor.evaluate((el) => el.nextElementSibling?.matches('.articlenotes-panel'))).toBe(true);
+			await expectAligned(editor);
+			const noteText = `in place ${viewport.width}`;
+			await editor.getByLabel('Your note on this article').fill(noteText);
+			await editor.getByRole('button', { name: 'Save' }).click();
+			await expect(editor).toHaveCount(0);
+			const block = article.locator('.articlenotes-panel .articlenotes-note');
+			await expect(block).toContainText(noteText);
+
+			// With a note: the editor replaces the note block, so the note shows once (in the textarea).
+			for (const open of ['action', 'note']) {
+				await page.evaluate(() => window.scrollTo(0, 0));
+				if (open === 'action') {
+					await trigger(article).click();
+				} else {
+					await block.locator('.articlenotes-note-title').click();
+				}
+				const textarea = editor.getByLabel('Your note on this article');
+				await expect(textarea).toBeFocused();
+				await expect(textarea).toHaveValue(noteText);
+				await expect(editor).toBeInViewport({ ratio: 0.99 });
+				await expect(block).toBeHidden();
+				await expect(article.getByText(noteText).filter({ visible: true })).toHaveCount(0);
+				expect(await editor.evaluate((el) => el.nextElementSibling?.matches('.articlenotes-note'))).toBe(true);
+				await expectAligned(editor);
+				await page.keyboard.press('Escape');
+				await expect(editor).toHaveCount(0);
+				await expect(block).toBeVisible();
+				await expect(block).toContainText(noteText);
+			}
+
+			await trigger(article).click();
+			await article.getByRole('button', { name: 'Cancel' }).click();
+			await expect(block).toBeVisible();
+
+			await trigger(article).click();
+			await editor.getByLabel('Your note on this article').fill(`${noteText} saved`);
+			await editor.getByRole('button', { name: 'Save' }).click();
+			await expect(editor).toHaveCount(0);
+			await expect(article.locator('.articlenotes-note')).toHaveCount(1);
+			await expect(block).toBeVisible();
+			await expect(block).toContainText(`${noteText} saved`);
+
+			await deleteNote(page, article);
+			for (const uuid of uuids) {
+				expect((await request.delete(`${API}/highlights/${uuid}`, { headers: auth })).ok()).toBe(true);
+			}
+		});
+
 	});
 }
 
