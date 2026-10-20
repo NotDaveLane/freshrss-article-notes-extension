@@ -19,6 +19,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   and aligned with the article text, instead of below the Annotations panel; Cancel or Escape shows the note again.
 - On small screens, closing the highlight popover (saving, closing, Escape, deleting or tapping outside it) returns the
   page to the reading position it had before the popover scrolled it, unless you scrolled the page while it was open.
+- On small screens the Notes page shows the search and the Apply button and keeps the kind, colour, feed and "only with a
+  note" filters behind a **Filters** toggle (opened when one of them is set), so the first note is visible right away.
+- On touch screens the Notes page's Filters toggle, "only with a note" checkbox row, export links and buttons are at
+  least 44px high.
 
 ## [1.1.1] - 2026-10-19
 

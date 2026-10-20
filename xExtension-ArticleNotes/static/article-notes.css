@@ -290,10 +290,44 @@ mark.articlenotes-hl:focus-visible {
 }
 
 .articlenotes-notes-filters {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: flex-start;
+	gap: 0.75rem;
+	margin: 1rem 0;
+}
+
+.articlenotes-notes-search, .articlenotes-notes-more[open] {
+	flex-basis: 100%;
+}
+
+/* Closed, the "Filters" toggle sits next to the Apply button. */
+.articlenotes-notes-filters .articlenotes-actions {
+	margin-top: 0;
+}
+
+.articlenotes-notes-more summary, .articlenotes-notes-edit summary {
+	display: inline-flex;
+	align-items: center;
+	min-height: 2.5rem;
+	box-sizing: border-box;
+	cursor: pointer;
+}
+
+.articlenotes-notes-more summary::before {
+	content: "▸" / "";
+	margin-right: 0.4rem;
+}
+
+.articlenotes-notes-more[open] summary::before {
+	content: "▾" / "";
+}
+
+.articlenotes-notes-more-fields {
 	display: grid;
 	grid-template-columns: 1fr;
 	gap: 0.75rem;
-	margin: 1rem 0;
+	margin-top: 0.75rem;
 }
 
 .articlenotes-notes-filters label span {
@@ -350,11 +384,6 @@ mark.articlenotes-hl:focus-visible {
 	margin: 0.5rem 0;
 }
 
-.articlenotes-notes-edit summary {
-	display: inline-block;
-	cursor: pointer;
-}
-
 .articlenotes-notes-edit form {
 	margin-top: 0.5rem;
 }
@@ -378,12 +407,41 @@ mark.articlenotes-hl:focus-visible {
 }
 
 @media (min-width: 48rem) {
-	.articlenotes-notes-filters {
-		grid-template-columns: repeat(4, 1fr);
-		align-items: end;
+	.articlenotes-notes-more {
+		flex-basis: 100%;
 	}
 
-	.articlenotes-notes-search, .articlenotes-notes-filters .articlenotes-actions {
-		grid-column: 1 / -1;
+	.articlenotes-notes-more summary {
+		display: none;
+	}
+
+	.articlenotes-notes-more-fields {
+		grid-template-columns: repeat(4, 1fr);
+		align-items: end;
+		margin-top: 0;
+	}
+}
+
+/* Touch screens: 44px tap targets for the Notes page's small controls. */
+@media (pointer: coarse) {
+	.articlenotes-notes-more summary, .articlenotes-notes .articlenotes-actions .btn, .articlenotes-notes-edit summary {
+		min-height: 44px;
+	}
+
+	.articlenotes-notes-check {
+		min-height: 44px;
+	}
+
+	.articlenotes-notes-check input {
+		width: 1.5rem;
+		height: 1.5rem;
+		margin: 0;
+	}
+
+	.articlenotes-notes-export a {
+		display: inline-flex;
+		align-items: center;
+		min-height: 44px;
+		padding: 0 0.25rem;
 	}
 }

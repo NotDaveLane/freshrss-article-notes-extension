@@ -62,4 +62,9 @@ final class NotesFilter {
 	public function isEmpty(): bool {
 		return $this->toParams() === [];
 	}
+
+	/** Whether a filter other than the search is set (the Notes page then shows them expanded). */
+	public function narrows(): bool {
+		return array_diff_key($this->toParams(), ['q' => true]) !== [];
+	}
 }
