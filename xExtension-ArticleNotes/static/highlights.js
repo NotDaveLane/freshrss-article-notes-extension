@@ -569,6 +569,9 @@
 			});
 		});
 		remove.addEventListener('click', function () {
+			if (!window.confirm(t.confirmHighlightDelete)) {
+				return;
+			}
 			error.hidden = true;
 			busy(true);
 			item.queue = item.queue.then(function (created) {

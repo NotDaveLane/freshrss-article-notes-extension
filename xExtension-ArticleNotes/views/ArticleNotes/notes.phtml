@@ -14,7 +14,9 @@
 	$colorName = static fn (string $color): string => $e(_t('ext.article_notes.highlight.color_' . $color));
 
 	/** The hidden fields and the buttons of the form that edits one annotation. */
-	$editForm = static function (array $fields, string $note, ?string $color) use ($e, $t, $back, $colors, $colorName): void {
+	$editForm = static function (array $fields, string $note, ?string $color, string $labelKey, string $confirmKey) use ($e, $t, $back, $colors, $colorName): void {
+		static $count = 0;
+		$textareaId = 'articlenotes-notes-text-' . ++$count;
 		?>
 		<details class="articlenotes-notes-edit">
 			<summary class="btn"><?= $t('edit') ?></summary>
@@ -24,8 +26,9 @@
 				<?php foreach ($fields as $name => $value) { ?>
 					<input type="hidden" name="<?= $e($name) ?>" value="<?= $e($value) ?>" />
 				<?php } ?>
-				<textarea name="note" class="articlenotes-textarea" rows="4" maxlength="<?= ArticleNotes\NoteService::MAX_LENGTH ?>"
-					aria-label="<?= $t('highlight_note') ?>"><?= $e($note) ?></textarea>
+				<label for="<?= $textareaId ?>" class="articlenotes-notes-label"><?= $t($labelKey) ?></label>
+				<textarea id="<?= $textareaId ?>" name="note" class="articlenotes-textarea" rows="4"
+					maxlength="<?= ArticleNotes\NoteService::MAX_LENGTH ?>"><?= $e($note) ?></textarea>
 				<?php if ($color !== null) { ?>
 					<label class="articlenotes-notes-color"><?= $e(_t('ext.article_notes.highlight.color')) ?>
 						<select name="color">
@@ -37,7 +40,9 @@
 				<?php } ?>
 				<div class="articlenotes-actions">
 					<button type="submit" name="op" value="save" class="btn btn-important"><?= $t('save') ?></button>
-					<button type="submit" name="op" value="delete" class="btn"><?= $t('delete') ?></button>
+					<button type="submit" name="op" value="delete" class="btn btn-attention"
+							data-confirm="<?= $t($confirmKey) ?>"><?= $t('delete') ?></button>
+					<button type="button" class="btn articlenotes-notes-cancel"><?= $t('cancel') ?></button>
 				</div>
 			</form>
 		</details>
@@ -143,7 +148,8 @@
 					<div class="articlenotes-note-text"><?= nl2br($e($group->note->note), false) ?></div>
 					<?php $editForm($group->isPage()
 						? ['type' => 'page', 'url' => $group->note->entryLink]
-						: ['type' => 'article', 'id' => (string)$group->entryId], $group->note->note, null); ?>
+						: ['type' => 'article', 'id' => (string)$group->entryId], $group->note->note, null,
+							$group->isPage() ? 'page_note' : 'article_note', $group->isPage() ? 'confirm_delete_page_note' : 'confirm_delete_article_note'); ?>
 				</div>
 			<?php } ?>
 
@@ -170,7 +176,8 @@
 										aria-label="<?= $t('open_highlight_label', mb_strimwidth($highlight->selector['quote']['exact'], 0, 40, '…', 'UTF-8')) ?>"><?= $t('open_highlight') ?></a>
 								<?php } ?>
 							</div>
-							<?php $editForm(['type' => 'highlight', 'uuid' => $highlight->uuid], $highlight->note, $highlight->color); ?>
+							<?php $editForm(['type' => 'highlight', 'uuid' => $highlight->uuid], $highlight->note, $highlight->color,
+					'highlight_note', 'confirm_delete_highlight'); ?>
 						</li>
 					<?php } ?>
 				</ol>

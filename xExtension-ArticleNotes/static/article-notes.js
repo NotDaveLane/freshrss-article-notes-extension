@@ -339,6 +339,25 @@
 		}, true);
 	}
 
+	// The Notes page: confirm deletes, and let Cancel close the edit form.
+	document.addEventListener('click', function (event) {
+		const target = event.target instanceof Element ? event.target : null;
+		const del = target && target.closest('.articlenotes-notes-edit button[value="delete"]');
+		if (del && !window.confirm(del.getAttribute('data-confirm') || '')) {
+			event.preventDefault();
+			return;
+		}
+		const cancel = target && target.closest('.articlenotes-notes-edit .articlenotes-notes-cancel');
+		const details = cancel && cancel.closest('details');
+		if (details) {
+			details.open = false;
+			const summary = details.querySelector('summary');
+			if (summary) {
+				summary.focus();
+			}
+		}
+	});
+
 	if (document.body) {
 		start();
 	} else {

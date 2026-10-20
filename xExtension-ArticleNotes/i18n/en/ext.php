@@ -22,6 +22,7 @@ return array(
 			'saving' => 'Saving…',
 		),
 		'highlight' => array(
+			'confirm_delete' => 'Delete this highlight and its note?',
 			'toolbar' => 'Highlight the selected text',
 			'highlight' => 'Highlight',
 			'add_note' => 'Add note',
@@ -99,6 +100,10 @@ return array(
 			'edit' => 'Edit',
 			'save' => 'Save',
 			'delete' => 'Delete',
+			'cancel' => 'Cancel',
+			'confirm_delete_article_note' => 'Delete your note on this article?',
+			'confirm_delete_page_note' => 'Delete your note on this page?',
+			'confirm_delete_highlight' => 'Delete this highlight and its note?',
 			'saved' => 'Saved.',
 			'deleted' => 'Deleted.',
 			'not_found' => 'This note no longer exists.',
