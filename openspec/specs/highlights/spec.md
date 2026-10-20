@@ -150,3 +150,15 @@ CSRF token, 405 for a non-POST write, and the service's status with a translated
 #### Scenario: Missing CSRF token
 - **WHEN** a signed-in user posts a highlight without the CSRF token
 - **THEN** the response is 403 and nothing is stored
+
+### Requirement: Highlight deletion is confirmed
+
+The highlight popover's **Delete** button SHALL be styled `btn-attention` and SHALL ask for confirmation (`ext.article_notes.highlight.confirm_delete`, passed to the script by `jsVars()`) before calling the delete endpoint.
+
+#### Scenario: Dismissing the confirmation
+- **WHEN** a user presses Delete in the popover and dismisses the confirmation
+- **THEN** the highlight is kept and the popover stays open
+
+#### Scenario: Accepting the confirmation
+- **WHEN** a user presses Delete in the popover and accepts the confirmation
+- **THEN** the highlight is deleted

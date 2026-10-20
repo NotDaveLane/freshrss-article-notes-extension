@@ -15,6 +15,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- On the Notes page, Delete asks for confirmation (also in the highlight popover), is red, and the edit form has a
+  Cancel button, a visible label naming the item being edited, and no longer repeats the note text above it.
 - The **Note** action in the article footer has a note icon, space between it and the date, and a 44x44 px tap target on
   touch screens. It is bold with a filled icon when the article already has a note.
 - The note editor opens in place of the article's note (or above the Annotations panel when there is no note), in view

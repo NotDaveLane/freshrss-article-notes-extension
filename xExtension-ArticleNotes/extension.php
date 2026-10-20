@@ -322,6 +322,7 @@ final class ArticleNotesExtension extends Minz_Extension {
 				'noteLabel' => _t('ext.article_notes.highlight.note_label'),
 				'highlightSave' => _t('ext.article_notes.highlight.save'),
 				'highlightDelete' => _t('ext.article_notes.highlight.delete'),
+				'confirmHighlightDelete' => _t('ext.article_notes.highlight.confirm_delete'),
 				'close' => _t('ext.article_notes.highlight.close'),
 				'highlightFailed' => _t('ext.article_notes.highlight.failed'),
 				'markLabel' => _t('ext.article_notes.highlight.mark_label'),

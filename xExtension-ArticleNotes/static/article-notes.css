@@ -495,3 +495,14 @@ mark.articlenotes-hl:focus-visible {
 		padding: 0 0.25rem;
 	}
 }
+
+.articlenotes-notes-label {
+	display: block;
+	margin: 0.5rem 0 0.25rem;
+	font-weight: bold;
+}
+
+.articlenotes-notes-note:has(.articlenotes-notes-edit[open]) > .articlenotes-note-text,
+.articlenotes-hl-item:has(.articlenotes-notes-edit[open]) > .articlenotes-hl-note {
+	display: none;
+}

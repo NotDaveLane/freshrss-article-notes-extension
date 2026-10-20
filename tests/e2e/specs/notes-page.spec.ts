@@ -427,19 +427,59 @@ for (const viewport of viewports) {
 			await page.reload();
 			await expect(group(page, `Edit ${tag}`).locator('.articlenotes-notes-note')).toContainText('page changed');
 
-			// Deleting.
+			// Labels per kind, and Cancel.
+			const noteBox = group(page, 'Type-safe SQL without an ORM').locator('.articlenotes-notes-note');
+			await noteBox.getByText('Edit', { exact: true }).click();
+			await expect(noteBox.getByRole('textbox', { name: 'Note', exact: true })).toBeVisible();
+			await expect(noteBox.locator('.articlenotes-note-text')).toBeHidden();
+			await noteBox.getByRole('textbox').fill('discarded');
+			await noteBox.getByRole('button', { name: 'Cancel' }).click();
+			await expect(noteBox.locator('details')).not.toHaveAttribute('open', '');
+			await expect(noteBox.locator('summary')).toBeFocused();
+			await expect(noteBox.locator('.articlenotes-note-text')).toContainText('changed');
+			await expect(noteBox.locator('.articlenotes-note-text')).not.toContainText('discarded');
+			await group(page, `Edit ${tag}`).getByText('Edit', { exact: true }).click();
+			await expect(group(page, `Edit ${tag}`).getByRole('textbox', { name: 'Page note', exact: true })).toBeVisible();
+			await group(page, `Edit ${tag}`).getByRole('button', { name: 'Cancel' }).click();
 			await changed.getByText('Edit', { exact: true }).click();
+			await expect(changed.getByRole('textbox', { name: 'Note on this highlight' })).toBeVisible();
+
+			// Deleting: dismissing keeps the item, accepting deletes it.
+			page.removeAllListeners('dialog');
+			const messages: string[] = [];
+			const answer = (accept: boolean) => page.once('dialog', (dialog) => {
+				messages.push(dialog.message());
+				return accept ? dialog.accept() : dialog.dismiss();
+			});
+			await expect(changed.getByRole('button', { name: 'Delete' })).toHaveClass(/btn-attention/);
+			answer(false);
+			await changed.getByRole('button', { name: 'Delete' }).click();
+			await expect(page.locator('.articlenotes-hl-item')).toHaveCount(1);
+			answer(true);
 			await changed.getByRole('button', { name: 'Delete' }).click();
 			await expect(page.getByText('Deleted.')).toBeVisible();
 			await expect(page.locator('.articlenotes-hl-item')).toHaveCount(0);
 			const note = group(page, 'Type-safe SQL without an ORM').locator('.articlenotes-notes-note');
 			await note.getByText('Edit', { exact: true }).click();
+			answer(false);
+			await note.getByRole('button', { name: 'Delete' }).click();
+			await expect(note).toBeVisible();
+			answer(true);
 			await note.getByRole('button', { name: 'Delete' }).click();
 			await expect(group(page, 'Type-safe SQL without an ORM')).toHaveCount(0);
 			const pageNote = group(page, `Edit ${tag}`).locator('.articlenotes-notes-note');
 			await pageNote.getByText('Edit', { exact: true }).click();
+			answer(false);
+			await pageNote.getByRole('button', { name: 'Delete' }).click();
+			await expect(pageNote).toBeVisible();
+			answer(true);
 			await pageNote.getByRole('button', { name: 'Delete' }).click();
 			await expect(page.getByText('Nothing matches these filters.')).toBeVisible();
+			expect(messages).toEqual([
+				'Delete this highlight and its note?', 'Delete this highlight and its note?',
+				'Delete your note on this article?', 'Delete your note on this article?',
+				'Delete your note on this page?', 'Delete your note on this page?',
+			]);
 		});
 	});
 }

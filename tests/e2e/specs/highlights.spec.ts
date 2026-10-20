@@ -148,6 +148,14 @@ for (const viewport of viewports) {
 
 			// Delete.
 			await marks(article).click();
+			page.once('dialog', (dialog) => dialog.dismiss());
+			await popover(page).getByRole('button', { name: 'Delete' }).click();
+			await expect(popover(page)).toBeVisible();
+			expect(await apiHighlights(request, id)).toHaveLength(1);
+			page.once('dialog', (dialog) => {
+				expect(dialog.message()).toBe('Delete this highlight and its note?');
+				return dialog.accept();
+			});
 			await popover(page).getByRole('button', { name: 'Delete' }).click();
 			await expect(marks(article)).toHaveCount(0);
 			await expect(popover(page)).toHaveCount(0);
@@ -535,6 +543,7 @@ test('a highlight made on the original page is drawn when it anchors; one that d
 		return copy.textContent;
 	})).not.toContain('rewritten');
 	await orphan.getByRole('button', { name: 'Edit' }).click();
+	page.once('dialog', (dialog) => dialog.accept());
 	await popover(page).getByRole('button', { name: 'Delete' }).click();
 	await expect(items).toHaveCount(1);
 });

@@ -136,7 +136,8 @@ highlight** link that opens the article and scrolls to it. Notes and quotes are 
 - **Search** looks in notes, highlight quotes and titles (case-insensitively; `%` and `_` are ordinary characters).
 - **Filters** — kind (article notes, page notes, highlights), colour, feed and "only with a note" — combine with each other
   and with the search, and stay in the address when you turn pages.
-- **Edit** opens a form under a note or highlight: change the text, change a highlight's colour, or delete it. The same rules
+- **Edit** opens a form under a note or highlight: change the text, change a highlight's colour, or delete it (after a confirmation). The field is labelled with what you are editing, and
+  **Cancel** closes the form without saving. The same rules
   as elsewhere apply (20,000 characters; the "Annotated" label follows your notes and highlights).
 - **Export** downloads what the current search and filters match, as **Markdown** (grouped like the page, quotes as
   blockquotes) or as **JSON in the [W3C Web Annotation](https://www.w3.org/TR/annotation-model/) format** (an
