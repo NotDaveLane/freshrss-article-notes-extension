@@ -15,6 +15,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- The note editor opens in place of the article's note (or above the Annotations panel when there is no note), in view
+  and aligned with the article text, instead of below the Annotations panel; Cancel or Escape shows the note again.
 - On small screens, closing the highlight popover (saving, closing, Escape, deleting or tapping outside it) returns the
   page to the reading position it had before the popover scrolled it, unless you scrolled the page while it was open.
 

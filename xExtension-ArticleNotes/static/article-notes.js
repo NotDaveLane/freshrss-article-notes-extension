@@ -30,6 +30,10 @@
 		if (form) {
 			form.remove();
 		}
+		const block = noteBlock(flux);
+		if (block) {
+			block.hidden = false;
+		}
 		const trigger = flux.querySelector('.articlenotes-trigger');
 		if (trigger) {
 			trigger.setAttribute('aria-expanded', 'false');
@@ -167,18 +171,22 @@
 			}
 		});
 
-		const content = flux.querySelector('.content') || flux;
-		const text = content.querySelector('.text');
-		if (text) {
-			text.after(form);
+		// In place of the note (shown again on close), else above the Annotations panel, else where the note will be.
+		const panel = flux.querySelector('.articlenotes-panel');
+		if (hasNote) {
+			block.before(form);
+			block.hidden = true;
+		} else if (panel) {
+			panel.before(form);
 		} else {
-			content.appendChild(form);
+			(flux.querySelector('.content .text') || flux.querySelector('.content') || flux).appendChild(form);
 		}
 		if (trigger) {
 			trigger.setAttribute('aria-expanded', 'true');
 		}
 		updateCounter();
-		textarea.focus();
+		form.scrollIntoView({ block: 'nearest' });
+		textarea.focus({ preventScroll: true });
 		textarea.setSelectionRange(textarea.value.length, textarea.value.length);
 	}
 
@@ -211,7 +219,7 @@
 		root.querySelectorAll('ul.bottom').forEach(decorate);
 	}
 
-	/** The note block opens the same editor as the "Note" action, under the article or in the Annotations panel. */
+	/** The note block opens the same editor as the "Note" action, in place of the block (under the article or in the Annotations panel). */
 	function openFromNote(note) {
 		const flux = note.closest('.flux');
 		if (flux && !flux.querySelector('.articlenotes-editor')) {
