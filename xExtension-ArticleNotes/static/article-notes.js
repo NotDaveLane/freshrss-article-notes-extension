@@ -190,6 +190,45 @@
 		textarea.setSelectionRange(textarea.value.length, textarea.value.length);
 	}
 
+	/** Note icon drawn in currentColor so it follows the theme: outlined, or filled (through CSS) when the article has a note. */
+	function icon() {
+		const ns = 'http://www.w3.org/2000/svg';
+		const svg = document.createElementNS(ns, 'svg');
+		svg.setAttribute('class', 'articlenotes-icon');
+		svg.setAttribute('viewBox', '0 0 16 16');
+		svg.setAttribute('width', '16');
+		svg.setAttribute('height', '16');
+		svg.setAttribute('aria-hidden', 'true');
+		svg.setAttribute('focusable', 'false');
+		const sheet = document.createElementNS(ns, 'path');
+		sheet.setAttribute('class', 'articlenotes-icon-sheet');
+		sheet.setAttribute('d', 'M2.5 1.5h8l3 3v10h-11z');
+		const lines = document.createElementNS(ns, 'path');
+		lines.setAttribute('class', 'articlenotes-icon-lines');
+		lines.setAttribute('d', 'M5 7h6M5 9.5h6M5 12h4');
+		// Filled variant: the lines are holes (even-odd), so they show the page behind whatever the theme's colours are.
+		const filled = document.createElementNS(ns, 'path');
+		filled.setAttribute('class', 'articlenotes-icon-filled');
+		filled.setAttribute('fill-rule', 'evenodd');
+		filled.setAttribute('d', 'M1.8 0.8h9l3.4 3.4v11h-12.4z M4.3 6.3h7.4v1.4h-7.4z M4.3 8.8h7.4v1.4h-7.4z M4.3 11.3h5.4v1.4h-5.4z');
+		svg.appendChild(sheet);
+		svg.appendChild(lines);
+		svg.appendChild(filled);
+		return svg;
+	}
+
+	/** Marks the footer action of an article that has a note (bold, filled icon, "Edit" title). */
+	function updateState(flux) {
+		const config = settings();
+		const hasNote = noteBlock(flux) !== null;
+		flux.querySelectorAll('.articlenotes-trigger').forEach(function (trigger) {
+			trigger.setAttribute('data-has-note', hasNote ? 'true' : 'false');
+			if (config) {
+				trigger.setAttribute('title', hasNote ? config.i18n.actionTitleEdit : config.i18n.actionTitle);
+			}
+		});
+	}
+
 	function decorate(list) {
 		if (list.querySelector('.articlenotes-item')) {
 			return;
@@ -203,10 +242,12 @@
 		const trigger = element('a', 'item-element articlenotes-trigger', {
 			href: '#', role: 'button', 'aria-expanded': 'false', title: config.i18n.actionTitle,
 		});
-		trigger.textContent = config.i18n.action;
+		trigger.appendChild(icon());
+		trigger.appendChild(element('span', 'articlenotes-trigger-label')).textContent = config.i18n.action;
 		item.appendChild(trigger);
 		const date = list.querySelector('li.date');
 		list.insertBefore(item, date);
+		updateState(flux);
 	}
 
 	function scan(root) {
@@ -235,6 +276,11 @@
 				mutation.addedNodes.forEach(scan);
 			});
 		}).observe(document.body, { childList: true, subtree: true });
+		document.addEventListener('articlenotes:note', function (event) {
+			if (event.target instanceof Element) {
+				updateState(event.target);
+			}
+		});
 		document.addEventListener('click', function (event) {
 			const note = event.target instanceof Element ? event.target.closest('.articlenotes-note') : null;
 			if (note) {
