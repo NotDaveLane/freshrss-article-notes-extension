@@ -444,7 +444,7 @@
 		popover.el.remove();
 		popover = null;
 		if (restoreFocus && opener && opener.isConnected) {
-			opener.focus();
+			opener.focus({ preventScroll: true });
 		}
 	}
 
@@ -566,7 +566,23 @@
 		popover = { el: el, item: item, state: state, opener: opener };
 		const rect = (opener && opener.getBoundingClientRect()) || state.root.getBoundingClientRect();
 		placeFloating(el, rect, true);
-		(focusNote ? textarea : el).focus();
+		(focusNote ? textarea : el).focus({ preventScroll: true });
+		revealAboveSheet(el, rect);
+	}
+
+	/**
+	 * On small screens the popover is a bottom sheet (see article-notes.css): scrolls just enough to show the highlight above
+	 * it, and not at all when it already is, so tapping the same highlight again leaves the page where it is.
+	 */
+	function revealAboveSheet(el, rect) {
+		if (window.getComputedStyle(el).position !== 'fixed') {
+			return;
+		}
+		const margin = 8;
+		const hidden = rect.bottom + margin - el.getBoundingClientRect().top;
+		if (hidden > 0) {
+			window.scrollBy(0, Math.min(hidden, Math.max(0, rect.top - margin)));
+		}
 	}
 
 	// --- Annotations panel ------------------------------------------------------------------------------------------
