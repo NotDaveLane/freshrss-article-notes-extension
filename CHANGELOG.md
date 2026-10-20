@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- On small screens, closing the highlight popover (saving, closing, Escape, deleting or tapping outside it) returns the
+  page to the reading position it had before the popover scrolled it, unless you scrolled the page while it was open.
+
 ## [1.1.1] - 2026-10-19
 
 ### Fixed

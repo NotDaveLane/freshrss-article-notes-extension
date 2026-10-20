@@ -1,4 +1,4 @@
-import { expect, test, type APIRequestContext, type Locator, type Page } from '../support/test';
+import { expect, test, type APIRequestContext, type Browser, type BrowserContext, type Locator, type Page } from '../support/test';
 import { basicAuth, openArticle, signIn, throwawayApiPassword, throwawayUser } from '../support/freshrss';
 
 const API = '/api/misc.php/ArticleNotes/v1';
@@ -312,6 +312,157 @@ test('tapping a highlight on mobile scrolls the page at most once, only to show 
 	await mark.tap();
 	expect(await page.evaluate(() => window.scrollY)).toBe(top);
 	await context.close();
+});
+
+/** Like `scrollMarkTo`, for the first occurrence of `text` in the article content (before it is highlighted). */
+async function scrollTextTo(page: Page, article: Locator, text: string, fromTop: number): Promise<number> {
+	await page.evaluate(() => {
+		document.body.style.paddingTop = '1500px';
+		document.body.style.paddingBottom = '1500px';
+	});
+	await article.locator('.content .text').evaluate((root, [wanted, y]) => {
+		const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
+		for (let node = walker.nextNode(); node; node = walker.nextNode()) {
+			const at = (node as Text).data.indexOf(wanted as string);
+			if (at !== -1) {
+				const range = document.createRange();
+				range.setStart(node, at);
+				range.setEnd(node, at + (wanted as string).length);
+				window.scrollBy(0, range.getBoundingClientRect().top - (y as number));
+				return;
+			}
+		}
+		throw new Error('text not found: ' + wanted);
+	}, [text, fromTop]);
+	return page.evaluate(() => window.scrollY);
+}
+
+async function expectScrollY(page: Page, expected: number): Promise<void> {
+	await expect.poll(async () => Math.abs(await page.evaluate(() => window.scrollY) - expected)).toBeLessThanOrEqual(1);
+}
+
+/** A touch-enabled phone-sized page, signed in, showing `article` with one highlight on "some distributions". */
+async function mobileWithHighlight(browser: Browser, request: APIRequestContext): Promise<{ context: BrowserContext; page: Page; mark: Locator }> {
+	const id = await reset(request, articles.keyboard);
+	await createViaApi(request, id, { source: 'freshrss', selector: { quote: { exact: 'some distributions' } } });
+	const context = await browser.newContext({ viewport: { width: 390, height: 844 }, hasTouch: true, isMobile: true });
+	const page = await context.newPage();
+	await signIn(page, throwawayUser());
+	const article = await open(page, articles.keyboard);
+	const mark = marks(article).first();
+	await expect(mark).toBeVisible();
+	return { context, page, mark };
+}
+
+test('on mobile, saving a note added from the toolbar returns the page to where it was', async ({ browser, request }) => {
+	await reset(request, articles.keyboard);
+	const context = await browser.newContext({ viewport: { width: 390, height: 844 }, hasTouch: true, isMobile: true });
+	const page = await context.newPage();
+	await signIn(page, throwawayUser());
+	const article = await open(page, articles.keyboard);
+	const before = await scrollTextTo(page, article, 'some distributions', 844 - 200);
+	await select(article, 'some distributions');
+	await expect(toolbar(page)).toBeVisible();
+	await toolbar(page).getByRole('button', { name: 'Add note' }).tap();
+	await expect(popover(page)).toBeVisible();
+	await expect(popover(page).getByLabel('Note on this highlight')).toBeFocused();
+	expect(await page.evaluate(() => window.scrollY)).toBeGreaterThan(before + 1);
+	await popover(page).getByLabel('Note on this highlight').fill('Back to where I was');
+	await popover(page).getByRole('button', { name: 'Save' }).tap();
+	await expect(popover(page)).toHaveCount(0);
+	await expect(article.locator('.articlenotes-panel')).toContainText('Back to where I was');
+	await expectScrollY(page, before);
+	await context.close();
+});
+
+for (const dismiss of ['Close', 'Escape'] as const) {
+	test(`on mobile, dismissing the popover with ${dismiss} returns the page to where it was`, async ({ browser, request }) => {
+		const { context, page, mark } = await mobileWithHighlight(browser, request);
+		const before = await scrollMarkTo(page, mark, 844 - 80);
+		await mark.tap();
+		await expect(popover(page)).toBeVisible();
+		expect(await page.evaluate(() => window.scrollY)).toBeGreaterThan(before + 1);
+		if (dismiss === 'Close') {
+			await popover(page).getByRole('button', { name: 'Close' }).tap();
+		} else {
+			await page.keyboard.press('Escape');
+		}
+		await expect(popover(page)).toHaveCount(0);
+		await expect(mark).toBeFocused();
+		await expectScrollY(page, before);
+		// Tapping it again scrolls once more, and only once.
+		await mark.tap();
+		await expect(popover(page)).toBeVisible();
+		const after = await page.evaluate(() => window.scrollY);
+		expect(after).toBeGreaterThan(before + 1);
+		await mark.tap();
+		await expect(popover(page)).toBeVisible();
+		await expectScrollY(page, after);
+		await context.close();
+	});
+}
+
+test('on mobile, a tap outside the popover returns the page to where it was', async ({ browser, request }) => {
+	const { context, page, mark } = await mobileWithHighlight(browser, request);
+	const before = await scrollMarkTo(page, mark, 844 - 80);
+	await mark.tap();
+	await expect(popover(page)).toBeVisible();
+	expect(await page.evaluate(() => window.scrollY)).toBeGreaterThan(before + 1);
+	await page.touchscreen.tap(195, 40);
+	await expect(popover(page)).toHaveCount(0);
+	await expectScrollY(page, before);
+	await context.close();
+});
+
+test('on mobile, the page stays where the reader scrolled it while the popover was open', async ({ browser, request }) => {
+	const { context, page, mark } = await mobileWithHighlight(browser, request);
+	const before = await scrollMarkTo(page, mark, 844 - 80);
+	await mark.tap();
+	await expect(popover(page)).toBeVisible();
+	const opened = await page.evaluate(() => window.scrollY);
+	expect(opened).toBeGreaterThan(before + 1);
+	await page.mouse.move(195, 200);
+	await page.mouse.wheel(0, 300);
+	await expect.poll(() => page.evaluate(() => window.scrollY)).toBeGreaterThan(opened + 100);
+	const scrolled = await page.evaluate(() => window.scrollY);
+	await popover(page).getByRole('button', { name: 'Close' }).tap();
+	await expect(popover(page)).toHaveCount(0);
+	await page.waitForTimeout(100);
+	await expectScrollY(page, scrolled);
+	await context.close();
+});
+
+test('on mobile, closing a popover that did not scroll leaves the page where it is', async ({ browser, request }) => {
+	const { context, page, mark } = await mobileWithHighlight(browser, request);
+	const top = await scrollMarkTo(page, mark, 60);
+	await mark.tap();
+	await expect(popover(page)).toBeVisible();
+	expect(await page.evaluate(() => window.scrollY)).toBe(top);
+	await popover(page).getByRole('button', { name: 'Close' }).tap();
+	await expect(popover(page)).toHaveCount(0);
+	await page.waitForTimeout(100);
+	expect(await page.evaluate(() => window.scrollY)).toBe(top);
+	await context.close();
+});
+
+test('on desktop, opening and closing the popover does not scroll the page', async ({ page, request }) => {
+	await page.setViewportSize({ width: 1440, height: 900 });
+	const id = await reset(request, articles.keyboard);
+	await createViaApi(request, id, { source: 'freshrss', selector: { quote: { exact: 'some distributions' } } });
+	const article = await open(page, articles.keyboard);
+	const mark = marks(article).first();
+	const before = await scrollMarkTo(page, mark, 300);
+	await mark.click();
+	await expect(popover(page)).toBeVisible();
+	await popover(page).getByRole('button', { name: 'Close' }).click();
+	await expect(popover(page)).toHaveCount(0);
+	await mark.focus();
+	await page.keyboard.press('Enter');
+	await expect(popover(page)).toBeVisible();
+	await page.keyboard.press('Escape');
+	await expect(popover(page)).toHaveCount(0);
+	await page.waitForTimeout(100);
+	expect(await page.evaluate(() => window.scrollY)).toBe(before);
 });
 
 test('clicking a highlight twice on desktop does not scroll the page', async ({ page, request }) => {
