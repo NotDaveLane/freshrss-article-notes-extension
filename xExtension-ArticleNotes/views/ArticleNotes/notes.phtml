@@ -56,33 +56,38 @@
 			<input type="search" name="q" value="<?= $e($filter->query) ?>" maxlength="<?= ArticleNotes\NotesFilter::MAX_QUERY_LENGTH ?>"
 				placeholder="<?= $t('search_placeholder') ?>" />
 		</label>
-		<label><span><?= $t('kind') ?></span>
-			<select name="kind">
-				<option value=""><?= $t('kind_all') ?></option>
-				<?php foreach (ArticleNotes\NotesFilter::KINDS as $kind) { ?>
-					<option value="<?= $e($kind) ?>"<?= $kind === $filter->kind ? ' selected="selected"' : '' ?>><?= $t('kind_' . $kind) ?></option>
-				<?php } ?>
-			</select>
-		</label>
-		<label><span><?= $t('color') ?></span>
-			<select name="color">
-				<option value=""><?= $t('color_all') ?></option>
-				<?php foreach ($colors as $color) { ?>
-					<option value="<?= $e($color) ?>"<?= $color === $filter->color ? ' selected="selected"' : '' ?>><?= $colorName($color) ?></option>
-				<?php } ?>
-			</select>
-		</label>
-		<label><span><?= $t('feed') ?></span>
-			<select name="feed">
-				<option value=""><?= $t('feed_all') ?></option>
-				<?php foreach ($page->feeds as $feedId => $feedName) { ?>
-					<option value="<?= $feedId ?>"<?= $feedId === $filter->feedId ? ' selected="selected"' : '' ?>><?= $e($feedName) ?></option>
-				<?php } ?>
-			</select>
-		</label>
-		<label class="articlenotes-notes-check">
-			<input type="checkbox" name="has_note" value="1"<?= $filter->hasNote ? ' checked="checked"' : '' ?> /> <?= $t('has_note') ?>
-		</label>
+		<details class="articlenotes-notes-more"<?= $filter->narrows() ? ' open="open"' : '' ?>>
+			<summary class="btn"><?= $t('filters') ?></summary>
+			<div class="articlenotes-notes-more-fields">
+				<label><span><?= $t('kind') ?></span>
+					<select name="kind">
+						<option value=""><?= $t('kind_all') ?></option>
+						<?php foreach (ArticleNotes\NotesFilter::KINDS as $kind) { ?>
+							<option value="<?= $e($kind) ?>"<?= $kind === $filter->kind ? ' selected="selected"' : '' ?>><?= $t('kind_' . $kind) ?></option>
+						<?php } ?>
+					</select>
+				</label>
+				<label><span><?= $t('color') ?></span>
+					<select name="color">
+						<option value=""><?= $t('color_all') ?></option>
+						<?php foreach ($colors as $color) { ?>
+							<option value="<?= $e($color) ?>"<?= $color === $filter->color ? ' selected="selected"' : '' ?>><?= $colorName($color) ?></option>
+						<?php } ?>
+					</select>
+				</label>
+				<label><span><?= $t('feed') ?></span>
+					<select name="feed">
+						<option value=""><?= $t('feed_all') ?></option>
+						<?php foreach ($page->feeds as $feedId => $feedName) { ?>
+							<option value="<?= $feedId ?>"<?= $feedId === $filter->feedId ? ' selected="selected"' : '' ?>><?= $e($feedName) ?></option>
+						<?php } ?>
+					</select>
+				</label>
+				<label class="articlenotes-notes-check">
+					<input type="checkbox" name="has_note" value="1"<?= $filter->hasNote ? ' checked="checked"' : '' ?> /> <?= $t('has_note') ?>
+				</label>
+			</div>
+		</details>
 		<div class="articlenotes-actions">
 			<button type="submit" class="btn btn-important"><?= $t('apply') ?></button>
 			<?php if (!$filter->isEmpty()) { ?>

@@ -321,4 +321,12 @@ final class NotesBrowserTest extends TestCase {
 		self::assertTrue(NotesFilter::fromParams(['color' => 'nope', 'feed' => 'x', 'has_note' => '0'])->isEmpty());
 		self::assertSame(200, mb_strlen(NotesFilter::fromParams(['q' => str_repeat('é', 500)])->query));
 	}
+
+	public function testOnlyFiltersBesidesTheSearchNarrow(): void {
+		self::assertFalse(NotesFilter::fromParams([])->narrows());
+		self::assertFalse(NotesFilter::fromParams(['q' => 'hi', 'kind' => 'bogus'])->narrows());
+		foreach ([['kind' => 'page'], ['color' => 'pink'], ['feed' => '12'], ['has_note' => '1']] as $params) {
+			self::assertTrue(NotesFilter::fromParams($params)->narrows(), (string)json_encode($params));
+		}
+	}
 }

@@ -105,6 +105,10 @@ async function search(page: Page, params: string): Promise<void> {
 
 async function applyFilters(page: Page, fields: { q?: string; kind?: string; color?: string; feed?: string; hasNote?: boolean }): Promise<void> {
 	const form = page.getByRole('search');
+	const more = form.locator('details.articlenotes-notes-more');
+	if ((fields.kind ?? fields.color ?? fields.feed ?? fields.hasNote) !== undefined && !(await more.evaluate((details: HTMLDetailsElement) => details.open))) {
+		await more.getByText('Filters', { exact: true }).click();
+	}
 	if (fields.q !== undefined) {
 		await form.getByLabel('Search').fill(fields.q);
 	}
@@ -306,6 +310,59 @@ for (const viewport of viewports) {
 		});
 	});
 }
+
+test.describe('filters on a phone', () => {
+	test.use({ viewport: { width: 390, height: 844 }, hasTouch: true, isMobile: true });
+
+	test('keeps the search and collapses the other filters so the first note shows', async ({ page }) => {
+		await search(page, `q=${MARK}`);
+		const form = page.getByRole('search');
+		await expect(form.getByLabel('Search')).toBeVisible();
+		await expect(form.getByRole('button', { name: 'Apply filters' })).toBeVisible();
+		await expect(form.getByLabel('Kind')).toBeHidden();
+		await expect(groups(page).first().getByRole('heading', { level: 2 })).toBeInViewport();
+
+		await form.getByText('Filters', { exact: true }).click();
+		await expect(form.getByLabel('Kind')).toBeVisible();
+		await expect(form.getByLabel('Only with a note')).toBeVisible();
+	});
+
+	test('shows the other filters when one of them is active', async ({ page }) => {
+		await search(page, `q=${MARK}&kind=page`);
+		await expect(page.getByRole('search').getByLabel('Kind')).toHaveValue('page');
+		await expect(page.getByRole('search').getByLabel('Kind')).toBeVisible();
+	});
+
+	test('gives the small controls a 44px tap height', async ({ page }) => {
+		await search(page, `q=${MARK}`);
+		const form = page.getByRole('search');
+		await form.getByText('Filters', { exact: true }).click();
+		const targets = [
+			form.getByText('Filters', { exact: true }),
+			form.locator('.articlenotes-notes-check'),
+			page.getByRole('link', { name: 'Markdown' }),
+			page.getByRole('link', { name: 'JSON (W3C Web Annotation)' }),
+			group(page, RUST).locator('.articlenotes-notes-note').getByText('Edit', { exact: true }),
+			group(page, RUST).locator('.articlenotes-notes-jump'),
+		];
+		for (const target of targets) {
+			const box = (await target.boundingBox())!;
+			expect(box.height, await target.innerText()).toBeGreaterThanOrEqual(44);
+		}
+	});
+});
+
+test.describe('filters on a desktop', () => {
+	test.use({ viewport: { width: 1440, height: 900 } });
+
+	test('shows every filter without a toggle', async ({ page }) => {
+		await search(page, '');
+		const form = page.getByRole('search');
+		await expect(form.getByLabel('Kind')).toBeVisible();
+		await expect(form.getByLabel('Only with a note')).toBeVisible();
+		await expect(form.getByText('Filters', { exact: true })).toBeHidden();
+	});
+});
 
 for (const viewport of viewports) {
 	test.describe(`edits at ${viewport.name}`, () => {

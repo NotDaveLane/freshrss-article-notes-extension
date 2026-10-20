@@ -268,8 +268,25 @@
 		}
 	}
 
+	/** The Notes page collapses its filters on narrow screens only: wide enough, they are always shown (the toggle is hidden). */
+	function expandWideFilters() {
+		const filters = document.querySelector('.articlenotes-notes-more');
+		if (!filters || !window.matchMedia) {
+			return;
+		}
+		const wide = window.matchMedia('(min-width: 48rem)');
+		const expand = function () {
+			if (wide.matches) {
+				filters.open = true;
+			}
+		};
+		expand();
+		wide.addEventListener('change', expand);
+	}
+
 	function start() {
 		scan(document.body);
+		expandWideFilters();
 		// Articles arrive after page load (infinite scroll, global view panels): decorate whatever is added.
 		new MutationObserver(function (mutations) {
 			mutations.forEach(function (mutation) {
