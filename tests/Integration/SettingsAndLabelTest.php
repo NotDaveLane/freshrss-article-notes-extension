@@ -284,6 +284,35 @@ final class SettingsAndLabelTest extends TestCase {
 		self::assertStringEndsWith('/api/misc.php/ArticleNotes/', ArticleNotesExtension::apiUrl());
 	}
 
+	public function testApiProblemsNameAMissingApiPasswordAndDisabledApiAccess(): void {
+		$system = FreshRSS_Context::systemConf();
+		$user = FreshRSS_Context::userConf();
+		$apiEnabled = $system->api_enabled;
+		$hash = $user->apiPasswordHash;
+		try {
+			$system->api_enabled = true;
+			$user->apiPasswordHash = '$2y$10$hash';
+			self::assertSame([], ArticleNotesExtension::apiProblems());
+
+			$user->apiPasswordHash = '';
+			self::assertSame(['You have no API password yet: set one under Profile → External access via API.'],
+				ArticleNotesExtension::apiProblems());
+
+			$system->api_enabled = false;
+			self::assertSame([
+				'API access is disabled on this FreshRSS instance: an administrator can allow it under Configuration → Authentication.',
+				'You have no API password yet: set one under Profile → External access via API.',
+			], ArticleNotesExtension::apiProblems());
+		} finally {
+			$system->api_enabled = $apiEnabled;
+			$user->apiPasswordHash = $hash;
+		}
+	}
+
+	public function testOpenApiUrlIsServedNextToTheEndpoint(): void {
+		self::assertSame(ArticleNotesExtension::apiUrl() . 'v1/openapi.json', ArticleNotesExtension::openApiUrl());
+	}
+
 	public function testLabelIdMigrationIsIdempotent(): void {
 		self::assertTrue($this->extension()->ensureSchema());
 		$pdo = (new ArticleNotes\Storage(TestEnvironment::USER))->pdo();

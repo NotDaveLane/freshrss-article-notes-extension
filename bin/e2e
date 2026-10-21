@@ -5,7 +5,8 @@
 # A throwaway user is created for the run via FreshRSS's CLI, subscribed to the local fixture
 # feed (http://fixtures/feed.xml), exported as E2E_USER/E2E_PASSWORD (web login) and E2E_API_PASSWORD
 # (FreshRSS API password), and deleted afterwards. A second throwaway user without an API password,
-# E2E_JOURNEY_USER/E2E_JOURNEY_PASSWORD, serves the full-journey spec (which sets one itself).
+# E2E_JOURNEY_USER/E2E_JOURNEY_PASSWORD, serves the full-journey spec (which sets one itself). A third one,
+# E2E_NO_API_USER/E2E_NO_API_PASSWORD, never gets an API password (the settings spec checks its warning).
 set -uo pipefail
 source "$(dirname "${BASH_SOURCE[0]}")/lib-common.sh"
 require_stack
@@ -15,11 +16,14 @@ E2E_PASSWORD="e2e-$(head -c 12 /dev/urandom | od -An -tx1 | tr -d ' \n')"
 E2E_API_PASSWORD="api-$(head -c 12 /dev/urandom | od -An -tx1 | tr -d ' \n')"
 E2E_JOURNEY_USER="${E2E_USER}j"
 E2E_JOURNEY_PASSWORD="e2e-$(head -c 12 /dev/urandom | od -An -tx1 | tr -d ' \n')"
+E2E_NO_API_USER="${E2E_USER}n"
+E2E_NO_API_PASSWORD="e2e-$(head -c 12 /dev/urandom | od -An -tx1 | tr -d ' \n')"
 fx() { docker compose exec -T -u www-data freshrss "$@"; }
 
 cleanup() {
 	fx php cli/delete-user.php --user "$E2E_USER" >/dev/null 2>&1
 	fx php cli/delete-user.php --user "$E2E_JOURNEY_USER" >/dev/null 2>&1
+	fx php cli/delete-user.php --user "$E2E_NO_API_USER" >/dev/null 2>&1
 }
 trap cleanup EXIT
 
@@ -34,6 +38,7 @@ create_user() {
 }
 create_user "$E2E_USER" "$E2E_PASSWORD" --api-password "$E2E_API_PASSWORD" || exit 1
 create_user "$E2E_JOURNEY_USER" "$E2E_JOURNEY_PASSWORD" || exit 1
+create_user "$E2E_NO_API_USER" "$E2E_NO_API_PASSWORD" || exit 1
 
 # The anchoring library's JavaScript coverage goes to coverage/js/ (owned by you).
 rm -rf coverage/js && mkdir -p coverage/js
@@ -41,5 +46,6 @@ docker compose run --rm --no-deps -T -v "$ROOT/coverage/js:/coverage/js" -e JS_C
 	-e HOST_UID="$(id -u)" -e HOST_GID="$(id -g)" \
 	-e E2E_USER="$E2E_USER" -e E2E_PASSWORD="$E2E_PASSWORD" -e E2E_API_PASSWORD="$E2E_API_PASSWORD" \
 	-e E2E_JOURNEY_USER="$E2E_JOURNEY_USER" -e E2E_JOURNEY_PASSWORD="$E2E_JOURNEY_PASSWORD" \
+	-e E2E_NO_API_USER="$E2E_NO_API_USER" -e E2E_NO_API_PASSWORD="$E2E_NO_API_PASSWORD" \
 	e2e sh -c 'npm ci --no-audit --no-fund --loglevel=error && npx playwright test "$@"; status=$?
 		chown -R "$HOST_UID:$HOST_GID" /coverage/js; exit $status' sh "$@"

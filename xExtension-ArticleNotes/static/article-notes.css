@@ -509,3 +509,21 @@ mark.articlenotes-hl:focus-visible {
 .articlenotes-hl-item:has(.articlenotes-notes-edit[open]) > .articlenotes-hl-note {
 	display: none;
 }
+
+/* Settings page: the API endpoint takes the available width (up to a readable line), with its Copy button. */
+.articlenotes-api-url {
+	display: flex;
+	width: 100%;
+	max-width: 48rem;
+}
+
+.articlenotes-api-url #articlenotes_api_url {
+	flex: 1 1 auto;
+	width: auto;
+	max-width: none;
+	min-width: 0;
+}
+
+.articlenotes-copy-status:empty {
+	display: none;
+}

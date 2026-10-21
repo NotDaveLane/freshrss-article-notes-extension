@@ -155,7 +155,10 @@ Every user has a settings page: Configuration → **Article notes** (no administ
 
 Turning the label off or renaming it affects notes you add from then on; already labelled articles keep their label.
 Labelled articles are kept by FreshRSS's default archiving setting "keep labelled articles" (Configuration → Archiving),
-so annotated articles are not purged. The page also shows your API endpoint, `<FreshRSS base URL>/api/misc.php/ArticleNotes/`.
+so annotated articles are not purged. The page also shows your API endpoint, `<FreshRSS base URL>/api/misc.php/ArticleNotes/`,
+with a **Copy** button, a link to the Profile page where you set the [API password](#authentication) clients sign in with,
+and a link to the [OpenAPI document](#openapi). It warns you when you have no API password yet or when the administrator
+has not allowed API access.
 
 Administrators also have one setting, on the extension's own page (Configuration → Extensions → ArticleNotes → the gear
 icon): **Allowed client origins**, for [web-page clients](#cors-web-page-clients). It is empty by default.

@@ -156,6 +156,27 @@ final class ArticleNotesExtension extends Minz_Extension {
 		return rtrim(FreshRSS_Context::systemConf()->base_url, '/') . '/api/misc.php/ArticleNotes/';
 	}
 
+	/** The URL of the API's OpenAPI document, which needs no credentials. */
+	public static function openApiUrl(): string {
+		return self::apiUrl() . 'v1/openapi.json';
+	}
+
+	/**
+	 * Why the API would refuse the current user, for the settings page: API access disabled on the instance, no API password.
+	 *
+	 * @return list<string> translated messages, empty when the API can be used
+	 */
+	public static function apiProblems(): array {
+		$problems = [];
+		if (!FreshRSS_Context::systemConf()->api_enabled) {
+			$problems[] = _t('ext.article_notes.settings.api_disabled');
+		}
+		if (FreshRSS_Context::userConf()->apiPasswordHash === '') {
+			$problems[] = _t('ext.article_notes.settings.api_no_password');
+		}
+		return $problems;
+	}
+
 	/** Answers `p/api/misc.php/ArticleNotes/...` (ApiMisc hook, FreshRSS >= 1.27.0). */
 	public function handleApi(): void {
 		$request = ArticleNotes\ApiRequest::fromGlobals($this->getName());

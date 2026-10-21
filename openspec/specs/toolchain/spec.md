@@ -140,6 +140,15 @@ it afterwards. It SHALL likewise create a second throwaway user without an API p
 - **WHEN** the throwaway user signs in
 - **THEN** the fixture feed's articles are listed
 
+### Requirement: E2E user without an API password
+
+`bin/e2e` SHALL also create, and delete afterwards, a throwaway user that never gets an API password
+(`E2E_NO_API_USER`/`E2E_NO_API_PASSWORD`), since FreshRSS cannot remove an API password once the full-journey spec set one.
+
+#### Scenario: Settings warning
+- **WHEN** the settings spec signs in as `E2E_NO_API_USER`
+- **THEN** the user has no API password, whichever specs ran before
+
 ### Requirement: Full-journey end-to-end test
 
 The Playwright suite SHALL include a full-journey spec in which a user without an API password sets one in the profile,
