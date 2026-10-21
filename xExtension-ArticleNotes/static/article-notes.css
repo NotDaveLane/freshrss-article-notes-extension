@@ -99,6 +99,13 @@
 	margin: 0;
 }
 
+/* Link buttons centre their label like <button>s do. */
+.articlenotes-actions a.btn {
+	display: inline-flex;
+	align-items: center;
+	box-sizing: border-box;
+}
+
 /* The "Note" action in the article footer: an icon and a label like FreshRSS's own items, kept clear of the date. */
 .articlenotes-item {
 	margin-right: 0.75rem;
@@ -272,6 +279,9 @@ mark.articlenotes-hl:focus-visible {
 	font-size: 1rem;
 }
 
+/* The .flux .content selector outranks a bare class: FreshRSS indents lists in article content. */
+.articlenotes-panel .articlenotes-hl-list,
+.flux .content .articlenotes-hl-list,
 .articlenotes-hl-list {
 	margin: 0;
 	padding: 0;
