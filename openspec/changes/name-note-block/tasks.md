@@ -1,0 +1,3 @@
+- [x] Integration and Playwright tests: region named "Your note", described and titled "Edit your note", no "Tap"
+- [x] `NoteBlock` labels the region by its heading and describes it by a hidden hint; `edit_hint` reworded
+- [x] Spec `note-editor` and CHANGELOG
