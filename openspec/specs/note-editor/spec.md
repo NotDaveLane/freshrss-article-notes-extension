@@ -35,6 +35,20 @@ textarea, Save and Cancel buttons, a Delete button when a note exists, and a cou
 - **WHEN** more articles are loaded into the stream
 - **THEN** their "Note" action works without reloading the page
 
+### Requirement: Highlight hint in the editor
+
+While the article has no highlight, the note editor SHALL show a help line telling the user to select text in the article
+to highlight it, referenced from the textarea by `aria-describedby`. It SHALL NOT be shown when the article already has a
+highlight.
+
+#### Scenario: Article without highlights
+- **WHEN** the user opens the note editor on an article without highlights
+- **THEN** the hint "Tip: select text in the article to highlight it." is shown and described by the textarea
+
+#### Scenario: Article with a highlight
+- **WHEN** the user opens the note editor on an article that has a highlight
+- **THEN** no hint is shown
+
 ### Requirement: Footer Note action
 
 The "Note" action in the article footer SHALL show an icon before its label, like FreshRSS's other footer items, keep at
