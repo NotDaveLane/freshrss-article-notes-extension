@@ -29,4 +29,13 @@ final class MetadataTest extends TestCase {
 			$version
 		);
 	}
+
+	public function testDescriptionMentionsHighlights(): void {
+		$description = $this->metadata()['description'];
+		self::assertIsString($description);
+		self::assertStringContainsString('highlight', $description);
+		$translated = require dirname(__DIR__, 2) . '/xExtension-ArticleNotes/i18n/en/ext.php';
+		self::assertIsArray($translated);
+		self::assertSame($description, $translated['article_notes']['description']);
+	}
 }

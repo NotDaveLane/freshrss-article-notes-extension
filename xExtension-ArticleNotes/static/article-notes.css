@@ -68,6 +68,11 @@
 	opacity: 0.8;
 }
 
+.articlenotes-hint {
+	margin: 0.25rem 0;
+	overflow-wrap: anywhere;
+}
+
 .articlenotes-counter-over {
 	color: var(--frss-border-color-error, #c0392b);
 	font-weight: bold;
