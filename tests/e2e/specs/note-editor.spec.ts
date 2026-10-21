@@ -105,6 +105,42 @@ for (const viewport of viewports) {
 			await deleteNote(page, article);
 		});
 
+		test('the editor hints at highlighting only while the article has no highlight', async ({ page, request }) => {
+			const auth = basicAuth(throwawayUser().user, throwawayApiPassword());
+			const lookup = await request.get(`${API}/lookup`, { headers: auth, params: { url: 'http://fixtures/articles/1' } });
+			const id = ((await lookup.json()) as { matches: { entry_id: string }[] }).matches[0].entry_id;
+			const list = await request.get(`${API}/highlights`, { headers: auth, params: { entry_id: id } });
+			for (const highlight of ((await list.json()) as { highlights: { uuid: string }[] }).highlights) {
+				await request.delete(`${API}/highlights/${highlight.uuid}`, { headers: auth });
+			}
+			const created = await request.post(`${API}/highlights`, {
+				headers: { ...auth, 'Content-Type': 'application/json' },
+				data: { entry_id: id, source: 'freshrss', selector: { quote: { exact: 'compile times' } } },
+			});
+			expect(created.status()).toBe(201);
+
+			await page.goto('/i/?state=3');
+			const highlighted = await openArticle(page, 'Rust 1.90 stabilizes async closures');
+			await expect(highlighted.locator('mark.articlenotes-hl')).not.toHaveCount(0);
+			await trigger(highlighted).click();
+			await expect(highlighted.locator('.articlenotes-editor')).toHaveCount(1);
+			await expect(highlighted.locator('.articlenotes-hint')).toHaveCount(0);
+			await highlighted.getByRole('button', { name: 'Cancel' }).click();
+
+			const article = await openArticle(page, 'The hidden costs of microservices');
+			await trigger(article).click();
+			const editor = article.locator('.articlenotes-editor');
+			const hint = editor.locator('p.help.articlenotes-hint');
+			await expect(hint).toHaveText('Tip: select text in the article to highlight it.');
+			const hintId = await hint.getAttribute('id');
+			expect(hintId).toBeTruthy();
+			expect(await editor.getByLabel('Your note on this article').getAttribute('aria-describedby')).toContain(hintId!);
+			expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+
+			const response = await request.delete(`${API}/highlights/${((await created.json()) as { highlight: { uuid: string } }).highlight.uuid}`, { headers: auth });
+			expect(response.ok()).toBe(true);
+		});
+
 		test('tapping the note in the Annotations panel opens its editor', async ({ page, request }) => {
 			const auth = basicAuth(throwawayUser().user, throwawayApiPassword());
 			const lookup = await request.get(`${API}/lookup`, { headers: auth, params: { url: 'http://fixtures/articles/1' } });

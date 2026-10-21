@@ -93,6 +93,12 @@
 		form.appendChild(textarea);
 		const counter = element('div', 'articlenotes-counter', { id: textId + '-counter' });
 		form.appendChild(counter);
+		if (!flux.querySelector('mark.articlenotes-hl, .articlenotes-hl-item')) {
+			const hint = element('p', 'help articlenotes-hint', { id: textId + '-hint' });
+			hint.textContent = t.highlightHint;
+			form.appendChild(hint);
+			textarea.setAttribute('aria-describedby', textId + '-counter ' + hint.id);
+		}
 		const error = element('p', 'articlenotes-error', { role: 'alert' });
 		error.hidden = true;
 		form.appendChild(error);

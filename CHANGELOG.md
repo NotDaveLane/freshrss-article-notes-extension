@@ -13,6 +13,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- The note editor hints that selecting text highlights it (only while the article has no highlight), the settings page
+  explains notes and highlights, and the extension description mentions highlights.
 - Clicking or tapping an article's note (under the article or in the Annotations panel) opens its editor, like the
   **Note** action. The note block can also be focused with Tab and opened with Enter or Space; selecting text in it to
   copy it still works. Its tooltip reads "Edit your note", and screen readers announce it as "Your note" with the

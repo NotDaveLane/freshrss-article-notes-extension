@@ -39,6 +39,8 @@ test('a non-admin user sees the settings with their defaults and the API URL', a
 	await expect(page.getByLabel('Label name')).toHaveValue('Annotated');
 	await expect(page.getByLabel('Your API endpoint')).toHaveValue(/\/api\/misc\.php\/ArticleNotes\/$/);
 	await expect(page.locator('main')).toContainText('not touch articles that are already labelled');
+	await expect(page.locator('main')).toContainText('select text in an article to highlight it');
+	await expect(page.locator('main')).toContainText('Note action');
 });
 
 test('the API section explains the credentials and links to the Profile page and the API documentation', async ({ page }) => {

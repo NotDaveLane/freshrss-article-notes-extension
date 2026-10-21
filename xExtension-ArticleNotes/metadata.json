@@ -1,7 +1,7 @@
 {
 	"name": "ArticleNotes",
 	"author": "FreshRSS Article Notes contributors",
-	"description": "Attach personal notes to articles and fetch them through the FreshRSS API.",
+	"description": "Attach personal notes and highlights to articles and fetch them through the FreshRSS API.",
 	"version": "1.1.1",
 	"entrypoint": "ArticleNotes",
 	"type": "system"

@@ -5,7 +5,7 @@ declare(strict_types=1);
 return array(
 	'article_notes' => array(
 		'name' => 'ArticleNotes',
-		'description' => 'Attach personal notes to articles and fetch them through the FreshRSS API.',
+		'description' => 'Attach personal notes and highlights to articles and fetch them through the FreshRSS API.',
 		'note' => array(
 			'title' => 'Your note',
 			'updated' => 'Last updated %s',
@@ -20,6 +20,7 @@ return array(
 			'confirm_delete' => 'Delete your note on this article?',
 			'counter' => '%1$s / %2$s',
 			'saving' => 'Saving…',
+			'highlight_hint' => 'Tip: select text in the article to highlight it.',
 		),
 		'highlight' => array(
 			'confirm_delete' => 'Delete this highlight and its note?',
@@ -52,6 +53,7 @@ return array(
 		'settings' => array(
 			'menu' => 'Article notes',
 			'title' => 'Article notes',
+			'intro' => 'Use the Note action under an article to write a note on it, or select text in an article to highlight it and attach a note to the passage.',
 			'label_heading' => 'Label',
 			'label_enabled' => 'Add a label to articles I annotate',
 			'label_enabled_help' => 'Annotated articles are listed under this label in the sidebar, and FreshRSS keeps labelled articles when it archives old ones (default archiving setting “keep labelled articles”).',
