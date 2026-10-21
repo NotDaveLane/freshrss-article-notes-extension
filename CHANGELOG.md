@@ -32,6 +32,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - The Notes page summary reads "1 annotated article or page" for a single result, and the summary and the export links
   are no longer shown when nothing is listed (they only downloaded an empty file).
+- While a Notes page edit form is open, its **Edit** button and the repeated "Note" heading are hidden; Cancel closes
+  the form and puts focus back on **Edit**.
 
 ## [1.1.1] - 2026-10-19
 

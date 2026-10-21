@@ -502,6 +502,9 @@ mark.articlenotes-hl:focus-visible {
 	font-weight: bold;
 }
 
+/* While the edit form is open, Cancel is the way out and the form's label names the note. */
+.articlenotes-notes-edit[open] > summary,
+.articlenotes-notes-note:has(.articlenotes-notes-edit[open]) > h3,
 .articlenotes-notes-note:has(.articlenotes-notes-edit[open]) > .articlenotes-note-text,
 .articlenotes-hl-item:has(.articlenotes-notes-edit[open]) > .articlenotes-hl-note {
 	display: none;

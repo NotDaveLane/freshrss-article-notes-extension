@@ -1,0 +1,3 @@
+- [x] Playwright test: summary and heading hidden while the form is open; summary visible and focused after Cancel
+- [x] CSS hiding the open form's summary and the note heading
+- [x] Spec `notes-page` and CHANGELOG
