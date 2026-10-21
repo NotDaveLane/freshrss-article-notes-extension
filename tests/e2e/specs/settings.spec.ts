@@ -1,5 +1,5 @@
 import { expect, test, type Locator, type Page } from '../support/test';
-import { signIn, throwawayUser } from '../support/freshrss';
+import { noApiPasswordUser, signIn, throwawayUser } from '../support/freshrss';
 import { phpDiagnostics } from '../support/test';
 
 /** Opens an article by title in the normal view and returns its element. */
@@ -41,6 +41,68 @@ test('a non-admin user sees the settings with their defaults and the API URL', a
 	await expect(page.locator('main')).toContainText('not touch articles that are already labelled');
 });
 
+test('the API section explains the credentials and links to the Profile page and the API documentation', async ({ page }) => {
+	await openSettings(page);
+	const section = page.locator('#articlenotes_api_url').locator('xpath=ancestor::div[contains(@class, "group-controls")]');
+	await expect(section).toContainText('Sign in with your user name and your API password, not your login password.');
+	const profile = section.getByRole('link', { name: 'Profile → External access via API' });
+	await expect(profile).toHaveAttribute('href', /c=user&a=profile/);
+	const docs = section.getByRole('link', { name: 'API documentation (OpenAPI)' });
+	await expect(docs).toHaveAttribute('href', /\/api\/misc\.php\/ArticleNotes\/v1\/openapi\.json$/);
+	// The throwaway user has an API password and the dev instance allows API access: no warning.
+	await expect(page.locator('main .alert-warn')).toHaveCount(0);
+
+	await profile.click();
+	await expect(page.locator('#apiPasswordPlain')).toBeVisible();
+});
+
+test('a user without an API password is warned', async ({ page, context }) => {
+	await context.clearCookies();
+	await signIn(page, noApiPasswordUser());
+	await openSettings(page);
+	await expect(page.locator('main .alert-warn')).toHaveText('You have no API password yet: set one under Profile → External access via API.');
+});
+
+test('Copy puts the endpoint on the clipboard and says so', async ({ page }) => {
+	await page.addInitScript(() => {
+		const copied: string[] = [];
+		(window as unknown as { copied: string[] }).copied = copied;
+		Object.defineProperty(navigator, 'clipboard', {
+			configurable: true,
+			value: { writeText: (text: string) => { copied.push(text); return Promise.resolve(); } },
+		});
+	});
+	await openSettings(page);
+	const status = page.getByRole('status').filter({ hasText: /Copied|Could not copy/ });
+	await expect(page.locator('.articlenotes-copy-status')).toHaveAttribute('aria-live', 'polite');
+	await page.getByRole('button', { name: 'Copy the API URL' }).click();
+	await expect(status).toHaveText('Copied');
+	const url = await page.getByLabel('Your API endpoint').inputValue();
+	expect(await page.evaluate(() => (window as unknown as { copied: string[] }).copied)).toEqual([url]);
+});
+
+test('Copy reports a failure and leaves the URL selected', async ({ page }) => {
+	await page.addInitScript(() => {
+		Object.defineProperty(navigator, 'clipboard', {
+			configurable: true,
+			value: { writeText: () => Promise.reject(new Error('denied')) },
+		});
+	});
+	await openSettings(page);
+	await page.getByRole('button', { name: 'Copy the API URL' }).click();
+	await expect(page.locator('.articlenotes-copy-status')).toHaveText('Could not copy: select the URL and copy it.');
+	const selected = await page.getByLabel('Your API endpoint').evaluate((input: HTMLInputElement) =>
+		input.value.substring(input.selectionStart ?? 0, input.selectionEnd ?? 0));
+	expect(selected).toMatch(/\/api\/misc\.php\/ArticleNotes\/$/);
+});
+
+test('without the Clipboard API (plain HTTP), Copy copies the selection', async ({ page }) => {
+	await openSettings(page);
+	expect(await page.evaluate(() => window.isSecureContext && 'clipboard' in navigator)).toBe(false);
+	await page.getByRole('button', { name: 'Copy the API URL' }).click();
+	await expect(page.locator('.articlenotes-copy-status')).toHaveText('Copied');
+});
+
 for (const viewport of [{ width: 390, height: 844 }, { width: 1440, height: 900 }]) {
 	test.describe(`${viewport.width}x${viewport.height}`, () => {
 		test.use({ viewport });
@@ -59,6 +121,27 @@ for (const viewport of [{ width: 390, height: 844 }, { width: 1440, height: 900 
 			await expect(page.locator('header.header button.signout, header.header a.signout').first()).toBeAttached();
 			await expect(page.locator('#aside_feed a[href*="a=settings"]')).toBeAttached();
 			await expect(page.locator('main.post').getByRole('heading', { name: 'Article notes' })).toBeVisible();
+		});
+
+		test('the API endpoint and its Copy button fit without horizontal overflow', async ({ page }) => {
+			await page.goto('/i/?c=ArticleNotes&a=settings');
+			const input = page.getByLabel('Your API endpoint');
+			const copy = page.getByRole('button', { name: 'Copy the API URL' });
+			await expect(copy).toBeVisible();
+			const fits = await input.evaluate((el: HTMLInputElement) => el.scrollWidth <= el.clientWidth);
+			if (viewport.width >= 1440) {
+				expect(fits).toBe(true);
+			}
+			const inputBox = await input.boundingBox();
+			const copyBox = await copy.boundingBox();
+			expect(inputBox && copyBox).toBeTruthy();
+			expect(copyBox!.x + copyBox!.width).toBeLessThanOrEqual(viewport.width);
+			expect(inputBox!.x).toBeGreaterThanOrEqual(0);
+			expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(viewport.width);
+			// The URL can be selected (to copy it by hand) even where it does not fit.
+			await input.selectText();
+			expect(await input.evaluate((el: HTMLInputElement) => el.selectionEnd! - el.selectionStart!))
+				.toBe((await input.inputValue()).length);
 		});
 	});
 }

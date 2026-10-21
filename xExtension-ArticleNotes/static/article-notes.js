@@ -358,6 +358,41 @@
 		}
 	});
 
+	// The settings page: copy the API endpoint, and say so in the status line (announced by screen readers).
+	document.addEventListener('click', function (event) {
+		const button = event.target instanceof Element ? event.target.closest('.articlenotes-copy') : null;
+		const input = button && document.getElementById(button.getAttribute('data-copy') || '');
+		if (!input) {
+			return;
+		}
+		const controls = button.closest('.group-controls');
+		const status = controls && controls.querySelector('.articlenotes-copy-status');
+		function report(message) {
+			if (status) {
+				status.textContent = message;
+			}
+		}
+		report('');
+		input.select();
+		const clipboard = navigator.clipboard;
+		if (!clipboard || !clipboard.writeText) {
+			// No Clipboard API outside secure contexts (FreshRSS over plain HTTP): copy the selection instead.
+			let copied;
+			try {
+				copied = document.execCommand('copy');
+			} catch {
+				copied = false;
+			}
+			report(button.getAttribute(copied ? 'data-copied' : 'data-failed') || '');
+			return;
+		}
+		clipboard.writeText(input.value).then(function () {
+			report(button.getAttribute('data-copied') || '');
+		}, function () {
+			report(button.getAttribute('data-failed') || '');
+		});
+	});
+
 	if (document.body) {
 		start();
 	} else {

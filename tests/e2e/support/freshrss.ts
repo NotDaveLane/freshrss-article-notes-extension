@@ -67,6 +67,16 @@ export function journeyUser(): Credentials {
 	return { user, password };
 }
 
+/** A third throwaway user created by bin/e2e that never gets an API password (unlike the journey user). */
+export function noApiPasswordUser(): Credentials {
+	const user = process.env.E2E_NO_API_USER;
+	const password = process.env.E2E_NO_API_PASSWORD;
+	if (!user || !password) {
+		throw new Error('E2E_NO_API_USER/E2E_NO_API_PASSWORD are not set; run the suite through bin/e2e or bin/ci.');
+	}
+	return { user, password };
+}
+
 /** HTTP Basic authorization header. */
 export function basicAuth(user: string, password: string): Record<string, string> {
 	return { Authorization: 'Basic ' + Buffer.from(`${user}:${password}`).toString('base64') };

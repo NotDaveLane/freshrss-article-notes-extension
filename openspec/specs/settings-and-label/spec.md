@@ -34,12 +34,60 @@ renders normally and nothing is printed above its header or logged.
 
 ### Requirement: Settings page information
 
-The settings page SHALL show the user's API endpoint URL (`<base>/api/misc.php/ArticleNotes/`) with a pointer to the
-README's API section, and SHALL state that changes apply to future notes only.
+The settings page SHALL show the user's API endpoint URL (`<base>/api/misc.php/ArticleNotes/`) in a read-only field that
+takes the available width (up to a readable maximum), and SHALL state that changes apply to future notes only.
 
 #### Scenario: Endpoint shown
 - **WHEN** a user opens the page
 - **THEN** the URL ending in `/api/misc.php/ArticleNotes/` is displayed
+
+#### Scenario: Full URL visible and no overflow
+- **WHEN** the page is shown at 1440x900
+- **THEN** the whole endpoint URL is visible in the field
+- **WHEN** the page is shown at 390x844
+- **THEN** the field and its Copy button fit the viewport without horizontal scrolling and the URL can be selected
+
+### Requirement: API credentials explained
+
+The API section SHALL state that clients sign in with the user name and the FreshRSS API password (not the login
+password), link to FreshRSS's Profile page (`c=user&a=profile`, "External access via API") where it is set, and link to
+the API's OpenAPI document (`<endpoint>v1/openapi.json`) as documentation.
+
+#### Scenario: Credentials explained
+- **WHEN** a user opens the page
+- **THEN** the API section says an API password is needed and links to the Profile page and to `v1/openapi.json`
+
+### Requirement: API setup warnings
+
+The API section SHALL show a FreshRSS warning (`alert alert-warn`) when the instance's API access is disabled
+(`api_enabled` false: an administrator can allow it under Configuration → Authentication) and another when the current
+user has no API password, and no warning when the API can be used.
+
+#### Scenario: No API password
+- **WHEN** a user who never set an API password opens the page
+- **THEN** a warning says they have no API password and where to set it
+
+#### Scenario: API access disabled
+- **WHEN** the administrator has not allowed API access
+- **THEN** a warning says API access is disabled on the instance
+
+#### Scenario: Ready to use
+- **WHEN** API access is allowed and the user has an API password
+- **THEN** no warning is shown
+
+### Requirement: Copy the endpoint
+
+A **Copy** button next to the endpoint field SHALL copy the URL to the clipboard (with `navigator.clipboard`, or by
+copying the selected field where the Clipboard API is unavailable, e.g. over plain HTTP) and report the outcome in a
+polite live region: "Copied", or a message asking to copy the selected URL by hand when copying failed.
+
+#### Scenario: Copied
+- **WHEN** the user presses Copy
+- **THEN** the clipboard holds the endpoint URL and "Copied" is announced
+
+#### Scenario: Copy refused
+- **WHEN** the browser refuses the clipboard write
+- **THEN** the URL stays selected and the failure message is shown
 
 ### Requirement: Validated and protected save
 
