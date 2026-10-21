@@ -291,6 +291,24 @@
 		lastSelection = '';
 	}
 
+	/** Gives a body-level element the text and background colours of the article it belongs to (FreshRSS's dark themes need this). */
+	function themeFloating(el, reference) {
+		const source = reference instanceof Element ? reference : document.querySelector('.flux.current .flux_content') || document.body;
+		const text = getComputedStyle(source).color;
+		let surface = 'rgb(255, 255, 255)';
+		for (let node = source; node; node = node.parentElement) {
+			const background = getComputedStyle(node).backgroundColor;
+			// Skip transparent and translucent backgrounds: the popover must not show the page behind it.
+			const alpha = /^rgba\(.*,\s*([\d.]+)\)$/.exec(background);
+			if (background && background !== 'transparent' && (!alpha || Number(alpha[1]) >= 0.99)) {
+				surface = background;
+				break;
+			}
+		}
+		el.style.setProperty('--articlenotes-surface', surface);
+		el.style.setProperty('--articlenotes-text', text);
+	}
+
 	function placeFloating(el, rect, below) {
 		const margin = 8;
 		const width = el.offsetWidth;
@@ -402,6 +420,7 @@
 			event.stopPropagation();
 		});
 		document.body.appendChild(toolbar);
+		themeFloating(toolbar, state && state.root);
 		placeFloating(toolbar, rect, coarsePointer());
 	}
 
@@ -419,6 +438,7 @@
 		const el = element('div', 'articlenotes-toolbar articlenotes-notice', { 'data-articlenotes-ui': '', role: 'alert' });
 		el.textContent = message;
 		document.body.appendChild(el);
+		themeFloating(el, null);
 		if (rect) {
 			placeFloating(el, rect, true);
 		} else {
@@ -603,6 +623,7 @@
 		});
 
 		document.body.appendChild(el);
+		themeFloating(el, state.root);
 		popover = { el: el, item: item, state: state, opener: opener, restoreScrollY: null, unwatch: watchManualScroll(el) };
 		const rect = (opener && opener.getBoundingClientRect()) || state.root.getBoundingClientRect();
 		placeFloating(el, rect, true);

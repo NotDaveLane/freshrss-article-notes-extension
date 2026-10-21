@@ -634,3 +634,89 @@ test('highlights work in the reader view', async ({ page, request }) => {
 	const article = page.locator('.flux', { hasText: articles.html.title }).first();
 	await expect(marks(article)).toHaveText('avoiding infinite scroll');
 });
+
+async function setTheme(page: Page, theme: string): Promise<void> {
+	await page.goto('/i/?c=configure&a=display');
+	await page.locator('#theme').selectOption(theme);
+	await page.locator('button.btn-important[type="submit"]').first().click();
+	await page.waitForLoadState('load');
+}
+
+function luminance(color: string): number {
+	const [r, g, b] = (color.match(/[\d.]+/g) ?? []).slice(0, 3).map((v) => {
+		const c = Number(v) / 255;
+		return c <= 0.03928 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4;
+	});
+	return 0.2126 * r + 0.7152 * g + 0.0722 * b;
+}
+
+function contrast(a: string, b: string): number {
+	const [hi, lo] = [luminance(a), luminance(b)].sort((x, y) => y - x);
+	return (hi + 0.05) / (lo + 0.05);
+}
+
+for (const theme of ['Dark', 'Alternative-Dark']) {
+	test(`the popover, toolbar and notice are readable in the ${theme} theme`, async ({ page, request }) => {
+		const id = await reset(request, articles.create);
+		await createViaApi(request, id, { source: 'freshrss', selector: { quote: { exact: 'threefold read throughput' } } });
+		await setTheme(page, theme);
+		try {
+			const article = await open(page, articles.create);
+			const articleColors = await article.locator('.flux_content').evaluate((el) => {
+				let node: Element | null = el;
+				let background = 'rgba(0, 0, 0, 0)';
+				for (; node; node = node.parentElement) {
+					background = getComputedStyle(node).backgroundColor;
+					if (!/^rgba\(.*, 0\)$/.test(background) && background !== 'transparent') {
+						break;
+					}
+				}
+				return { text: getComputedStyle(el).color, background };
+			});
+			expect(luminance(articleColors.background)).toBeLessThan(0.5);
+
+			await marks(article).click();
+			await expect(popover(page)).toBeVisible();
+			const colors = await popover(page).evaluate((el) => {
+				const pick = (selector: string): string => getComputedStyle(el.querySelector(selector)!).color;
+				return {
+					quote: pick('.articlenotes-pop-quote'),
+					label: pick('.articlenotes-label'),
+					background: getComputedStyle(el).backgroundColor,
+					textarea: getComputedStyle(el.querySelector('textarea')!).backgroundColor,
+					textareaText: pick('textarea'),
+					close: getComputedStyle(el.querySelector('.btn')!).backgroundColor,
+					closeText: pick('.btn'),
+				};
+			});
+			expect(colors.background).toBe(articleColors.background);
+			expect(contrast(colors.quote, colors.background)).toBeGreaterThanOrEqual(4.5);
+			expect(contrast(colors.label, colors.background)).toBeGreaterThanOrEqual(4.5);
+// FreshRSS styles the controls itself; they must be dark like the page, not a white box.
+			expect(luminance(colors.textarea)).toBeLessThan(0.5);
+			expect(luminance(colors.close)).toBeLessThan(0.5);
+			await page.keyboard.press('Escape');
+			await expect(popover(page)).toHaveCount(0);
+
+			// The selection toolbar.
+			await select(article, 'read throughput');
+			await expect(toolbar(page)).toBeVisible();
+			const bar = await toolbar(page).evaluate((el) => ({ text: getComputedStyle(el).color, background: getComputedStyle(el).backgroundColor }));
+			expect(bar.background).toBe(articleColors.background);
+			expect(contrast(bar.text, bar.background)).toBeGreaterThanOrEqual(4.5);
+
+			// The error notice: the save fails.
+			await page.route('**/*highlightCreate*', (route) => route.fulfill({
+				status: 500, contentType: 'application/json', body: JSON.stringify({ ok: false, error: 'Server said no.' }),
+			}));
+			await toolbar(page).getByRole('button', { name: 'Highlight', exact: true }).click();
+			const notice = page.getByRole('alert').filter({ hasText: 'Server said no.' });
+			await expect(notice).toBeVisible();
+			const alert = await notice.evaluate((el) => ({ text: getComputedStyle(el).color, background: getComputedStyle(el).backgroundColor }));
+			expect(alert.background).toBe(articleColors.background);
+			expect(contrast(alert.text, alert.background)).toBeGreaterThanOrEqual(4.5);
+		} finally {
+			await setTheme(page, 'Origine');
+		}
+	});
+}
