@@ -1,0 +1,3 @@
+- [x] Set `--articlenotes-surface` / `--articlenotes-text` from the article's computed colours
+- [x] Use them in `article-notes.css`
+- [x] Playwright test for Dark and Alternative-Dark

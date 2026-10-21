@@ -30,6 +30,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- The highlight popover, selection toolbar and error notice use the article's colours, so they are readable in FreshRSS's dark themes.
 - The Notes page summary reads "1 annotated article or page" for a single result, and the summary and the export links
   are no longer shown when nothing is listed (they only downloaded an empty file).
 

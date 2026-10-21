@@ -190,8 +190,8 @@ mark.articlenotes-hl:focus-visible {
 	padding: 0.4rem;
 	border: 1px solid var(--frss-border-color, #ccc);
 	border-radius: 6px;
-	background: var(--frss-background-color, #fff);
-	color: var(--frss-font-color-dark, #222);
+	background: var(--articlenotes-surface, var(--frss-background-color, #fff));
+	color: var(--articlenotes-text, var(--frss-font-color-dark, #222));
 	box-shadow: 0 2px 10px rgba(0, 0, 0, 0.35);
 	max-width: calc(100vw - 16px);
 }
