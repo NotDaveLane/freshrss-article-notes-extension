@@ -70,7 +70,8 @@ bin/package && bin/verify-release                 # build the zip, install it in
 - Integration tests run against a real FreshRSS install in a temporary data directory with a throwaway
   user (`tests/Support/TestEnvironment.php`); nothing touches the dev instance. E2E tests get a
   per-run throwaway user subscribed to `http://fixtures/feed.xml` (`E2E_USER`/`E2E_PASSWORD`/`E2E_API_PASSWORD`), never
-  the live feeds, plus one without an API password for the full-journey spec (`E2E_JOURNEY_USER`/`E2E_JOURNEY_PASSWORD`).
+  the live feeds, plus one without an API password for the full-journey spec (`E2E_JOURNEY_USER`/`E2E_JOURNEY_PASSWORD`,
+  which sets one) and one that never gets an API password (`E2E_NO_API_USER`/`E2E_NO_API_PASSWORD`).
 - `static/anchoring.js` (shared highlight anchoring library, plain ES module, no build) is unit-tested in Chromium by
   `tests/e2e/specs/anchoring.spec.ts` (the `e2e` service mounts the extension read-only at `/extension`); ESLint's config
   is `tests/e2e/eslint.config.mjs`.

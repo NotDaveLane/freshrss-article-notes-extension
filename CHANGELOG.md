@@ -22,6 +22,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- The settings page's API section explains that clients sign in with your API password (not your login password), links
+  to Profile → External access via API and to the API's OpenAPI document, and warns when you have no API password or API
+  access is disabled on the instance. The endpoint field uses the available width and has a **Copy** button that
+  confirms "Copied".
+
 - On the Notes page, Delete asks for confirmation (also in the highlight popover), is red, and the edit form has a
   Cancel button, a visible label naming the item being edited, and no longer repeats the note text above it.
 - The **Note** action in the article footer has a note icon, space between it and the date, and a 44x44 px tap target on
