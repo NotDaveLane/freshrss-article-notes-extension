@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- The Notes page's "Open article at this highlight" button centres its label, and the highlight cards in the Annotations panel line up with the note instead of being indented.
+
 ### Added
 
 - Clicking or tapping an article's note (under the article or in the Annotations panel) opens its editor, like the

@@ -331,6 +331,25 @@ for (const viewport of viewports) {
 	});
 }
 
+for (const viewport of [{ width: 1440, height: 900 }, { width: 390, height: 844 }]) {
+	test.describe(`link buttons at ${viewport.width}px`, () => {
+		test.use({ viewport, hasTouch: viewport.width < 600, isMobile: viewport.width < 600 });
+
+		test('centres the label of Open article at this highlight', async ({ page }) => {
+			await search(page, `q=${MARK}`);
+			const link = group(page, RUST).locator('.articlenotes-notes-jump').first();
+			const box = (await link.boundingBox())!;
+			const textBox = await link.evaluate((el) => {
+				const range = document.createRange();
+				range.selectNodeContents(el);
+				const r = range.getBoundingClientRect();
+				return { y: r.y, height: r.height };
+			});
+			expect(Math.abs(textBox.y + textBox.height / 2 - (box.y + box.height / 2))).toBeLessThanOrEqual(2);
+		});
+	});
+}
+
 test.describe('filters on a phone', () => {
 	test.use({ viewport: { width: 390, height: 844 }, hasTouch: true, isMobile: true });
 

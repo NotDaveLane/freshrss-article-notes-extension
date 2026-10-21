@@ -720,3 +720,29 @@ for (const theme of ['Dark', 'Alternative-Dark']) {
 		}
 	});
 }
+
+for (const viewport of viewports) {
+	for (const view of ['normal', 'reader']) {
+		test(`highlight cards line up with the Annotations panel in the ${view} view at ${viewport.name}`, async ({ browser, request }) => {
+			const id = await reset(request, articles.html);
+			await createViaApi(request, id, { source: 'freshrss', selector: { quote: { exact: 'avoiding infinite scroll' } } });
+			const context = await browser.newContext({ viewport: { width: viewport.width, height: viewport.height } });
+			try {
+				const page = await context.newPage();
+				await signIn(page, throwawayUser());
+				await page.goto(view === 'reader' ? '/i/?a=reader&state=3' : '/i/?a=normal&state=3');
+				const article = page.locator('.flux', { hasText: articles.html.title }).first();
+				if (view === 'normal') {
+					await article.locator('.flux_header').click();
+				}
+				const panel = article.locator('.articlenotes-panel');
+				await expect(panel.locator('.articlenotes-hl-item')).toHaveCount(1);
+				const panelBox = (await panel.getByRole('heading', { name: 'Annotations' }).boundingBox())!;
+				const cardBox = (await panel.locator('.articlenotes-hl-item').boundingBox())!;
+				expect(Math.abs(cardBox.x - panelBox.x)).toBeLessThanOrEqual(1);
+			} finally {
+				await context.close();
+			}
+		});
+	}
+}
