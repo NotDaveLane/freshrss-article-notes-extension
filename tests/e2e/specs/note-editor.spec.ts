@@ -83,8 +83,9 @@ for (const viewport of viewports) {
 			await page.goto('/i/?state=3');
 			const article = await openArticle(page, 'The hidden costs of microservices');
 			await saveNote(page, article, `tap me ${viewport.width}`);
-			const block = article.locator('.articlenotes-note');
-			await expect(block).toHaveAttribute('aria-label', 'Tap to edit note');
+			const block = article.getByRole('region', { name: 'Your note', exact: true });
+			await expect(block).toHaveAccessibleDescription('Edit your note');
+			await expect(block).not.toContainText('Tap');
 			await block.locator('.articlenotes-note-text').click();
 			const textarea = article.locator('.articlenotes-editor').getByLabel('Your note on this article');
 			await expect(textarea).toBeFocused();
@@ -275,9 +276,11 @@ test('the note opens its editor from the keyboard', async ({ page }) => {
 	await page.goto('/i/?state=3');
 	const article = await openArticle(page, 'Understanding Linux io_uring security trade-offs');
 	await saveNote(page, article, 'keyboard note');
-	const block = article.locator('.articlenotes-note');
+	const block = article.getByRole('region', { name: 'Your note', exact: true });
+	await expect(block).toHaveClass(/articlenotes-note/);
 	await expect(block).toHaveAttribute('tabindex', '0');
-	await expect(block).toHaveAttribute('title', 'Tap to edit note');
+	await expect(block).toHaveAttribute('title', 'Edit your note');
+	await expect(block).toHaveAccessibleDescription('Edit your note');
 	await block.focus();
 	await page.keyboard.press('Enter');
 	const textarea = article.getByLabel('Your note on this article');
