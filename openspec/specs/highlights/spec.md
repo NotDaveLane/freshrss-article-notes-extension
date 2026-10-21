@@ -162,3 +162,15 @@ The highlight popover's **Delete** button SHALL be styled `btn-attention` and SH
 #### Scenario: Accepting the confirmation
 - **WHEN** a user presses Delete in the popover and accepts the confirmation
 - **THEN** the highlight is deleted
+
+### Requirement: Floating UI matches the article colours
+
+The highlight popover, selection toolbar and error notice (appended to `<body>`) SHALL use the text colour and the first opaque background colour of the article they belong to (`--articlenotes-text` / `--articlenotes-surface`, set by the script), so that their text keeps at least 4.5:1 contrast in FreshRSS's light and dark themes. Translucent article backgrounds SHALL be skipped so the page behind is never visible through them.
+
+#### Scenario: Popover in a dark theme
+- **WHEN** a user with the Dark or Alternative-Dark theme opens a highlight's popover
+- **THEN** the popover background equals the article background and its quote and label have at least 4.5:1 contrast with it
+
+#### Scenario: Toolbar and notice in a dark theme
+- **WHEN** a user with a dark theme selects text, or a save fails
+- **THEN** the toolbar and the notice use the article's colours with at least 4.5:1 contrast

@@ -232,7 +232,7 @@ mark.articlenotes-hl:focus-visible {
 }
 
 .articlenotes-swatch[aria-pressed="true"] {
-	box-shadow: 0 0 0 2px var(--frss-background-color, #fff), 0 0 0 4px #1a1a1a;
+	box-shadow: 0 0 0 2px var(--articlenotes-surface, var(--frss-background-color, #fff)), 0 0 0 4px var(--articlenotes-text, #1a1a1a);
 }
 
 .articlenotes-swatch-static {

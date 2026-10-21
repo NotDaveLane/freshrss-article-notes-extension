@@ -298,7 +298,9 @@
 		let surface = 'rgb(255, 255, 255)';
 		for (let node = source; node; node = node.parentElement) {
 			const background = getComputedStyle(node).backgroundColor;
-			if (background && background !== 'transparent' && !/^rgba\(.*,\s*0\)$/.test(background)) {
+			// Skip transparent and translucent backgrounds: the popover must not show the page behind it.
+			const alpha = /^rgba\(.*,\s*([\d.]+)\)$/.exec(background);
+			if (background && background !== 'transparent' && (!alpha || Number(alpha[1]) >= 0.99)) {
 				surface = background;
 				break;
 			}
