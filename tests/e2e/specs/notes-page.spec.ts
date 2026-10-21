@@ -432,10 +432,16 @@ for (const viewport of viewports) {
 			await noteBox.getByText('Edit', { exact: true }).click();
 			await expect(noteBox.getByRole('textbox', { name: 'Note', exact: true })).toBeVisible();
 			await expect(noteBox.locator('.articlenotes-note-text')).toBeHidden();
+			// Only the form shows: no stale Edit toggle, and "Note" once (the label, not also the heading).
+			await expect(noteBox.locator('summary')).toBeHidden();
+			await expect(noteBox.locator('h3')).toBeHidden();
+			await expect(noteBox.getByText('Note', { exact: true }).filter({ visible: true })).toHaveCount(1);
 			await noteBox.getByRole('textbox').fill('discarded');
 			await noteBox.getByRole('button', { name: 'Cancel' }).click();
 			await expect(noteBox.locator('details')).not.toHaveAttribute('open', '');
+			await expect(noteBox.locator('summary')).toBeVisible();
 			await expect(noteBox.locator('summary')).toBeFocused();
+			await expect(noteBox.locator('h3')).toBeVisible();
 			await expect(noteBox.locator('.articlenotes-note-text')).toContainText('changed');
 			await expect(noteBox.locator('.articlenotes-note-text')).not.toContainText('discarded');
 			await group(page, `Edit ${tag}`).getByText('Edit', { exact: true }).click();
@@ -443,6 +449,12 @@ for (const viewport of viewports) {
 			await group(page, `Edit ${tag}`).getByRole('button', { name: 'Cancel' }).click();
 			await changed.getByText('Edit', { exact: true }).click();
 			await expect(changed.getByRole('textbox', { name: 'Note on this highlight' })).toBeVisible();
+			await expect(changed.locator('summary')).toBeHidden();
+			await expect(changed.locator('.articlenotes-notes-jump')).toBeVisible();
+			await changed.getByRole('button', { name: 'Cancel' }).click();
+			await expect(changed.locator('summary')).toBeVisible();
+			await expect(changed.locator('summary')).toBeFocused();
+			await changed.getByText('Edit', { exact: true }).click();
 
 			// Deleting: dismissing keeps the item, accepting deletes it.
 			page.removeAllListeners('dialog');
