@@ -36,6 +36,7 @@ final class MetadataTest extends TestCase {
 		self::assertStringContainsString('highlight', $description);
 		$translated = require dirname(__DIR__, 2) . '/xExtension-ArticleNotes/i18n/en/ext.php';
 		self::assertIsArray($translated);
+		self::assertIsArray($translated['article_notes']);
 		self::assertSame($description, $translated['article_notes']['description']);
 	}
 }
