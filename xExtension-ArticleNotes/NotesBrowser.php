@@ -155,7 +155,10 @@ final class NotesBrowser {
 		foreach ($entryIds as $i => $entryId) {
 			$values[':id' . $i] = (int)$entryId;
 		}
-		$statement = $this->run('SELECT id, content FROM ' . $this->pdo->prefix() . 'entry WHERE id IN (' . implode(', ', array_keys($values)) . ')', $values);
+		// Like FreshRSS_EntryDAO::isCompressed(): MySQL/MariaDB store the content compressed in content_bin.
+		$column = $this->pdo->dbType() === 'mysql' ? 'UNCOMPRESS(content_bin) AS content' : 'content';
+		$statement = $this->run('SELECT id, ' . $column . ' FROM ' . $this->pdo->prefix() . 'entry WHERE id IN ('
+			. implode(', ', array_keys($values)) . ')', $values);
 		$texts = [];
 		while (is_array($row = $statement->fetch(\PDO::FETCH_ASSOC))) {
 			$content = $row['content'] ?? null;

@@ -9,6 +9,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- The Notes page works on MySQL and MariaDB: since 1.1.0 it failed with "Unknown column 'content'" as soon as it listed an
+  annotated article, because FreshRSS stores article content compressed on those databases.
 - The Notes page's "Open article at this highlight" button centres its label, and the highlight cards in the Annotations panel line up with the note instead of being indented.
 
 ### Added
