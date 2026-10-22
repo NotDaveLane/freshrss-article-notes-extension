@@ -182,6 +182,22 @@ pull request: one job per FreshRSS version in `COMPAT_VERSIONS`, each starting t
 - **WHEN** a commit is pushed to `main`
 - **THEN** a job per FreshRSS version runs `bin/ci --all-dbs` and the workflow fails if any of them prints `bin/ci: FAILED`
 
+### Requirement: Release workflow
+
+A GitHub Actions workflow (`.github/workflows/release.yml`) SHALL publish a GitHub release when a `vX.Y.Z` tag is pushed:
+it fails unless the tag equals `v` + the `metadata.json` version, builds the zip with `bin/package`, checks it with
+`bin/verify-release`, and attaches `ArticleNotes-X.Y.Z.zip` to a release whose notes are that version's `CHANGELOG.md`
+section.
+
+#### Scenario: Tag a release
+- **WHEN** `v1.1.2` is pushed and `metadata.json` says `1.1.2`
+- **THEN** a release `v1.1.2` is published with `ArticleNotes-1.1.2.zip` attached and the `## [1.1.2]` changelog entries as
+  its notes
+
+#### Scenario: Mismatched tag
+- **WHEN** a tag that differs from the `metadata.json` version is pushed
+- **THEN** the workflow fails before building and publishes nothing
+
 ### Requirement: README screenshots
 
 `bin/screenshots` SHALL capture the README pictures into `docs/screenshots/` (owned by the host user) from the dev

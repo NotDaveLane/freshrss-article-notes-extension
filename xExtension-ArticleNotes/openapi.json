@@ -2,7 +2,7 @@
     "openapi": "3.1.0",
     "info": {
         "title": "ArticleNotes API",
-        "version": "1.1.1",
+        "version": "1.1.2",
         "summary": "Personal notes and highlights on FreshRSS articles and web pages.",
         "description": "The `v1` API of the FreshRSS ArticleNotes extension. Every path lives below\n`<FreshRSS base URL>/api/misc.php/ArticleNotes/`. A user only ever reads or writes their own annotations.\n\n**Authentication.** HTTP Basic with the user name and the FreshRSS *API password* (Configuration → Profile → \"API\npassword\", never the web login password), or a Google Reader `GoogleLogin auth=<user>/<token>` token from FreshRSS's\nClientLogin. The API password also grants Google Reader and Fever API access to the account: use HTTPS outside\nlocalhost. Only `GET v1/openapi.json` needs no credentials.\n\n**Concurrency.** Single notes and highlights carry an `ETag` response header. Send it back as `If-Match` on `PUT`,\n`PATCH` and `DELETE`; a changed object answers `412 precondition_failed`, and the client refetches.\n\n**Paging and sync.** List endpoints return a `continuation` (null on the last page) and the `server_time` to use as the\nnext `since`. New keys may appear in objects in later versions; ignore what you do not know.\n\n**CORS.** Browser pages are only allowed when an administrator lists their origin; see the `Origin` handling in the\nREADME (\"Building a client\"). Allowed origins get `Access-Control-*` headers and `OPTIONS` preflights answer `204`.\n",
         "license": {
@@ -1149,7 +1149,7 @@
                     "version": {
                         "type": "string",
                         "examples": [
-                            "1.1.1"
+                            "1.1.2"
                         ]
                     },
                     "api_version": {

@@ -2,7 +2,7 @@
 	"name": "ArticleNotes",
 	"author": "FreshRSS Article Notes contributors",
 	"description": "Attach personal notes and highlights to articles and fetch them through the FreshRSS API.",
-	"version": "1.1.1",
+	"version": "1.1.2",
 	"entrypoint": "ArticleNotes",
 	"type": "system"
 }

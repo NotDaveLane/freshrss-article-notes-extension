@@ -7,11 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.1.2] - 2026-10-22
+
 ### Fixed
 
 - The Notes page works on MySQL and MariaDB: since 1.1.0 it failed with "Unknown column 'content'" as soon as it listed an
   annotated article, because FreshRSS stores article content compressed on those databases.
+- On FreshRSS 1.27 on phones, the article footer's **Note** action no longer overlaps the date.
 - The Notes page's "Open article at this highlight" button centres its label, and the highlight cards in the Annotations panel line up with the note instead of being indented.
+- The highlight popover, selection toolbar and error notice use the article's colours, so they are readable in FreshRSS's dark themes.
+- The Notes page summary reads "1 annotated article or page" for a single result, and the summary and the export links
+  are no longer shown when nothing is listed (they only downloaded an empty file).
+- While a Notes page edit form is open, its **Edit** button and the repeated "Note" heading are hidden; Cancel closes
+  the form and puts focus back on **Edit**.
 
 ### Added
 
@@ -41,14 +49,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   note" filters behind a **Filters** toggle (opened when one of them is set), so the first note is visible right away.
 - On touch screens the Notes page's Filters toggle, "only with a note" checkbox row, export links and buttons are at
   least 44px high.
-
-### Fixed
-
-- The highlight popover, selection toolbar and error notice use the article's colours, so they are readable in FreshRSS's dark themes.
-- The Notes page summary reads "1 annotated article or page" for a single result, and the summary and the export links
-  are no longer shown when nothing is listed (they only downloaded an empty file).
-- While a Notes page edit form is open, its **Edit** button and the repeated "Note" heading are hidden; Cancel closes
-  the form and puts focus back on **Edit**.
 
 ## [1.1.1] - 2026-10-19
 

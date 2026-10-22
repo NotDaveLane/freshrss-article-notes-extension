@@ -119,6 +119,8 @@ per-user migrations (FreshRSS has no extension upgrade hook).
    `## [Unreleased]`. `tests/Unit/ChangelogTest.php` fails if the two drift apart.
 3. Run `bin/ci --compat`, commit, tag `vX.Y.Z`, run `bin/package` (writes `dist/ArticleNotes-X.Y.Z.zip`, only
    `xExtension-ArticleNotes/`) and `bin/verify-release` (installs that zip into a clean `freshrss/freshrss`).
+4. Push to `main`; once its CI run passes, push the tag. `.github/workflows/release.yml` checks the tag against
+   `metadata.json`, reruns `bin/package` + `bin/verify-release`, and publishes the GitHub release (zip + changelog notes).
 
 ### Schema migrations
 

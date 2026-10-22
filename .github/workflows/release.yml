@@ -1,0 +1,60 @@
+# Publishes a GitHub release for a pushed vX.Y.Z tag: checks the tag against metadata.json, builds the zip with
+# bin/package, installs it into a clean freshrss/freshrss with bin/verify-release, and attaches it to a release whose
+# notes are that version's CHANGELOG.md section. Tag a commit on main whose CI run passed.
+name: Release
+
+on:
+  push:
+    tags: ['v[0-9]+.[0-9]+.[0-9]+']
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Check the tag matches metadata.json
+        id: version
+        run: |
+          version="$(jq -r .version xExtension-ArticleNotes/metadata.json)"
+          if [ "v$version" != "$GITHUB_REF_NAME" ]; then
+            echo "::error::tag $GITHUB_REF_NAME does not match metadata.json version $version"
+            exit 1
+          fi
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+
+      - name: Start the dev stack
+        run: docker compose up --build -d --wait && docker compose build dev
+
+      - name: bin/package
+        run: bin/package
+
+      - name: bin/verify-release
+        run: bin/verify-release
+
+      - name: Release notes from CHANGELOG.md
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          awk -v heading="## [$VERSION] - " 'index($0, heading) == 1 { found = 1; next } found && /^## \[/ { exit } found' \
+            CHANGELOG.md > "$RUNNER_TEMP/notes.md"
+          if ! grep -q '[^[:space:]]' "$RUNNER_TEMP/notes.md"; then
+            echo "::error::CHANGELOG.md has no section for $VERSION"
+            exit 1
+          fi
+
+      - name: Publish the release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          gh release create "$GITHUB_REF_NAME" "dist/ArticleNotes-$VERSION.zip" \
+            --title "ArticleNotes $VERSION" --notes-file "$RUNNER_TEMP/notes.md" --verify-tag
+
+      - name: Stop the stack
+        if: always()
+        run: docker compose --profile tools down -v --remove-orphans

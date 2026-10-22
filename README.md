@@ -54,10 +54,10 @@ into `extensions/`; the zip contains just `xExtension-ArticleNotes/`:
 
 ```sh
 cd /path/to/FreshRSS/extensions
-unzip ~/Downloads/ArticleNotes-1.1.1.zip      # creates xExtension-ArticleNotes/
+unzip ~/Downloads/ArticleNotes-1.1.2.zip      # creates xExtension-ArticleNotes/
 ```
 
-**b) Git.** Clone the repository (optionally check out a release tag such as `v1.1.1`) and copy the extension directory
+**b) Git.** Clone the repository (optionally check out a release tag such as `v1.1.2`) and copy the extension directory
 (the rest of the repository is development tooling):
 
 ```sh
@@ -217,7 +217,7 @@ like `{"error": {"code": "not_found", "message": "…"}}` with the codes `invali
 `too_many_highlights` (400/422, see [Highlights](#highlights)).
 
 - `GET v1/status` — a cheap credentials check:
-  `{"extension": "ArticleNotes", "version": "1.1.1", "api_version": 1, "user": "alice", "note_count": 12}`
+  `{"extension": "ArticleNotes", "version": "1.1.2", "api_version": 1, "user": "alice", "note_count": 12}`
   (`note_count` counts live notes).
 - `GET v1/notes` — your notes, oldest change first (ordered by `updated_at`, then `id`):
   `{"notes": [ … ], "continuation": "…" or null, "server_time": 1760900000}`. Parameters:
@@ -672,6 +672,9 @@ The selector mirrors the [W3C Web Annotation](https://www.w3.org/TR/annotation-m
 
 ## Upgrading
 
+**To 1.1.2** (from 1.1.0 or 1.1.1): replace the directory, nothing else changes (no migration). It fixes the Notes
+page on MySQL and MariaDB and brings small note editor, settings and Notes page improvements.
+
 **To 1.1.1** (from 1.1.0): a bug-fix release; replace the directory, nothing else changes (no migration).
 
 **To 1.1.0** (from 1.0.0): nothing else is needed. The first time each user's storage is used (or at the next feed refresh) the
@@ -782,7 +785,10 @@ Maintainers:
 3. Run `bin/openapi` if `docs/openapi.yaml` changed (its `info.version` must equal the release version), then
    `bin/package` builds `dist/ArticleNotes-X.Y.Z.zip` (only `xExtension-ArticleNotes/`); `bin/verify-release` installs
    that zip into a clean `freshrss/freshrss` container, enables it as the administrator, adds a note and fetches it
-   through the API. Attach the zip to the release.
+   through the API.
+4. Push the commit to `main` and, once its CI run passes, push the tag (`git push origin vX.Y.Z`). The Release workflow
+   (`.github/workflows/release.yml`) repeats `bin/package` and `bin/verify-release` and publishes a GitHub release with
+   the zip attached and the version's `CHANGELOG.md` section as its notes.
 
 See [AGENTS.md](AGENTS.md) for conventions, specs and the full command list.
 
