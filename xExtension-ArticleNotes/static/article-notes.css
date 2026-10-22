@@ -113,7 +113,13 @@
 
 /* The "Note" action in the article footer: an icon and a label like FreshRSS's own items, kept clear of the date. */
 .articlenotes-item {
-	margin-right: 0.75rem;
+	padding-right: 0.75rem;	/* not margin: FreshRSS 1.27 lays the footer out as a table, whose cells ignore margins */
+}
+
+/* FreshRSS 1.27's footer is a fixed-layout table giving every cell an equal share, too narrow for the action on phones,
+   which then overlapped the date; size the columns by their content instead (1.30's flex footer ignores this). */
+.horizontal-list:has(> .articlenotes-item) {
+	table-layout: auto;
 }
 
 .horizontal-list .item .articlenotes-trigger {

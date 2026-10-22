@@ -637,7 +637,15 @@ test('highlights work in the reader view', async ({ page, request }) => {
 
 async function setTheme(page: Page, theme: string): Promise<void> {
 	await page.goto('/i/?c=configure&a=display');
-	await page.locator('#theme').selectOption(theme);
+	// FreshRSS 1.30 has a theme select; 1.27 only the carousel's hidden radio inputs, which its arrow labels check.
+	const select = page.locator('select#theme');
+	if (await select.count() > 0) {
+		await select.selectOption(theme);
+	} else {
+		await page.locator(`input[type="radio"][name="theme"][value="${theme}"]`).evaluate((input) => {
+			(input as HTMLInputElement).checked = true;
+		});
+	}
 	await page.locator('button.btn-important[type="submit"]').first().click();
 	await page.waitForLoadState('load');
 }
