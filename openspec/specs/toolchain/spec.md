@@ -172,6 +172,16 @@ and print a per-version PASS/FAIL summary. Linting (phpcs, PHPStan) SHALL run on
 - **THEN** PHPUnit on SQLite, MariaDB and PostgreSQL and the Playwright suite pass on FreshRSS 1.27.1 and 1.30.1, and it
   prints `bin/ci --compat: OK`
 
+### Requirement: Continuous integration
+
+A GitHub Actions workflow (`.github/workflows/ci.yml`) SHALL run the compatibility matrix on every push to `main` and every
+pull request: one job per FreshRSS version in `COMPAT_VERSIONS`, each starting the dev stack for that version and running
+`bin/ci --all-dbs` (with `--no-lint` on all but the default version), uploading its coverage reports and Playwright results.
+
+#### Scenario: Push to main
+- **WHEN** a commit is pushed to `main`
+- **THEN** a job per FreshRSS version runs `bin/ci --all-dbs` and the workflow fails if any of them prints `bin/ci: FAILED`
+
 ### Requirement: README screenshots
 
 `bin/screenshots` SHALL capture the README pictures into `docs/screenshots/` (owned by the host user) from the dev

@@ -61,6 +61,8 @@ FRESHRSS_VERSION=1.27.1 bin/phpunit               # against another FreshRSS (bu
 bin/package && bin/verify-release                 # build the zip, install it into a clean freshrss/freshrss
 ```
 
+- GitHub Actions (`.github/workflows/ci.yml`) runs the `bin/ci --compat` matrix on pushes to `main` and on pull
+  requests, one job per FreshRSS version; when changing `COMPAT_VERSIONS` or the default version, update its matrix too.
 - Tools run in the `dev` (PHP, image built from the same pinned FreshRSS; FreshRSS sources at
   `/var/www/FreshRSS`, repo at `/workspace`) and `e2e` (Playwright, version pinned to match
   `tests/e2e/package.json`) compose services; they are under profile `tools`, so `up` does not start them.

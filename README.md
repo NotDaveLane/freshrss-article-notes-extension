@@ -1,5 +1,7 @@
 # FreshRSS Article Notes
 
+[![CI](https://github.com/NotDaveLane/freshrss-article-notes-extension/actions/workflows/ci.yml/badge.svg)](https://github.com/NotDaveLane/freshrss-article-notes-extension/actions/workflows/ci.yml)
+
 **ArticleNotes** is an open-source [FreshRSS](https://freshrss.org/) extension that lets you attach a personal note to any
 article for future reference, and exposes those notes through an authenticated FreshRSS API endpoint so other systems can
 fetch and analyze them later.
@@ -756,6 +758,9 @@ bin/ci --compat      # the matrix: bin/ci --all-dbs on FreshRSS 1.27.1 and 1.30.
 
 `bin/ci --compat` does not need (or touch) the dev stack; set `COMPAT_VERSIONS` (e.g. `COMPAT_VERSIONS="1.27.1"`) to pick
 versions. It lints on the default version only, as FreshRSS's APIs and coding standard differ between versions.
+
+GitHub Actions ([`.github/workflows/ci.yml`](.github/workflows/ci.yml)) runs the same matrix on every push to `main` and
+every pull request, one job per FreshRSS version; each job uploads its coverage reports and Playwright results.
 
 `bin/openapi` regenerates the copy of `docs/openapi.yaml` that the API serves (`xExtension-ArticleNotes/openapi.json`; a test
 fails when it is stale). Single runs: `bin/phpunit tests/Unit/MetadataTest.php`, `TEST_DB=postgres bin/phpunit --testsuite integration`,
