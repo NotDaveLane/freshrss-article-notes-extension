@@ -779,13 +779,15 @@ FreshRSS's log after the end-to-end run when they come from the extension's file
 
 Maintainers:
 
-1. Bump `version` in `xExtension-ArticleNotes/metadata.json` and move the `[Unreleased]` entries of `CHANGELOG.md` under a
-   new `## [X.Y.Z] - YYYY-MM-DD` heading (a test fails if the two disagree).
+1. `bin/bump` (next patch; or `bin/bump minor`, `bin/bump major`, `bin/bump X.Y.Z`) moves the `[Unreleased]` entries of
+   `CHANGELOG.md` under a new `## [X.Y.Z] - YYYY-MM-DD` heading and writes the new version into `metadata.json`,
+   `docs/openapi.yaml` (and its served copy), this README's examples and `docs/community-listing.md`. It refuses an empty
+   `[Unreleased]`. Add a "To X.Y.Z" note under [Upgrading](#upgrading) if the release needs more than replacing the
+   directory.
 2. Run `bin/ci --compat` and commit to `main`.
-3. Run `bin/openapi` if `docs/openapi.yaml` changed (its `info.version` must equal the release version), then
-   `bin/package` builds `dist/ArticleNotes-X.Y.Z.zip` (only `xExtension-ArticleNotes/`); `bin/verify-release` installs
-   that zip into a clean `freshrss/freshrss` container, enables it as the administrator, adds a note and fetches it
-   through the API.
+3. Optionally, `bin/package` builds `dist/ArticleNotes-X.Y.Z.zip` (only `xExtension-ArticleNotes/`) and
+   `bin/verify-release` installs that zip into a clean `freshrss/freshrss` container, enables it as the administrator,
+   adds a note and fetches it through the API (the Release workflow repeats both).
 4. Once `main`'s CI run passes, merge `main` into `production` and push it (Throughput's **Promote** button does exactly
    that). The Release workflow (`.github/workflows/release.yml`) runs the CI matrix on that commit, repeats `bin/package`
    and `bin/verify-release`, then tags it `vX.Y.Z` and publishes a GitHub release with the zip attached and the version's

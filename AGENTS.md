@@ -8,7 +8,7 @@ Guidance for AI coding agents (and humans) working in this repository.
   Everything else at the root is development tooling.
 - `Dockerfile`, `docker-compose.yml`, `docker/` – dev FreshRSS image (stock FreshRSS + curl + seeding scripts + error-log
   format with the request URI).
-- `bin/` – host-side wrappers (`ci`, `phpunit`, `e2e`, `lint`, `check-php-log`, `package`, `verify-release`,
+- `bin/` – host-side wrappers (`ci`, `phpunit`, `e2e`, `lint`, `check-php-log`, `bump`, `package`, `verify-release`,
   `screenshots`); `tests/` – `Unit/`, `Integration/`, `Support/`, `bootstrap.php`, `e2e/` (Playwright: `specs/` run by
   `bin/e2e`, `release/` by `bin/verify-release`, `screenshots/` by `bin/screenshots`); `composer.json`,
   `phpunit.xml.dist`, `phpcs.xml`, `phpstan.neon` – tooling config.
@@ -58,6 +58,7 @@ TEST_DB=postgres bin/phpunit --testsuite integration   # one engine: sqlite (def
 bin/e2e                # all Playwright specs (needs the stack up)
 bin/e2e specs/smoke.spec.ts                       # one spec (path relative to tests/e2e)
 FRESHRSS_VERSION=1.27.1 bin/phpunit               # against another FreshRSS (builds that dev image)
+bin/bump [minor|major|X.Y.Z]                      # prepare a release: version everywhere + changelog (default: patch)
 bin/package && bin/verify-release                 # build the zip, install it into a clean freshrss/freshrss
 ```
 
@@ -114,9 +115,12 @@ per-user migrations (FreshRSS has no extension upgrade hook).
 
 ### Release procedure
 
-1. Bump `version` in `xExtension-ArticleNotes/metadata.json` (the single source of truth).
-2. In `CHANGELOG.md`, move the `[Unreleased]` entries under `## [X.Y.Z] - YYYY-MM-DD` (newest first) and leave an empty
-   `## [Unreleased]`. `tests/Unit/ChangelogTest.php` fails if the two drift apart.
+1. Run `bin/bump` (patch; `minor`, `major` or `X.Y.Z` otherwise). It bumps `version` in
+   `xExtension-ArticleNotes/metadata.json` (the single source of truth) and its copies (`docs/openapi.yaml` and
+   `openapi.json`, README and community-listing examples), and moves the `[Unreleased]` entries under
+   `## [X.Y.Z] - YYYY-MM-DD`, leaving an empty `## [Unreleased]`; it refuses an empty `[Unreleased]`.
+   `tests/Unit/ChangelogTest.php` fails if the changelog and `metadata.json` drift apart.
+2. Add a README "To X.Y.Z" Upgrading note when a release needs more than replacing the directory (e.g. a migration).
 3. Run `bin/ci --compat`, commit, run `bin/package` (writes `dist/ArticleNotes-X.Y.Z.zip`, only
    `xExtension-ArticleNotes/`) and `bin/verify-release` (installs that zip into a clean `freshrss/freshrss`).
 4. Push to `main`; once its CI run passes, merge `main` into `production` and push (Throughput's Promote).

@@ -182,6 +182,22 @@ pull request: one job per FreshRSS version in `COMPAT_VERSIONS`, each starting t
 - **WHEN** a commit is pushed to `main`
 - **THEN** a job per FreshRSS version runs `bin/ci --all-dbs` and the workflow fails if any of them prints `bin/ci: FAILED`
 
+### Requirement: Version bump
+
+`bin/bump [patch|minor|major|X.Y.Z]` (default patch) SHALL move `CHANGELOG.md`'s `[Unreleased]` entries under a new
+`## [X.Y.Z] - YYYY-MM-DD` heading, merging repeated `###` sections, and write the new version into `metadata.json`,
+`docs/openapi.yaml` and its served `openapi.json`, and the version examples of the README and the community listing,
+leaving history such as the README's Upgrading notes alone. It SHALL change nothing and fail when `[Unreleased]` is empty
+or the version is not newer.
+
+#### Scenario: Patch release
+- **WHEN** `bin/bump` runs at 1.1.2 with entries under `[Unreleased]`
+- **THEN** every version reference becomes 1.1.3, the entries sit under `## [1.1.3] - <today>`, and the unit suite passes
+
+#### Scenario: Nothing to release
+- **WHEN** `bin/bump` runs with an empty `[Unreleased]`
+- **THEN** it exits non-zero with "nothing to release" and no file changes
+
 ### Requirement: Release workflow
 
 A GitHub Actions workflow (`.github/workflows/release.yml`) SHALL publish a GitHub release when the `production` branch is
