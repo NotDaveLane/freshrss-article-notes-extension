@@ -5,15 +5,18 @@
 	border: 1px solid var(--frss-border-color, #ccc);
 	border-left-width: 4px;
 	border-radius: 4px;
-	background: var(--frss-background-color-transparent, rgba(128, 128, 128, 0.1));
+	/* The article's own background and text colour: --frss-background-color-transparent is a half-white overlay in the
+	 * themes that do not override it (Alternative Dark), which made light-grey text unreadable. */
+	background: transparent;
 	color: inherit;
 	overflow-wrap: anywhere;
 	cursor: pointer;
 }
 
 @media (hover: hover) {
+	/* A border, not a background tint: a tint costs contrast in themes whose text barely reaches 4.5:1 (Dark). */
 	.articlenotes-note:hover {
-		background: var(--frss-darken-background-hover-transparent, rgba(128, 128, 128, 0.18));
+		border-color: currentColor;
 	}
 }
 
@@ -35,7 +38,6 @@
 .articlenotes-note-meta {
 	margin: 0.5rem 0 0;
 	font-size: 0.85rem;
-	opacity: 0.75;
 }
 
 .articlenotes-editor {

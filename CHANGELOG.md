@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- The saved "Your note" block under an article is readable in FreshRSS's Alternative Dark theme (it was a light grey box
+  with grey text) and its "Last updated" line in the Dark theme: the block now uses the article's own background and
+  text colour.
+
 ## [1.1.2] - 2026-10-22
 
 ### Fixed
