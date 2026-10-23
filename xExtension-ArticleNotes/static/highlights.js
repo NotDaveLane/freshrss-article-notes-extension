@@ -108,9 +108,10 @@
 	}
 
 	function sortedItems(state) {
+		// Reading order: drawn highlights by their place in the text; when either is not drawn, by position, then creation.
 		return Array.from(state.items.values()).sort(function (a, b) {
-			if (a.marks.length > 0 && b.marks.length > 0) {
-				return a.marks[0].compareDocumentPosition(b.marks[0]) & Node.DOCUMENT_POSITION_FOLLOWING ? 1 : -1;
+			if (a.marks.length > 0 && b.marks.length > 0 && a.marks[0] !== b.marks[0]) {
+				return a.marks[0].compareDocumentPosition(b.marks[0]) & Node.DOCUMENT_POSITION_FOLLOWING ? -1 : 1;
 			}
 			return sortKey(a) - sortKey(b) || a.data.created_at - b.data.created_at;
 		});

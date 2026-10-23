@@ -13,6 +13,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- The Annotations panel under an article lists highlights in reading order, as the Notes page does; it listed the
+  highlights drawn in the text bottom-up.
 - The saved "Your note" block under an article is readable in FreshRSS's Alternative Dark theme (it was a light grey box
   with grey text) and its "Last updated" line in the Dark theme: the block now uses the article's own background and
   text colour.
