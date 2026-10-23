@@ -1,31 +1,72 @@
-# Publishes a GitHub release for a pushed vX.Y.Z tag: checks the tag against metadata.json, builds the zip with
-# bin/package, installs it into a clean freshrss/freshrss with bin/verify-release, and attaches it to a release whose
-# notes are that version's CHANGELOG.md section. Tag a commit on main whose CI run passed.
+# Publishes a GitHub release when `production` moves (Throughput's Promote button merges main into it), for the version in
+# metadata.json: a new version runs the full CI matrix on that commit, builds the zip with bin/package, installs it into
+# a clean freshrss/freshrss with bin/verify-release, then tags the commit vX.Y.Z and attaches the zip to a release whose
+# notes are that version's CHANGELOG.md section. A version already released from this commit is a no-op; one released
+# from another commit fails (bump the version before promoting).
 name: Release
 
 on:
   push:
-    tags: ['v[0-9]+.[0-9]+.[0-9]+']
+    branches: [production]
 
-permissions:
-  contents: write
+concurrency:
+  group: release
+  cancel-in-progress: false
 
 jobs:
+  version:
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+    outputs:
+      version: ${{ steps.check.outputs.version }}
+      release: ${{ steps.check.outputs.release }}
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0  # all tags
+
+      - name: Is metadata.json's version unreleased?
+        id: check
+        run: |
+          version="$(jq -r .version xExtension-ArticleNotes/metadata.json)"
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          if ! tagged="$(git rev-parse -q --verify "refs/tags/v$version^{commit}")"; then
+            echo "release=true" >> "$GITHUB_OUTPUT"
+          elif [ "$tagged" = "$GITHUB_SHA" ]; then
+            echo "::notice::v$version is already released from this commit; nothing to do"
+            echo "release=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "::error::v$version was already released from ${tagged:0:7}; bump the version in metadata.json and CHANGELOG.md before promoting"
+            exit 1
+          fi
+
+  test:
+    needs: version
+    if: needs.version.outputs.release == 'true'
+    permissions:
+      contents: read
+    uses: ./.github/workflows/ci.yml
+
   release:
+    needs: [version, test]
     runs-on: ubuntu-24.04
     timeout-minutes: 30
+    permissions:
+      contents: write
+    env:
+      VERSION: ${{ needs.version.outputs.version }}
     steps:
       - uses: actions/checkout@v5
 
-      - name: Check the tag matches metadata.json
-        id: version
+      - name: Release notes from CHANGELOG.md
         run: |
-          version="$(jq -r .version xExtension-ArticleNotes/metadata.json)"
-          if [ "v$version" != "$GITHUB_REF_NAME" ]; then
-            echo "::error::tag $GITHUB_REF_NAME does not match metadata.json version $version"
+          awk -v heading="## [$VERSION] - " 'index($0, heading) == 1 { found = 1; next } found && /^## \[/ { exit } found' \
+            CHANGELOG.md > "$RUNNER_TEMP/notes.md"
+          if ! grep -q '[^[:space:]]' "$RUNNER_TEMP/notes.md"; then
+            echo "::error::CHANGELOG.md has no section for $VERSION"
             exit 1
           fi
-          echo "version=$version" >> "$GITHUB_OUTPUT"
 
       - name: Start the dev stack
         run: docker compose up --build -d --wait && docker compose build dev
@@ -36,24 +77,12 @@ jobs:
       - name: bin/verify-release
         run: bin/verify-release
 
-      - name: Release notes from CHANGELOG.md
-        env:
-          VERSION: ${{ steps.version.outputs.version }}
-        run: |
-          awk -v heading="## [$VERSION] - " 'index($0, heading) == 1 { found = 1; next } found && /^## \[/ { exit } found' \
-            CHANGELOG.md > "$RUNNER_TEMP/notes.md"
-          if ! grep -q '[^[:space:]]' "$RUNNER_TEMP/notes.md"; then
-            echo "::error::CHANGELOG.md has no section for $VERSION"
-            exit 1
-          fi
-
-      - name: Publish the release
+      - name: Tag and publish the release
         env:
           GH_TOKEN: ${{ github.token }}
-          VERSION: ${{ steps.version.outputs.version }}
         run: |
-          gh release create "$GITHUB_REF_NAME" "dist/ArticleNotes-$VERSION.zip" \
-            --title "ArticleNotes $VERSION" --notes-file "$RUNNER_TEMP/notes.md" --verify-tag
+          gh release create "v$VERSION" "dist/ArticleNotes-$VERSION.zip" --target "$GITHUB_SHA" \
+            --title "ArticleNotes $VERSION" --notes-file "$RUNNER_TEMP/notes.md"
 
       - name: Stop the stack
         if: always()

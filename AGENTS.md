@@ -117,10 +117,12 @@ per-user migrations (FreshRSS has no extension upgrade hook).
 1. Bump `version` in `xExtension-ArticleNotes/metadata.json` (the single source of truth).
 2. In `CHANGELOG.md`, move the `[Unreleased]` entries under `## [X.Y.Z] - YYYY-MM-DD` (newest first) and leave an empty
    `## [Unreleased]`. `tests/Unit/ChangelogTest.php` fails if the two drift apart.
-3. Run `bin/ci --compat`, commit, tag `vX.Y.Z`, run `bin/package` (writes `dist/ArticleNotes-X.Y.Z.zip`, only
+3. Run `bin/ci --compat`, commit, run `bin/package` (writes `dist/ArticleNotes-X.Y.Z.zip`, only
    `xExtension-ArticleNotes/`) and `bin/verify-release` (installs that zip into a clean `freshrss/freshrss`).
-4. Push to `main`; once its CI run passes, push the tag. `.github/workflows/release.yml` checks the tag against
-   `metadata.json`, reruns `bin/package` + `bin/verify-release`, and publishes the GitHub release (zip + changelog notes).
+4. Push to `main`; once its CI run passes, merge `main` into `production` and push (Throughput's Promote).
+   `.github/workflows/release.yml` releases `metadata.json`'s version if it has no `vX.Y.Z` tag yet: CI matrix, then
+   `bin/package` + `bin/verify-release`, then it tags the commit and publishes the GitHub release (zip + changelog notes).
+   It fails if that version was already released from another commit, so never promote without bumping the version.
 
 ### Schema migrations
 

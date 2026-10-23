@@ -781,14 +781,16 @@ Maintainers:
 
 1. Bump `version` in `xExtension-ArticleNotes/metadata.json` and move the `[Unreleased]` entries of `CHANGELOG.md` under a
    new `## [X.Y.Z] - YYYY-MM-DD` heading (a test fails if the two disagree).
-2. Run `bin/ci --compat`, commit, and tag `vX.Y.Z`.
+2. Run `bin/ci --compat` and commit to `main`.
 3. Run `bin/openapi` if `docs/openapi.yaml` changed (its `info.version` must equal the release version), then
    `bin/package` builds `dist/ArticleNotes-X.Y.Z.zip` (only `xExtension-ArticleNotes/`); `bin/verify-release` installs
    that zip into a clean `freshrss/freshrss` container, enables it as the administrator, adds a note and fetches it
    through the API.
-4. Push the commit to `main` and, once its CI run passes, push the tag (`git push origin vX.Y.Z`). The Release workflow
-   (`.github/workflows/release.yml`) repeats `bin/package` and `bin/verify-release` and publishes a GitHub release with
-   the zip attached and the version's `CHANGELOG.md` section as its notes.
+4. Once `main`'s CI run passes, merge `main` into `production` and push it (Throughput's **Promote** button does exactly
+   that). The Release workflow (`.github/workflows/release.yml`) runs the CI matrix on that commit, repeats `bin/package`
+   and `bin/verify-release`, then tags it `vX.Y.Z` and publishes a GitHub release with the zip attached and the version's
+   `CHANGELOG.md` section as its notes. Promoting a version that is already released from another commit fails, so bump
+   the version first; re-pushing the released commit does nothing.
 
 See [AGENTS.md](AGENTS.md) for conventions, specs and the full command list.
 

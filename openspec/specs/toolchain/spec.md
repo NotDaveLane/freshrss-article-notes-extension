@@ -184,19 +184,23 @@ pull request: one job per FreshRSS version in `COMPAT_VERSIONS`, each starting t
 
 ### Requirement: Release workflow
 
-A GitHub Actions workflow (`.github/workflows/release.yml`) SHALL publish a GitHub release when a `vX.Y.Z` tag is pushed:
-it fails unless the tag equals `v` + the `metadata.json` version, builds the zip with `bin/package`, checks it with
-`bin/verify-release`, and attaches `ArticleNotes-X.Y.Z.zip` to a release whose notes are that version's `CHANGELOG.md`
-section.
+A GitHub Actions workflow (`.github/workflows/release.yml`) SHALL publish a GitHub release when the `production` branch is
+pushed with an untagged `metadata.json` version, after the CI matrix, `bin/package` and `bin/verify-release` pass on that
+commit: it tags the commit `vX.Y.Z` and attaches the zip, with that version's `CHANGELOG.md` section as notes. A version
+already tagged SHALL never be released again.
 
-#### Scenario: Tag a release
-- **WHEN** `v1.1.2` is pushed and `metadata.json` says `1.1.2`
-- **THEN** a release `v1.1.2` is published with `ArticleNotes-1.1.2.zip` attached and the `## [1.1.2]` changelog entries as
-  its notes
+#### Scenario: Promote a new version
+- **WHEN** `production` is pushed with `metadata.json` at `1.1.3` and no `v1.1.3` tag exists
+- **THEN** after the CI matrix passes, `v1.1.3` is tagged on that commit and released with `ArticleNotes-1.1.3.zip` and
+  the `## [1.1.3]` changelog entries as its notes
 
-#### Scenario: Mismatched tag
-- **WHEN** a tag that differs from the `metadata.json` version is pushed
-- **THEN** the workflow fails before building and publishes nothing
+#### Scenario: Already released here
+- **WHEN** `production` is pushed at the commit `v1.1.2` already points to
+- **THEN** the workflow succeeds without running the matrix or publishing anything
+
+#### Scenario: Promoted without a version bump
+- **WHEN** `production` is pushed at a new commit while `metadata.json` still says `1.1.2`, already tagged elsewhere
+- **THEN** the workflow fails, asking for a version bump, and publishes nothing
 
 ### Requirement: README screenshots
 
