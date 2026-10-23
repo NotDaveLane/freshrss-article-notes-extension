@@ -157,6 +157,7 @@ for (const viewport of viewports) {
 			await expect(rust.locator('.articlenotes-hl-quote')).toHaveText('async closure ergonomics');
 			await expect(rust.locator('.articlenotes-hl-note')).toHaveText(`${MARK} hl-note-delta`);
 			await expect(rust.locator('.articlenotes-notes-meta')).toContainText(FEED);
+			await expect(rust.locator('.articlenotes-notes-meta time')).toHaveText(/^\d{1,2} [A-Za-z]+ \d{4}$/);
 			await expect(rust.getByRole('heading', { level: 2 }).getByRole('link')).toHaveAttribute('href', /search=e%3A\d+/);
 
 			const wasm = group(page, WASM);

@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- The date under a saved note and the dates on the Notes page are written the way FreshRSS writes dates ("23 October 2026 at 01:14") instead of as ISO timestamps; the `datetime` attributes are unchanged.
+
 ## [1.1.2] - 2026-10-22
 
 ### Fixed

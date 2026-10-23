@@ -13,7 +13,7 @@ final class NoteBlock {
 	public static function html(Note $note): string {
 		$text = htmlspecialchars($note->note, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
 		$time = '<time datetime="' . htmlspecialchars(date('c', $note->updatedAt), ENT_QUOTES, 'UTF-8') . '">'
-			. htmlspecialchars(date('Y-m-d H:i', $note->updatedAt), ENT_QUOTES, 'UTF-8') . '</time>';
+			. htmlspecialchars(timestamptodate($note->updatedAt), ENT_QUOTES, 'UTF-8') . '</time>';
 		$hint = htmlspecialchars(_t('ext.article_notes.note.edit_hint'), ENT_QUOTES, 'UTF-8');
 		$titleId = 'articlenotes-note-title-' . $note->id;
 		$hintId = 'articlenotes-note-hint-' . $note->id;
