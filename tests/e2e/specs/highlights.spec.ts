@@ -773,19 +773,24 @@ test('the Annotations panel lists highlights in reading order, like the Notes pa
 	const expected = ['component model', 'modules', 'different languages', 'a sentence the publisher removed', 'typed interfaces'];
 	const quotes = (scope: Locator): Locator => scope.locator('.articlenotes-hl-item .articlenotes-hl-quote');
 
-	let article = await open(page, articles.note);
-	await expect(marks(article)).toHaveCount(4);
-	await expect(quotes(article)).toHaveText(expected);
-	await page.reload();
-	article = await openArticle(page, articles.note.title);
-	await expect(quotes(article)).toHaveText(expected);
+	try {
+		let article = await open(page, articles.note);
+		await expect(marks(article)).toHaveCount(4);
+		await expect(quotes(article)).toHaveText(expected);
+		await page.reload();
+		article = await openArticle(page, articles.note.title);
+		await expect(quotes(article)).toHaveText(expected);
 
-	await page.goto('/i/?a=reader&state=3');
-	article = page.locator('.flux', { hasText: articles.note.title }).first();
-	await expect(marks(article)).toHaveCount(4);
-	await expect(quotes(article)).toHaveText(expected);
+		await page.goto('/i/?a=reader&state=3');
+		article = page.locator('.flux', { hasText: articles.note.title }).first();
+		await expect(marks(article)).toHaveCount(4);
+		await expect(quotes(article)).toHaveText(expected);
 
-	await page.goto('/i/?c=ArticleNotes&a=notes');
-	const group = page.locator('.articlenotes-notes-group').filter({ has: page.getByRole('heading', { level: 2, name: articles.note.title }) });
-	await expect(quotes(group)).toHaveText(expected);
+		await page.goto('/i/?c=ArticleNotes&a=notes');
+		const group = page.locator('.articlenotes-notes-group').filter({ has: page.getByRole('heading', { level: 2, name: articles.note.title }) });
+		await expect(quotes(group)).toHaveText(expected);
+	} finally {
+		// The Notes page spec highlights this article too.
+		await reset(request, articles.note);
+	}
 });
