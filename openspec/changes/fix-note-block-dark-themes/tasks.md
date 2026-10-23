@@ -1,0 +1,3 @@
+- [x] Playwright spec: saved note contrast ≥ 4.5:1 in Origine (light and dark), Alternative Dark, Dark, Nord and Ansum
+- [x] Note block: transparent background, border on hover, full-opacity "Last updated" line
+- [x] Spec `note-editor` and CHANGELOG
