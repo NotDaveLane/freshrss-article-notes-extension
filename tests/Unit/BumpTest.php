@@ -129,6 +129,37 @@ final class BumpTest extends TestCase {
 		self::assertStringContainsString('must be newer than', $result['output']);
 	}
 
+	/** @return array<string,array{string,string}> title => [expected version kind, explicit version or ''] */
+	public static function titles(): array {
+		return [
+			'bare' => ['Release', 'patch'],
+			'patch' => ['Release patch', 'patch'],
+			'minor' => ['Release minor version', 'minor'],
+			'major, any case' => ['MAJOR release', 'major'],
+			'explicit' => ['Release 9.8.7', '9.8.7'],
+			'explicit with v' => ['Ship v9.8.7 to users', '9.8.7'],
+		];
+	}
+
+	#[\PHPUnit\Framework\Attributes\DataProvider('titles')]
+	public function testTheTitlePicksTheBump(string $title, string $expected): void {
+		$result = $this->bump('--title', $title, '--date', '2026-11-02');
+		self::assertSame(0, $result['status'], $result['output']);
+		$version = match ($expected) {
+			'patch' => $this->next(2),
+			'minor' => $this->next(1),
+			'major' => $this->next(0),
+			default => $expected,
+		};
+		self::assertStringContainsString('"version": "' . $version . '"', $this->read('xExtension-ArticleNotes/metadata.json'));
+	}
+
+	public function testATitleNamingTwoBumpsIsRefused(): void {
+		$result = $this->bump('--title', 'Release minor or major');
+		self::assertSame(2, $result['status'], $result['output']);
+		self::assertStringContainsString('names more than one', $result['output']);
+	}
+
 	public function testRefusesAnInvalidArgument(): void {
 		$result = $this->bump('1.2');
 		self::assertSame(2, $result['status'], $result['output']);

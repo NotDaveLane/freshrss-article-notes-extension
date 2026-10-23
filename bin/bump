@@ -5,6 +5,7 @@
 #   bin/bump                patch (1.1.2 -> 1.1.3)
 #   bin/bump minor|major    1.1.2 -> 1.2.0 / 2.0.0
 #   bin/bump 1.4.0          an explicit version (must be newer)
+#   bin/bump --title TEXT   picked from free text, e.g. a Throughput task title ("Release minor"; none named: patch)
 #   bin/bump --commit       also commit exactly those files as "Release X.Y.Z" (the Throughput release workflow does)
 # Refuses an empty [Unreleased]. Then commit to main and, once CI passes, promote main to production to release it.
 set -euo pipefail

@@ -185,10 +185,17 @@ pull request: one job per FreshRSS version in `COMPAT_VERSIONS`, each starting t
 ### Requirement: Version bump
 
 `bin/bump [patch|minor|major|X.Y.Z]` (default patch) SHALL move `CHANGELOG.md`'s `[Unreleased]` entries under a new
-`## [X.Y.Z] - YYYY-MM-DD` heading, merging repeated `###` sections, and write the new version into `metadata.json`,
-`docs/openapi.yaml` and its served `openapi.json`, and the version examples of the README and the community listing,
-leaving history such as the README's Upgrading notes alone; `--commit` commits exactly those files as `Release X.Y.Z`.
-It SHALL change nothing and fail when `[Unreleased]` is empty or the version is not newer.
+dated `## [X.Y.Z]` heading, merging repeated `###` sections, and write the new version everywhere it is published
+(`metadata.json`, the OpenAPI document and its JSON copy, README and community-listing examples), never the README's
+Upgrading history. It SHALL change nothing and fail when `[Unreleased]` is empty or the version is not newer.
+
+#### Scenario: Bump picked from a task title
+- **WHEN** `bin/bump --title "Release minor"` runs at 1.1.2 (`--title "Release"` would mean patch; "Release v2.0.0" that version)
+- **THEN** the version becomes 1.2.0; a title naming two different bumps is refused
+
+#### Scenario: Commit the bump
+- **WHEN** `bin/bump --commit` runs with those files unchanged from HEAD
+- **THEN** exactly those files are committed as `Release X.Y.Z`
 
 #### Scenario: Patch release
 - **WHEN** `bin/bump` runs at 1.1.2 with entries under `[Unreleased]`
