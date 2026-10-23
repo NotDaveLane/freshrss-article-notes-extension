@@ -26,8 +26,9 @@ final class BumpTest extends TestCase {
 		self::assertIsArray($metadata);
 		self::assertIsString($metadata['version']);
 		$this->version = $metadata['version'];
-		// The repository's [Unreleased] may be empty right after a release: give it entries, with Fixed twice.
-		$this->write('CHANGELOG.md', preg_replace('/^## \[Unreleased\]\n+/m', "## [Unreleased]\n\n### Fixed\n\n- First fix.\n\n"
+		// Replace the repository's [Unreleased] (empty right after a release, real entries otherwise) with known entries,
+		// Fixed twice.
+		$this->write('CHANGELOG.md', preg_replace('/^## \[Unreleased\]\n.*?(?=^## \[)/ms', "## [Unreleased]\n\n### Fixed\n\n- First fix.\n\n"
 			. "### Added\n\n- A feature.\n\n### Fixed\n\n- Second fix.\n\n", $this->read('CHANGELOG.md'), 1) ?? '');
 	}
 
