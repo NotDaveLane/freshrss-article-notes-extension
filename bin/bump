@@ -2,28 +2,35 @@
 # Prepares a release: bumps the version in metadata.json, docs/openapi.yaml (and its served copy), the README and the
 # community listing, and moves CHANGELOG.md's [Unreleased] entries under the new version, dated today (host's local date;
 # pass --date YYYY-MM-DD to override).
-#   bin/bump                patch (1.1.2 -> 1.1.3)
-#   bin/bump minor|major    1.1.2 -> 1.2.0 / 2.0.0
+#   bin/bump                auto: semver from the [Unreleased] sections (### Removed or a "**Breaking:**" entry: major;
+#                           ### Added or ### Deprecated: minor; else patch; below 1.0.0 each moves down one)
+#   bin/bump patch|minor|major   1.1.2 -> 1.1.3 / 1.2.0 / 2.0.0
 #   bin/bump 1.4.0          an explicit version (must be newer)
-#   bin/bump --title TEXT   picked from free text, e.g. a Throughput task title ("Release minor"; none named: patch)
+#   bin/bump --title TEXT   picked from free text, e.g. a Throughput task title ("Release minor"; none named: auto)
+#   bin/bump --dry-run      print the version it would release (and why); change nothing
 #   bin/bump --commit       also commit exactly those files as "Release X.Y.Z" (the Throughput release workflow does)
 # Refuses an empty [Unreleased]. Then commit to main and, once CI passes, promote main to production to release it.
 set -euo pipefail
 source "$(dirname "${BASH_SOURCE[0]}")/lib-common.sh"
 
-commit=0 args=()
+commit=0 dry_run=0 args=()
 for arg in "$@"; do
-	if [ "$arg" = --commit ]; then commit=1; else args+=("$arg"); fi
+	case "$arg" in
+		--commit) commit=1 ;;
+		--dry-run) dry_run=1; args+=("$arg") ;;
+		*) args+=("$arg") ;;
+	esac
 done
 files=(CHANGELOG.md README.md docs/community-listing.md docs/openapi.yaml xExtension-ArticleNotes/metadata.json
 	xExtension-ArticleNotes/openapi.json)
-if [ "$commit" = 1 ] && ! git diff --quiet HEAD -- "${files[@]}"; then
+if [ "$commit" = 1 ] && [ "$dry_run" = 0 ] && ! git diff --quiet HEAD -- "${files[@]}"; then
 	echo "error: --commit needs ${files[*]} unchanged from HEAD" >&2
 	exit 1
 fi
 
 ensure_vendor
 dev php bin/bump.php /workspace --date "$(date +%Y-%m-%d)" ${args[@]+"${args[@]}"}	# the container runs in UTC
+[ "$dry_run" = 0 ] || exit 0
 dev php bin/openapi.php /workspace
 
 if [ "$commit" = 1 ]; then

@@ -71,10 +71,54 @@ final class BumpTest extends TestCase {
 		return $matches[0];
 	}
 
-	public function testPatchIsTheDefault(): void {
+	/** Replaces the [Unreleased] entries with $entries (### sections). */
+	private function setUnreleased(string $entries): void {
+		$this->write('CHANGELOG.md', preg_replace('/(## \[Unreleased\]\n).*?(?=^## \[)/ms', "$1\n$entries\n", $this->read('CHANGELOG.md'), 1) ?? '');
+	}
+
+	public function testAutoIsTheDefaultAndSaysWhy(): void {
+		$result = $this->bump('--date', '2026-11-02');	// the fixture's [Unreleased] has Fixed and Added entries
+		self::assertSame(0, $result['status'], $result['output']);
+		self::assertStringContainsString('"version": "' . $this->next(1) . '"', $this->read('xExtension-ArticleNotes/metadata.json'));
+		self::assertStringContainsString("Bumped {$this->version} -> {$this->next(1)} (minor: ### Added)", $result['output']);
+	}
+
+	/** @return array<string,array{string,string,string}> [entries, current version, expected version] */
+	public static function autoRules(): array {
+		return [
+			'fixes only: patch' => ["### Fixed\n\n- A fix.\n", '1.1.2', '1.1.3'],
+			'changed only: patch' => ["### Changed\n\n- A tweak.\n\n### Security\n\n- A patch.\n", '1.1.2', '1.1.3'],
+			'added: minor' => ["### Fixed\n\n- A fix.\n\n### Added\n\n- A feature.\n", '1.1.2', '1.2.0'],
+			'deprecated: minor' => ["### Deprecated\n\n- An old endpoint.\n", '1.1.2', '1.2.0'],
+			'removed: major' => ["### Added\n\n- A feature.\n\n### Removed\n\n- An endpoint.\n", '1.1.2', '2.0.0'],
+			'breaking marker: major' => ["### Changed\n\n- **Breaking:** notes need a title.\n", '1.1.2', '2.0.0'],
+			'pre-1.0 breaking: minor' => ["### Removed\n\n- An endpoint.\n", '0.4.2', '0.5.0'],
+			'pre-1.0 feature: patch' => ["### Added\n\n- A feature.\n", '0.4.2', '0.4.3'],
+		];
+	}
+
+	#[\PHPUnit\Framework\Attributes\DataProvider('autoRules')]
+	public function testAutoFollowsSemverFromTheChangelogSections(string $entries, string $current, string $expected): void {
+		$this->setUnreleased($entries);
+		$this->write('xExtension-ArticleNotes/metadata.json',
+			str_replace("\"version\": \"{$this->version}\"", "\"version\": \"$current\"", $this->read('xExtension-ArticleNotes/metadata.json')));
+		$result = $this->bump('auto', '--dry-run');
+		self::assertSame(0, $result['status'], $result['output']);
+		self::assertStringContainsString("Would bump $current -> $expected (", $result['output']);
+	}
+
+	public function testDryRunChangesNothing(): void {
+		$before = array_map($this->read(...), self::FILES);
+		$result = $this->bump('--dry-run');
+		self::assertSame(0, $result['status'], $result['output']);
+		self::assertStringContainsString("Would bump {$this->version} -> {$this->next(1)} (minor: ### Added)", $result['output']);
+		self::assertSame($before, array_map($this->read(...), self::FILES));
+	}
+
+	public function testAnExplicitBumpWritesTheVersionEverywhere(): void {
 		$notes = $this->upgradingNotes();
 		self::assertNotSame([], $notes);
-		$result = $this->bump('--date', '2026-11-02');
+		$result = $this->bump('patch', '--date', '2026-11-02');
 		self::assertSame(0, $result['status'], $result['output']);
 		$new = $this->next(2);
 		self::assertStringContainsString('"version": "' . $new . '"', $this->read('xExtension-ArticleNotes/metadata.json'));
@@ -132,7 +176,7 @@ final class BumpTest extends TestCase {
 	/** @return array<string,array{string,string}> title => [expected version kind, explicit version or ''] */
 	public static function titles(): array {
 		return [
-			'bare' => ['Release', 'patch'],
+			'bare: auto (the fixture has Added entries)' => ['Release', 'minor'],
 			'patch' => ['Release patch', 'patch'],
 			'minor' => ['Release minor version', 'minor'],
 			'major, any case' => ['MAJOR release', 'major'],

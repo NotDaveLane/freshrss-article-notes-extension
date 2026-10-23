@@ -184,13 +184,23 @@ pull request: one job per FreshRSS version in `COMPAT_VERSIONS`, each starting t
 
 ### Requirement: Version bump
 
-`bin/bump [patch|minor|major|X.Y.Z]` (default patch) SHALL move `CHANGELOG.md`'s `[Unreleased]` entries under a new
-dated `## [X.Y.Z]` heading, merging repeated `###` sections, and write the new version everywhere it is published
+`bin/bump [auto|patch|minor|major|X.Y.Z]` (default auto) SHALL move `CHANGELOG.md`'s `[Unreleased]` entries under a
+new dated `## [X.Y.Z]` heading, merging repeated `###` sections, and write the new version everywhere it is published
 (`metadata.json`, the OpenAPI document and its JSON copy, README and community-listing examples), never the README's
 Upgrading history. It SHALL change nothing and fail when `[Unreleased]` is empty or the version is not newer.
 
+#### Scenario: Automatic semver
+- **WHEN** `bin/bump` runs at 1.1.2 and `[Unreleased]` has `### Removed` or a `**Breaking:**` entry / `### Added` or
+  `### Deprecated` / only other sections
+- **THEN** the version becomes 2.0.0 / 1.2.0 / 1.1.3, and it prints the reason; at 0.4.2 the same sections give 0.5.0 /
+  0.4.3 / 0.4.3
+
+#### Scenario: Dry run
+- **WHEN** `bin/bump --dry-run` runs
+- **THEN** it prints the version it would release and why, and changes no file
+
 #### Scenario: Bump picked from a task title
-- **WHEN** `bin/bump --title "Release minor"` runs at 1.1.2 (`--title "Release"` would mean patch; "Release v2.0.0" that version)
+- **WHEN** `bin/bump --title "Release minor"` runs at 1.1.2 (`--title "Release"` means auto; "Release v2.0.0" that version)
 - **THEN** the version becomes 1.2.0; a title naming two different bumps is refused
 
 #### Scenario: Commit the bump
@@ -198,7 +208,7 @@ Upgrading history. It SHALL change nothing and fail when `[Unreleased]` is empty
 - **THEN** exactly those files are committed as `Release X.Y.Z`
 
 #### Scenario: Patch release
-- **WHEN** `bin/bump` runs at 1.1.2 with entries under `[Unreleased]`
+- **WHEN** `bin/bump patch` runs at 1.1.2 with entries under `[Unreleased]`
 - **THEN** every version reference becomes 1.1.3, the entries sit under `## [1.1.3] - <today>`, and the unit suite passes
 
 #### Scenario: Nothing to release

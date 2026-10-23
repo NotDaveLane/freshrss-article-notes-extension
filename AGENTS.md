@@ -58,8 +58,9 @@ TEST_DB=postgres bin/phpunit --testsuite integration   # one engine: sqlite (def
 bin/e2e                # all Playwright specs (needs the stack up)
 bin/e2e specs/smoke.spec.ts                       # one spec (path relative to tests/e2e)
 FRESHRSS_VERSION=1.27.1 bin/phpunit               # against another FreshRSS (builds that dev image)
-bin/bump [minor|major|X.Y.Z] [--commit]           # prepare a release: version everywhere + changelog (default: patch;
-                                                  # --title "Release minor" picks it from text, as the Throughput task does)
+bin/bump [--dry-run] [--commit]                   # prepare a release: version from the changelog headings (semver) +
+                                                  # changelog; patch|minor|major|X.Y.Z overrides, as does --title "Release
+                                                  # minor" (picked from text, as the Throughput task does)
 bin/package && bin/verify-release                 # build the zip, install it into a clean freshrss/freshrss
 ```
 
@@ -114,9 +115,19 @@ Semantic versioning in `xExtension-ArticleNotes/metadata.json`; record every use
 `CHANGELOG.md` (Keep a Changelog, under `## [Unreleased]`). Schema changes use numbered, idempotent
 per-user migrations (FreshRSS has no extension upgrade hook).
 
+**The changelog heading decides the release's version** (`bin/bump` reads it), so file each entry under the right one:
+
+- `### Added` – a new feature, setting, API endpoint or field (minor).
+- `### Deprecated` – something still working but scheduled for removal (minor).
+- `### Removed` – a removed feature, endpoint, field or setting (major).
+- `### Changed` – changed behaviour that existing users and API clients keep working with (patch).
+- `### Fixed` / `### Security` – bug and vulnerability fixes (patch).
+- Start an entry with `**Breaking:**` when it breaks existing users, API clients or stored data in any section (a renamed
+  or retyped API field, a stricter validation, a migration that cannot be undone): it makes the release major.
+
 ### Release procedure
 
-1. Run `bin/bump` (patch; `minor`, `major` or `X.Y.Z` otherwise). It bumps `version` in
+1. Run `bin/bump` (auto; `patch`, `minor`, `major` or `X.Y.Z` to override; `--dry-run` to preview). It bumps `version` in
    `xExtension-ArticleNotes/metadata.json` (the single source of truth) and its copies (`docs/openapi.yaml` and
    `openapi.json`, README and community-listing examples), and moves the `[Unreleased]` entries under
    `## [X.Y.Z] - YYYY-MM-DD`, leaving an empty `## [Unreleased]`; it refuses an empty `[Unreleased]`.

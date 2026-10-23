@@ -779,7 +779,9 @@ FreshRSS's log after the end-to-end run when they come from the extension's file
 
 Maintainers:
 
-1. `bin/bump` (next patch; or `bin/bump minor`, `bin/bump major`, `bin/bump X.Y.Z`) moves the `[Unreleased]` entries of
+1. `bin/bump` picks the next version from the `[Unreleased]` changelog sections (semver: `### Removed` or a
+   `**Breaking:**` entry is major, `### Added` or `### Deprecated` minor, anything else patch; `bin/bump --dry-run`
+   previews it, and `bin/bump patch|minor|major|X.Y.Z` overrides it). It moves the `[Unreleased]` entries of
    `CHANGELOG.md` under a new `## [X.Y.Z] - YYYY-MM-DD` heading and writes the new version into `metadata.json`,
    `docs/openapi.yaml` (and its served copy), this README's examples and `docs/community-listing.md`. It refuses an empty
    `[Unreleased]`. Add a "To X.Y.Z" note under [Upgrading](#upgrading) if the release needs more than replacing the
