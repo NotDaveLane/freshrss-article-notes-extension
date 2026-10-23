@@ -1,0 +1,3 @@
+- [x] Format the note block's time with `timestamptodate()`
+- [x] Format the Notes page group dates with `timestamptodate($t, false)`
+- [x] Update integration and e2e tests, changelog

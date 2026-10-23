@@ -8,7 +8,7 @@
 	$t = static fn (string $key, string|int ...$args): string => $e(_t('ext.article_notes.notes.' . $key, ...$args));
 	$notesUrl = static fn (array $params): string => Minz_Url::display(['c' => 'ArticleNotes', 'a' => 'notes', 'params' => $params]);
 	$web = static fn (string $url): bool => preg_match('#^https?://#i', $url) === 1;
-	$date = static fn (int $timestamp): string => $e(date('Y-m-d', $timestamp));
+	$date = static fn (int $timestamp): string => $e(timestamptodate($timestamp, false));
 	$back = http_build_query($filter->toParams() + ($page->page > 1 ? ['page' => (string)$page->page] : []));
 	$colors = ArticleNotes\Highlight::COLORS;
 	$colorName = static fn (string $color): string => $e(_t('ext.article_notes.highlight.color_' . $color));

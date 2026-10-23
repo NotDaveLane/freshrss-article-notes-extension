@@ -53,14 +53,16 @@ final class NoteDisplayTest extends TestCase {
 
 	public function testNoteIsAppendedEscapedWithLineBreaksAndTime(): void {
 		$entry = $this->entry();
-		$this->extension->noteService()->save($entry->id(), "<b>bold</b> & \"quoted\"\nline two");
+		$note = $this->extension->noteService()->save($entry->id(), "<b>bold</b> & \"quoted\"\nline two");
+		self::assertNotNull($note);
 		$shown = $this->extension->appendNote($entry);
 		$content = $shown->content(false);
 		self::assertStringStartsWith('<p>Body</p>', $content);
 		self::assertStringContainsString('Your note', $content);
 		self::assertStringContainsString('&lt;b&gt;bold&lt;/b&gt; &amp; &quot;quoted&quot;<br>', $content);
 		self::assertStringNotContainsString('<b>', $content);
-		self::assertMatchesRegularExpression('#Last updated <time datetime="[^"]+">\d{4}-\d\d-\d\d \d\d:\d\d</time>#', $content);
+		self::assertMatchesRegularExpression('#Last updated <time datetime="[^"]+">' . preg_quote(timestamptodate($note->updatedAt), '#') . '</time>#', $content);
+		self::assertDoesNotMatchRegularExpression('#>\d{4}-\d\d-\d\d \d\d:\d\d</time>#', $content);
 		self::assertStringNotContainsString('Tap', $content);
 		self::assertStringNotContainsString('aria-label=', $content);
 		self::assertMatchesRegularExpression('#<section class="articlenotes-note" [^>]*tabindex="0" title="Edit your note"'
