@@ -187,8 +187,8 @@ pull request: one job per FreshRSS version in `COMPAT_VERSIONS`, each starting t
 `bin/bump [patch|minor|major|X.Y.Z]` (default patch) SHALL move `CHANGELOG.md`'s `[Unreleased]` entries under a new
 `## [X.Y.Z] - YYYY-MM-DD` heading, merging repeated `###` sections, and write the new version into `metadata.json`,
 `docs/openapi.yaml` and its served `openapi.json`, and the version examples of the README and the community listing,
-leaving history such as the README's Upgrading notes alone. It SHALL change nothing and fail when `[Unreleased]` is empty
-or the version is not newer.
+leaving history such as the README's Upgrading notes alone; `--commit` commits exactly those files as `Release X.Y.Z`.
+It SHALL change nothing and fail when `[Unreleased]` is empty or the version is not newer.
 
 #### Scenario: Patch release
 - **WHEN** `bin/bump` runs at 1.1.2 with entries under `[Unreleased]`

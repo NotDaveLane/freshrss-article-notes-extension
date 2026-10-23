@@ -58,7 +58,7 @@ TEST_DB=postgres bin/phpunit --testsuite integration   # one engine: sqlite (def
 bin/e2e                # all Playwright specs (needs the stack up)
 bin/e2e specs/smoke.spec.ts                       # one spec (path relative to tests/e2e)
 FRESHRSS_VERSION=1.27.1 bin/phpunit               # against another FreshRSS (builds that dev image)
-bin/bump [minor|major|X.Y.Z]                      # prepare a release: version everywhere + changelog (default: patch)
+bin/bump [minor|major|X.Y.Z] [--commit]           # prepare a release: version everywhere + changelog (default: patch)
 bin/package && bin/verify-release                 # build the zip, install it into a clean freshrss/freshrss
 ```
 
