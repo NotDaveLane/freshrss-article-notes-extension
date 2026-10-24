@@ -408,6 +408,31 @@ for (const viewport of viewports) {
 	test.describe(`edits at ${viewport.name}`, () => {
 		test.use({ viewport: { width: viewport.width, height: viewport.height } });
 
+		test('moves focus into the edit form when Edit is opened and back to Edit on Cancel or Escape', async ({ page }) => {
+			const tag = `npgfocus${viewport.width}`;
+			await putNote(10, `${tag} note`);
+			await search(page, `q=${tag}`);
+			const box = group(page, 'Type-safe SQL without an ORM').locator('.articlenotes-notes-note');
+			const summary = box.locator('summary');
+			const textarea = box.locator('textarea');
+
+			await summary.focus();
+			await page.keyboard.press('Enter');
+			await expect(textarea).toBeFocused();
+			await box.getByRole('button', { name: 'Cancel' }).click();
+			await expect(summary).toBeFocused();
+
+			await summary.focus();
+			await page.keyboard.press('Space');
+			await expect(textarea).toBeFocused();
+			await page.keyboard.press('Escape');
+			await expect(box.locator('details')).not.toHaveAttribute('open', '');
+			await expect(summary).toBeFocused();
+
+			await summary.click();
+			await expect(textarea).toBeFocused();
+		});
+
 		test('edits, recolors and deletes annotations in place', async ({ page }) => {
 			const tag = `npgedit${viewport.width}`;
 			await putNote(10, `${tag} original note`);

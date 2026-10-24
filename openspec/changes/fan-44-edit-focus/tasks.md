@@ -1,0 +1,3 @@
+- [x] E2E test for focus on open, Cancel and Escape
+- [x] Toggle and Escape handlers in article-notes.js
+- [x] Changelog and spec

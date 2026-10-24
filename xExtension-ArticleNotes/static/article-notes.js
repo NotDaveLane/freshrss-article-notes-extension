@@ -345,6 +345,14 @@
 		}, true);
 	}
 
+	function closeNotesEdit(details) {
+		details.open = false;
+		const summary = details.querySelector('summary');
+		if (summary instanceof HTMLElement) {
+			summary.focus();
+		}
+	}
+
 	// The Notes page: confirm deletes, and let Cancel close the edit form.
 	document.addEventListener('click', function (event) {
 		const target = event.target instanceof Element ? event.target : null;
@@ -356,13 +364,33 @@
 		const cancel = target && target.closest('.articlenotes-notes-edit .articlenotes-notes-cancel');
 		const details = cancel && cancel.closest('details');
 		if (details) {
-			details.open = false;
-			const summary = details.querySelector('summary');
-			if (summary) {
-				summary.focus();
-			}
+			closeNotesEdit(details);
 		}
 	});
+
+	// Escape inside an open edit form acts like Cancel.
+	document.addEventListener('keydown', function (event) {
+		const target = event.target instanceof Element ? event.target : null;
+		const details = target && target.closest('details.articlenotes-notes-edit[open]');
+		if (details && event.key === 'Escape') {
+			event.preventDefault();
+			closeNotesEdit(details);
+		}
+	});
+
+	// The open form hides its summary, so move focus to the textarea (toggle does not bubble: capture).
+	document.addEventListener('toggle', function (event) {
+		const details = event.target;
+		if (!(details instanceof HTMLDetailsElement) || !details.classList.contains('articlenotes-notes-edit') || !details.open) {
+			return;
+		}
+		const textarea = details.querySelector('textarea.articlenotes-textarea');
+		if (textarea instanceof HTMLTextAreaElement) {
+			textarea.focus({ preventScroll: true });
+			textarea.setSelectionRange(textarea.value.length, textarea.value.length);
+			textarea.scrollIntoView({ block: 'nearest' });
+		}
+	}, true);
 
 	// The settings page: copy the API endpoint, and say so in the status line (announced by screen readers).
 	document.addEventListener('click', function (event) {
