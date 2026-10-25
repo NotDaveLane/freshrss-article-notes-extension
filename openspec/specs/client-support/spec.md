@@ -8,7 +8,7 @@ What third-party clients, such as a browser extension, need from the API: CORS, 
 
 ### Requirement: Allowed client origins
 
-An administrator SHALL be able to set "Allowed client origins" on the extension's configure page (administrators only): one exact origin per line, empty by default. Wildcards, paths and unsupported schemes SHALL be refused and nothing saved.
+An administrator SHALL be able to set "Allowed client origins" on the extension's configure page (administrators only): one exact origin per line, empty by default. Wildcards, paths and unsupported schemes SHALL be refused and nothing saved. The page SHALL then keep the submitted text in the field (`aria-invalid="true"`) and show the refused lines in an inline error described by the field, besides the notification; the stored list stays unchanged.
 
 #### Scenario: Accepted origins
 - **WHEN** the list holds `https://Notes.example.com`, `http://localhost:8000`, `moz-extension://<uuid>` and `chrome-extension://<id>`
