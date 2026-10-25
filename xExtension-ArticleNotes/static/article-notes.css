@@ -367,7 +367,7 @@ mark.articlenotes-hl:focus-visible {
 		gap: 0.5rem;
 	}
 
-	.articlenotes-swatch {
+	.articlenotes-colors .articlenotes-swatch {
 		width: 44px;
 		height: 44px;
 		min-width: 44px;

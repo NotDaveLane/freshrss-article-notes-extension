@@ -1,3 +1,3 @@
 - [x] E2E tests for 44px controls at 390×844 with touch, unchanged sizes at 1440×900, toolbar wrapping without overflow
 - [x] Touch rule in article-notes.css
-- [x] Changelog and spec
+- [x] Changelog, change specs and main specs (highlights, note-editor)

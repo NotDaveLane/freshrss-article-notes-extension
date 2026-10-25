@@ -819,6 +819,10 @@ test('on touch devices the toolbar, the bottom sheet and the Annotations panel h
 	const panel = article.locator('.articlenotes-panel');
 	await expect(panel.locator('a.articlenotes-notes-link')).toBeVisible();
 	await expectTapTargets(panel);
+	// The colour dot of each listed highlight is decoration, not a control: it keeps its 1rem size.
+	const dot = (await panel.locator('.articlenotes-swatch-static').first().boundingBox())!;
+	expect(dot.width).toBe(16);
+	expect(dot.height).toBe(16);
 
 	await select(article, 'organizational overhead');
 	await expect(toolbar(page)).toBeVisible();
