@@ -13,6 +13,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- On phones and touch screens the note editor's buttons, the selection toolbar, the highlight bottom sheet and the
+  Annotations panel (Jump to, Edit, "All my notes") have 44px tap targets like the Note action and the Notes page, with
+  more space between the colour swatches.
 - Opening **Edit** on the Notes page moves keyboard focus into the form's textarea instead of losing it, and Escape in the open form closes it like Cancel.
 - The Annotations panel under an article lists highlights in reading order, as the Notes page does; it listed the
   highlights drawn in the text bottom-up.

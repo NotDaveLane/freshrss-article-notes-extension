@@ -450,3 +450,31 @@ test('works for an article loaded by scrolling', async ({ page }) => {
 	await saveNote(page, article, 'note on a scrolled-in article');
 	await expect(article.locator('.articlenotes-note')).toContainText('note on a scrolled-in article');
 });
+
+test('on touch devices the editor buttons are 44px tap targets; on desktop they keep their size', async ({ browser, page }) => {
+	const context = await browser.newContext({ viewport: { width: 390, height: 844 }, hasTouch: true, isMobile: true });
+	const phone = await context.newPage();
+	await signIn(phone, throwawayUser());
+	await phone.goto('/i/?state=3');
+	const article = await openArticle(phone, 'SQLite as an application file format, revisited');
+	await saveNote(phone, article, 'tap targets');
+	await trigger(article).click();
+	const editor = article.locator('.articlenotes-editor');
+	await expect(editor.getByRole('button', { name: 'Delete' })).toBeVisible();
+	const buttons = editor.locator('button:visible, a:visible');
+	expect(await buttons.count()).toBe(3);
+	for (const button of await buttons.all()) {
+		const box = (await button.boundingBox())!;
+		expect(box.width, await button.innerText()).toBeGreaterThanOrEqual(44);
+		expect(box.height, await button.innerText()).toBeGreaterThanOrEqual(44);
+	}
+	expect(await phone.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+	await deleteNote(phone, article);
+	await context.close();
+
+	await page.setViewportSize({ width: 1440, height: 900 });
+	await page.goto('/i/?state=3');
+	const desktop = await openArticle(page, 'SQLite as an application file format, revisited');
+	await trigger(desktop).click();
+	expect((await desktop.locator('.articlenotes-editor').getByRole('button', { name: 'Save' }).boundingBox())!.height).toBe(40);
+});

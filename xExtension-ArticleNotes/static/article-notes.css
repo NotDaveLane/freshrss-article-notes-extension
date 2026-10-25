@@ -356,6 +356,30 @@ mark.articlenotes-hl:focus-visible {
 	}
 }
 
+/* Touch screens and phones: 44px tap targets for the in-article controls (editor, toolbar, bottom sheet, panel). */
+@media (pointer: coarse), (max-width: 40em) {
+	.articlenotes-actions .btn, .articlenotes-toolbar .btn, .articlenotes-popover .btn {
+		min-width: 44px;
+		min-height: 44px;
+	}
+
+	.articlenotes-colors {
+		gap: 0.5rem;
+	}
+
+	.articlenotes-swatch {
+		width: 44px;
+		height: 44px;
+		min-width: 44px;
+	}
+
+	.articlenotes-notes-link {
+		display: inline-flex;
+		align-items: center;
+		min-height: 44px;
+	}
+}
+
 /* The Notes page. */
 .articlenotes-notes {
 	max-width: 60rem;
