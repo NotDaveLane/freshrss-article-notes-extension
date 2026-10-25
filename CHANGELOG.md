@@ -13,6 +13,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- When the Allowed client origins are refused, the administrator page keeps the typed text in the field and lists the refused lines in an inline error under it, instead of emptying the field.
+
 - Opening **Edit** on the Notes page moves keyboard focus into the form's textarea instead of losing it, and Escape in the open form closes it like Cancel.
 - The Annotations panel under an article lists highlights in reading order, as the Notes page does; it listed the
   highlights drawn in the text bottom-up.

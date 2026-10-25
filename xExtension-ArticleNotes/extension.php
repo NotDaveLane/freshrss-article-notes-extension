@@ -42,6 +42,10 @@ final class ArticleNotesExtension extends Minz_Extension {
 	private const MAINTENANCE_INDEX_BATCH = 2000;
 	private const SCHEMA_VERSION_KEY = 'schema_version';
 	private const ALLOWED_ORIGINS_KEY = 'allowed_origins';
+	private const PENDING_ORIGINS_KEY = 'articlenotes_pending_origins';
+
+	/** @var array{text: string, invalid: list<string>}|null|false false until read from the session */
+	private array|null|false $pendingOrigins = false;
 
 	/** @var array<string,bool> per-request memo: user => migrated successfully */
 	private array $migrated = [];
@@ -224,6 +228,31 @@ final class ArticleNotesExtension extends Minz_Extension {
 	}
 
 	/**
+	 * The text and refused lines of a submission that was not saved, handed over by the redirect after it (shown once).
+	 *
+	 * @return array{text: string, invalid: list<string>}|null
+	 */
+	public function pendingOrigins(): ?array {
+		if ($this->pendingOrigins === false) {
+			$pending = $_SESSION[self::PENDING_ORIGINS_KEY] ?? null;	// Minz_Session::param() is deprecated; 1.27 lacks the typed getters
+			Minz_Session::_param(self::PENDING_ORIGINS_KEY);
+			$this->pendingOrigins = null;
+			if (is_array($pending) && is_string($pending['text'] ?? null) && is_array($pending['invalid'] ?? null)) {
+				$this->pendingOrigins = [
+					'text' => $pending['text'],
+					'invalid' => array_values(array_filter($pending['invalid'], is_string(...))),
+				];
+			}
+		}
+		return $this->pendingOrigins;
+	}
+
+	/** What the origins field shows: the refused submission when there is one, else the stored list. */
+	public function pendingOriginsText(): string {
+		return $this->pendingOrigins()['text'] ?? $this->allowedOriginsText();
+	}
+
+	/**
 	 * Validates and stores the allowed client origins (one per line). Nothing is stored when a line is not an exact origin.
 	 *
 	 * @return list<string> the lines refused (wildcards, paths, unknown schemes…); empty when the list was stored
@@ -277,11 +306,13 @@ final class ArticleNotesExtension extends Minz_Extension {
 		if (!Minz_Request::isPost()) {
 			return;
 		}
-		$invalid = $this->saveAllowedOrigins(Minz_Request::paramString('allowed_origins', true));
+		$text = Minz_Request::paramString('allowed_origins', true);
+		$invalid = $this->saveAllowedOrigins($text);
 		$back = ['c' => 'extension', 'a' => 'configure', 'params' => ['e' => $this->getName()]];
 		if ($invalid === []) {
 			Minz_Request::good(_t('ext.article_notes.cors.saved'), $back);
 		}
+		Minz_Session::_param(self::PENDING_ORIGINS_KEY, ['text' => $text, 'invalid' => $invalid]);
 		Minz_Request::bad($this->invalidOriginsMessage($invalid), $back);
 	}
 

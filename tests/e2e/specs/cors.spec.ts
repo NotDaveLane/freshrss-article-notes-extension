@@ -33,11 +33,19 @@ test('the administrator page rejects wildcards and keeps the list; exact origins
 	await field.fill(`${ORIGIN}\n*`);
 	await page.getByRole('button', { name: 'Submit' }).click();
 	await expect(page.locator('.notification.bad')).toContainText('Not saved');
-	await expect(page.getByLabel('Allowed client origins')).toHaveValue('');
+	await expect(field).toHaveValue(`${ORIGIN}\n*`);
+	await expect(field).toHaveAttribute('aria-invalid', 'true');
+	const inlineError = page.locator('#articlenotes_allowed_origins_error');
+	await expect(inlineError).toContainText('Not saved');
+	await expect(inlineError).toContainText('*');
+	await expect(inlineError).not.toContainText(ORIGIN);
+	await expect(field).toHaveAccessibleDescription(/Not saved/);
 
-	await page.getByLabel('Allowed client origins').fill(`${ORIGIN}\n${EXTENSION_ORIGIN}`);
+	await field.fill(`${ORIGIN}\n${EXTENSION_ORIGIN}`);
 	await page.getByRole('button', { name: 'Submit' }).click();
 	await expect(page.locator('.notification.good')).toBeVisible();
+	await expect(page.locator('#articlenotes_allowed_origins_error')).toHaveCount(0);
+	await expect(page.getByLabel('Allowed client origins')).not.toHaveAttribute('aria-invalid', 'true');
 	await expect(page.getByLabel('Allowed client origins')).toHaveValue(`${ORIGIN}\n${EXTENSION_ORIGIN}`);
 });
 
@@ -49,6 +57,9 @@ test('refused lines are shown as text in the notification, never as HTML', async
 	const notification = page.locator('.notification.bad');
 	await expect(notification).toContainText('<img src=x onerror="window.__xss=1">');
 	await expect(notification.locator('.msg img')).toHaveCount(0);
+	await expect(page.locator('#articlenotes_allowed_origins_error img')).toHaveCount(0);
+	await expect(page.getByLabel('Allowed client origins')).toHaveValue('<img src=x onerror="window.__xss=1">');
+	await page.reload();
 	expect(await page.evaluate(() => (window as unknown as { __xss?: number }).__xss)).toBeUndefined();
 	await expect(page.getByLabel('Allowed client origins')).toHaveValue(`${ORIGIN}\n${EXTENSION_ORIGIN}`);
 });
