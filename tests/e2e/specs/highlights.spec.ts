@@ -794,3 +794,68 @@ test('the Annotations panel lists highlights in reading order, like the Notes pa
 		await reset(request, articles.note);
 	}
 });
+
+/** Every visible button and link in `container` is at least 44×44px. */
+async function expectTapTargets(container: Locator): Promise<void> {
+	const controls = container.locator('button:visible, a:visible');
+	expect(await controls.count()).toBeGreaterThan(0);
+	for (const control of await controls.all()) {
+		const box = (await control.boundingBox())!;
+		const name = await control.evaluate((el) => el.className + ' ' + (el.textContent ?? '').trim());
+		expect(box.width, name).toBeGreaterThanOrEqual(44);
+		expect(box.height, name).toBeGreaterThanOrEqual(44);
+	}
+}
+
+test('on touch devices the toolbar, the bottom sheet and the Annotations panel have 44px tap targets', async ({ browser, request }) => {
+	const id = await reset(request, articles.toolbar);
+	await createViaApi(request, id, { source: 'freshrss', selector: { quote: { exact: 'partial failures' } }, note: 'tap targets' });
+	const context = await browser.newContext({ viewport: { width: 390, height: 844 }, hasTouch: true, isMobile: true });
+	const page = await context.newPage();
+	await signIn(page, throwawayUser());
+	const article = await open(page, articles.toolbar);
+	await expect(marks(article).first()).toBeVisible();
+
+	const panel = article.locator('.articlenotes-panel');
+	await expect(panel.locator('a.articlenotes-notes-link')).toBeVisible();
+	await expectTapTargets(panel);
+	// The colour dot of each listed highlight is decoration, not a control: it keeps its 1rem size.
+	const dot = (await panel.locator('.articlenotes-swatch-static').first().boundingBox())!;
+	expect(dot.width).toBe(16);
+	expect(dot.height).toBe(16);
+
+	await select(article, 'organizational overhead');
+	await expect(toolbar(page)).toBeVisible();
+	await expectTapTargets(toolbar(page));
+	// The bigger controls wrap inside the viewport rather than overflowing it.
+	const bar = (await toolbar(page).boundingBox())!;
+	expect(bar.x).toBeGreaterThanOrEqual(0);
+	expect(bar.x + bar.width).toBeLessThanOrEqual(390);
+	expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+	const rows = await toolbar(page).locator('button').evaluateAll((buttons) => new Set(buttons.map((b) => b.getBoundingClientRect().top)).size);
+	expect(rows).toBeGreaterThan(1);
+	await page.evaluate(() => window.getSelection()!.removeAllRanges());
+	await expect(toolbar(page)).toHaveCount(0);
+
+	await marks(article).first().tap();
+	await expect(popover(page)).toBeVisible();
+	await expectTapTargets(popover(page));
+	await context.close();
+	await reset(request, articles.toolbar);	// the note editor spec expects this article without highlights
+});
+
+test('on desktop the toolbar and bottom sheet controls keep their size', async ({ page, request }) => {
+	await page.setViewportSize({ width: 1440, height: 900 });
+	const id = await reset(request, articles.toolbar);
+	await createViaApi(request, id, { source: 'freshrss', selector: { quote: { exact: 'partial failures' } } });
+	const article = await open(page, articles.toolbar);
+	await select(article, 'organizational overhead');
+	await expect(toolbar(page)).toBeVisible();
+	expect((await toolbar(page).getByRole('button', { name: 'Highlight', exact: true }).boundingBox())!.height).toBe(40);
+	expect((await toolbar(page).getByRole('button', { name: 'Green' }).boundingBox())!.height).toBe(40);
+	await page.evaluate(() => window.getSelection()!.removeAllRanges());
+	await marks(article).first().click();
+	await expect(popover(page)).toBeVisible();
+	expect((await popover(page).getByRole('button', { name: 'Close' }).boundingBox())!.height).toBe(40);
+	await reset(request, articles.toolbar);
+});
