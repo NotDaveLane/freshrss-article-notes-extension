@@ -1,7 +1,7 @@
 openapi: 3.1.0
 info:
   title: ArticleNotes API
-  version: 1.1.2
+  version: 1.1.3
   summary: Personal notes and highlights on FreshRSS articles and web pages.
   description: |
     The `v1` API of the FreshRSS ArticleNotes extension. Every path lives below
@@ -629,7 +629,7 @@ components:
       required: [extension, version, api_version, user, note_count]
       properties:
         extension: {type: string, examples: [ArticleNotes]}
-        version: {type: string, examples: [1.1.2]}
+        version: {type: string, examples: [1.1.3]}
         api_version: {type: integer, examples: [1]}
         user: {type: string}
         note_count:
