@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- On the Notes page each highlight's **Edit** sits on the same row as **Open article at this highlight**, so the cards are shorter, and every **Edit** has an accessible name saying what it edits (the quote or the article/page title).
 - The date under a saved note and the dates on the Notes page are written the way FreshRSS writes dates ("23 October 2026 at 01:14") instead of as ISO timestamps; the `datetime` attributes are unchanged.
 
 ### Fixed

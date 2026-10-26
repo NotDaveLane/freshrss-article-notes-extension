@@ -333,6 +333,40 @@ for (const viewport of viewports) {
 }
 
 for (const viewport of [{ width: 1440, height: 900 }, { width: 390, height: 844 }]) {
+	test.describe(`highlight actions at ${viewport.width}px`, () => {
+		test.use({ viewport, hasTouch: viewport.width < 600, isMobile: viewport.width < 600 });
+
+		test('puts Open article and a named Edit on one row, and the open form takes the full width', async ({ page }) => {
+			await search(page, 'q=component+model');
+			const item = group(page, WASM).locator('.articlenotes-hl-item');
+			const jump = item.getByRole('link', { name: 'Open the article at the highlight: component model' });
+			const edit = item.locator('summary[aria-label="Edit the highlight: component model"]');
+			await expect(edit).toHaveText('Edit');
+			const jumpBox = (await jump.boundingBox())!;
+			const editBox = (await edit.boundingBox())!;
+			expect(Math.abs(jumpBox.y - editBox.y)).toBeLessThanOrEqual(1);
+			if (viewport.width < 600) {
+				expect(editBox.width).toBeGreaterThanOrEqual(44);
+				expect(editBox.height).toBeGreaterThanOrEqual(44);
+			}
+			const noteEdit = group(page, WASM).locator('.articlenotes-notes-note summary');
+			if (await noteEdit.count()) {
+				await expect(noteEdit).toHaveAttribute('aria-label', /^Edit your note on: /);
+			}
+			await edit.click();
+			const form = item.locator('form');
+			const quote = (await item.locator('.articlenotes-hl-quote').boundingBox())!;
+			const formBox = (await form.boundingBox())!;
+			expect(formBox.y).toBeGreaterThan(quote.y + quote.height - 1);
+			expect(formBox.width).toBeGreaterThan(quote.width * 0.9);
+			await item.getByRole('button', { name: 'Cancel' }).click();
+			const after = (await edit.boundingBox())!;
+			expect(Math.abs((await jump.boundingBox())!.y - after.y)).toBeLessThanOrEqual(1);
+		});
+	});
+}
+
+for (const viewport of [{ width: 1440, height: 900 }, { width: 390, height: 844 }]) {
 	test.describe(`link buttons at ${viewport.width}px`, () => {
 		test.use({ viewport, hasTouch: viewport.width < 600, isMobile: viewport.width < 600 });
 
