@@ -14,12 +14,12 @@
 	$colorName = static fn (string $color): string => $e(_t('ext.article_notes.highlight.color_' . $color));
 
 	/** The hidden fields and the buttons of the form that edits one annotation. */
-	$editForm = static function (array $fields, string $note, ?string $color, string $labelKey, string $confirmKey) use ($e, $t, $back, $colors, $colorName): void {
+	$editForm = static function (array $fields, string $note, ?string $color, string $labelKey, string $confirmKey, string $editLabel) use ($e, $t, $back, $colors, $colorName): void {
 		static $count = 0;
 		$textareaId = 'articlenotes-notes-text-' . ++$count;
 		?>
 		<details class="articlenotes-notes-edit">
-			<summary class="btn"><?= $t('edit') ?></summary>
+			<summary class="btn" aria-label="<?= $e($editLabel) ?>"><?= $t('edit') ?></summary>
 			<form method="post" action="<?= Minz_Url::display(['c' => 'ArticleNotes', 'a' => 'notesEdit']) ?>">
 				<input type="hidden" name="_csrf" value="<?= FreshRSS_Auth::csrfToken() ?>" />
 				<input type="hidden" name="back" value="<?= $e($back) ?>" />
@@ -151,7 +151,8 @@
 					<?php $editForm($group->isPage()
 						? ['type' => 'page', 'url' => $group->note->entryLink]
 						: ['type' => 'article', 'id' => (string)$group->entryId], $group->note->note, null,
-							$group->isPage() ? 'page_note' : 'article_note', $group->isPage() ? 'confirm_delete_page_note' : 'confirm_delete_article_note'); ?>
+							$group->isPage() ? 'page_note' : 'article_note', $group->isPage() ? 'confirm_delete_page_note' : 'confirm_delete_article_note',
+							_t('ext.article_notes.notes.edit_note_label', mb_strimwidth($title, 0, 60, '…', 'UTF-8'))); ?>
 				</div>
 			<?php } ?>
 
@@ -177,9 +178,10 @@
 										'articlenotes_hl' => $highlight->uuid]]) ?>"
 										aria-label="<?= $t('open_highlight_label', mb_strimwidth($highlight->selector['quote']['exact'], 0, 40, '…', 'UTF-8')) ?>"><?= $t('open_highlight') ?></a>
 								<?php } ?>
+								<?php $editForm(['type' => 'highlight', 'uuid' => $highlight->uuid], $highlight->note, $highlight->color,
+									'highlight_note', 'confirm_delete_highlight',
+									_t('ext.article_notes.notes.edit_highlight_label', mb_strimwidth($highlight->selector['quote']['exact'], 0, 40, '…', 'UTF-8'))); ?>
 							</div>
-							<?php $editForm(['type' => 'highlight', 'uuid' => $highlight->uuid], $highlight->note, $highlight->color,
-					'highlight_note', 'confirm_delete_highlight'); ?>
 						</li>
 					<?php } ?>
 				</ol>

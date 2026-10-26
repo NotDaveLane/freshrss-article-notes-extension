@@ -111,6 +111,8 @@ return array(
 			'open_highlight' => 'Open article at this highlight',
 			'open_highlight_label' => 'Open the article at the highlight: %s',
 			'edit' => 'Edit',
+			'edit_highlight_label' => 'Edit the highlight: %s',
+			'edit_note_label' => 'Edit your note on: %s',
 			'save' => 'Save',
 			'delete' => 'Delete',
 			'cancel' => 'Cancel',

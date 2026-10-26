@@ -481,6 +481,15 @@ mark.articlenotes-hl:focus-visible {
 	margin: 0.5rem 0;
 }
 
+/* Beside "Open article at this highlight" on one row; open, the form takes the full card width under the quote. */
+.articlenotes-notes .articlenotes-actions > .articlenotes-notes-edit {
+	margin: 0;
+}
+
+.articlenotes-notes .articlenotes-actions > .articlenotes-notes-edit[open] {
+	flex-basis: 100%;
+}
+
 .articlenotes-notes-edit form {
 	margin-top: 0.5rem;
 }

@@ -18,6 +18,14 @@ Each article note, page note and highlight on the Notes page SHALL have an **Edi
 - **WHEN** a user opens the edit form, changes the text and presses Cancel
 - **THEN** the form closes without saving, focus returns to "Edit" and the original note is shown again
 
+### Requirement: Edit placement and name
+
+On the Notes page a highlight's **Edit** disclosure SHALL sit on the same row as **Open article at this highlight** (wrapping only when the width does not allow), and the open form SHALL take the full card width under the quote. Each **Edit** summary SHALL keep the visible text "Edit" and have an accessible name saying what it edits: "Edit the highlight: <quote excerpt>" or "Edit your note on: <article or page title>".
+
+#### Scenario: Closed highlight card
+- **WHEN** the Notes page lists a highlight of an existing article
+- **THEN** the jump link and the Edit toggle share one row and Edit is named after the quote
+
 ### Requirement: Edit form focus
 
 Opening an **Edit** disclosure on the Notes page, by keyboard or click, SHALL move focus to its textarea with the caret at the end, keeping the form in view. Pressing Escape inside the open form SHALL act like **Cancel**: close the form and focus **Edit**.
