@@ -54,6 +54,22 @@ export async function openArticle(page: Page, title: string): Promise<Locator> {
 	return article;
 }
 
+/** Switches the signed-in user's theme on the Display settings page. */
+export async function setTheme(page: Page, theme: string): Promise<void> {
+	await page.goto('/i/?c=configure&a=display');
+	// FreshRSS 1.30 has a theme select; 1.27 only the carousel's hidden radio inputs, which its arrow labels check.
+	const select = page.locator('select#theme');
+	if (await select.count() > 0) {
+		await select.selectOption(theme);
+	} else {
+		await page.locator(`input[type="radio"][name="theme"][value="${theme}"]`).evaluate((input) => {
+			(input as HTMLInputElement).checked = true;
+		});
+	}
+	await page.locator('button.btn-important[type="submit"]').first().click();
+	await page.waitForLoadState('load');
+}
+
 /**
  * A second throwaway user created by bin/e2e for the full-journey spec: subscribed to the local fixture feed,
  * with no API password (the spec sets one through the Profile page) and no notes from other specs.

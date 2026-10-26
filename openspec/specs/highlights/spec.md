@@ -175,6 +175,14 @@ The highlight popover, selection toolbar and error notice (appended to `<body>`)
 - **WHEN** a user with a dark theme selects text, or a save fails
 - **THEN** the toolbar and the notice use the article's colours with at least 4.5:1 contrast
 
+### Requirement: Highlighted text is readable in every theme
+
+Highlighted text SHALL keep at least 4.5:1 contrast (WCAG AA) with its highlight colour, in every highlight colour, in the default theme (light and dark colour schemes) and in every bundled dark theme, including text inside links and inline formatting. Each `<mark>` wraps a single text node, so its own dark text colour applies whatever the theme sets on the elements around it.
+
+#### Scenario: Highlight across a link and inline formatting in a dark theme
+- **WHEN** a user with the Dark, Alternative-Dark, Dark-pink or Nord theme, or Origine / Origine-compact in the dark colour scheme, highlights text that spans a link, bold, emphasis and code, and switches the highlight through yellow, green, blue, pink and purple
+- **THEN** every highlighted piece of text has at least 4.5:1 contrast with the highlight background
+
 ### Requirement: Annotations panel lists highlights in reading order
 
 The Annotations panel under an opened article SHALL list the article's highlights in reading order: highlights drawn in
