@@ -54,10 +54,10 @@ into `extensions/`; the zip contains just `xExtension-ArticleNotes/`:
 
 ```sh
 cd /path/to/FreshRSS/extensions
-unzip ~/Downloads/ArticleNotes-1.1.2.zip      # creates xExtension-ArticleNotes/
+unzip ~/Downloads/ArticleNotes-1.1.3.zip      # creates xExtension-ArticleNotes/
 ```
 
-**b) Git.** Clone the repository (optionally check out a release tag such as `v1.1.2`) and copy the extension directory
+**b) Git.** Clone the repository (optionally check out a release tag such as `v1.1.3`) and copy the extension directory
 (the rest of the repository is development tooling):
 
 ```sh
@@ -217,7 +217,7 @@ like `{"error": {"code": "not_found", "message": "…"}}` with the codes `invali
 `too_many_highlights` (400/422, see [Highlights](#highlights)).
 
 - `GET v1/status` — a cheap credentials check:
-  `{"extension": "ArticleNotes", "version": "1.1.2", "api_version": 1, "user": "alice", "note_count": 12}`
+  `{"extension": "ArticleNotes", "version": "1.1.3", "api_version": 1, "user": "alice", "note_count": 12}`
   (`note_count` counts live notes).
 - `GET v1/notes` — your notes, oldest change first (ordered by `updated_at`, then `id`):
   `{"notes": [ … ], "continuation": "…" or null, "server_time": 1760900000}`. Parameters:
