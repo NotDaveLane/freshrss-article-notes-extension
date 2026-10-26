@@ -1,5 +1,5 @@
 import { expect, test, type APIRequestContext, type Browser, type BrowserContext, type Locator, type Page } from '../support/test';
-import { basicAuth, openArticle, signIn, throwawayApiPassword, throwawayUser } from '../support/freshrss';
+import { basicAuth, openArticle, setTheme, signIn, throwawayApiPassword, throwawayUser } from '../support/freshrss';
 
 const API = '/api/misc.php/ArticleNotes/v1';
 
@@ -634,21 +634,6 @@ test('highlights work in the reader view', async ({ page, request }) => {
 	const article = page.locator('.flux', { hasText: articles.html.title }).first();
 	await expect(marks(article)).toHaveText('avoiding infinite scroll');
 });
-
-async function setTheme(page: Page, theme: string): Promise<void> {
-	await page.goto('/i/?c=configure&a=display');
-	// FreshRSS 1.30 has a theme select; 1.27 only the carousel's hidden radio inputs, which its arrow labels check.
-	const select = page.locator('select#theme');
-	if (await select.count() > 0) {
-		await select.selectOption(theme);
-	} else {
-		await page.locator(`input[type="radio"][name="theme"][value="${theme}"]`).evaluate((input) => {
-			(input as HTMLInputElement).checked = true;
-		});
-	}
-	await page.locator('button.btn-important[type="submit"]').first().click();
-	await page.waitForLoadState('load');
-}
 
 function luminance(color: string): number {
 	const [r, g, b] = (color.match(/[\d.]+/g) ?? []).slice(0, 3).map((v) => {

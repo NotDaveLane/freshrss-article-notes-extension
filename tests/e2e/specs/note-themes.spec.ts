@@ -1,22 +1,7 @@
-import { expect, test, type Locator, type Page } from '../support/test';
-import { openArticle, signIn, throwawayUser } from '../support/freshrss';
+import { expect, test, type Locator } from '../support/test';
+import { openArticle, setTheme, signIn, throwawayUser } from '../support/freshrss';
 
 const title = 'The hidden costs of microservices';
-
-async function setTheme(page: Page, theme: string): Promise<void> {
-	await page.goto('/i/?c=configure&a=display');
-	// FreshRSS 1.30 has a theme select; 1.27 only the carousel's hidden radio inputs, which its arrow labels check.
-	const select = page.locator('select#theme');
-	if (await select.count() > 0) {
-		await select.selectOption(theme);
-	} else {
-		await page.locator(`input[type="radio"][name="theme"][value="${theme}"]`).evaluate((input) => {
-			(input as HTMLInputElement).checked = true;
-		});
-	}
-	await page.locator('button.btn-important[type="submit"]').first().click();
-	await page.waitForLoadState('load');
-}
 
 /**
  * The contrast of each part of the note block (title, text, "Last updated") against the block's rendered background:
