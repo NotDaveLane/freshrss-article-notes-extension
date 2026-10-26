@@ -739,10 +739,9 @@ for (const viewport of viewports) {
 				const page = await context.newPage();
 				await signIn(page, throwawayUser());
 				await page.goto(view === 'reader' ? '/i/?a=reader&state=3' : '/i/?a=normal&state=3');
-				const article = page.locator('.flux', { hasText: articles.html.title }).first();
-				if (view === 'normal') {
-					await article.locator('.flux_header').click();
-				}
+				const article = view === 'normal'
+					? await openArticle(page, articles.html.title)
+					: page.locator('.flux', { hasText: articles.html.title }).first();
 				const panel = article.locator('.articlenotes-panel');
 				await expect(panel.locator('.articlenotes-hl-item')).toHaveCount(1);
 				const panelBox = (await panel.getByRole('heading', { name: 'Annotations' }).boundingBox())!;
