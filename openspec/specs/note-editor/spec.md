@@ -9,10 +9,12 @@ Add, view, edit and delete the note of an article from the reading views.
 ### Requirement: Note display
 
 The extension SHALL append the signed-in user's note to an article's content when the article has a live note, as a block
-titled "Your note" containing the note as escaped text with line breaks preserved (no HTML or Markdown rendering) and the
-last-updated time, written in FreshRSS's own date format (`timestamptodate()`, e.g. "23 October 2026 at 01:14"; the
-`datetime` attribute stays machine-readable). The Notes page SHALL write group dates the same way, without the time.
-Articles without a note, or whose note was deleted, SHALL be left untouched.
+titled "Your note" containing the note as escaped text with line breaks preserved and the last-updated time in FreshRSS's
+date format. Articles without a note, or whose note was deleted, SHALL be left untouched.
+
+#### Scenario: Date format
+- **WHEN** a note block or the Notes page shows a date
+- **THEN** it is written with `timestamptodate()` (e.g. "23 October 2026 at 01:14"; group dates on the Notes page without the time) and the `datetime` attribute stays machine-readable
 
 #### Scenario: Note with markup
 - **WHEN** an article's note is `<script>alert(1)</script>` followed by a second line
