@@ -843,3 +843,21 @@ test('on desktop the toolbar and bottom sheet controls keep their size', async (
 	expect((await popover(page).getByRole('button', { name: 'Close' }).boundingBox())!.height).toBe(40);
 	await reset(request, articles.toolbar);
 });
+
+for (const delayed of ['main.js', 'highlights.js']) {
+	test(`existing highlights are drawn when ${delayed} loads late`, async ({ page, request }) => {
+		await reset(request, articles.create);
+		let article = await open(page, articles.create);
+		await select(article, 'threefold read throughput');
+		await toolbar(page).getByRole('button', { name: 'Highlight', exact: true }).click();
+		await expect(marks(article)).toHaveText('threefold read throughput');
+
+		await page.route(new RegExp(`/${delayed.replace('.', '\\.')}(\\?|$)`), async (route) => {
+			await new Promise((resolve) => setTimeout(resolve, 1500));
+			await route.continue();
+		});
+		await page.reload();
+		article = await openArticle(page, articles.create.title);
+		await expect(marks(article)).toHaveText('threefold read throughput');
+	});
+}

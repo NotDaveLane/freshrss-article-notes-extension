@@ -9,10 +9,12 @@ Add, view, edit and delete the note of an article from the reading views.
 ### Requirement: Note display
 
 The extension SHALL append the signed-in user's note to an article's content when the article has a live note, as a block
-titled "Your note" containing the note as escaped text with line breaks preserved (no HTML or Markdown rendering) and the
-last-updated time, written in FreshRSS's own date format (`timestamptodate()`, e.g. "23 October 2026 at 01:14"; the
-`datetime` attribute stays machine-readable). The Notes page SHALL write group dates the same way, without the time.
-Articles without a note, or whose note was deleted, SHALL be left untouched.
+titled "Your note" containing the note as escaped text with line breaks preserved and the last-updated time in FreshRSS's
+date format. Articles without a note, or whose note was deleted, SHALL be left untouched.
+
+#### Scenario: Date format
+- **WHEN** a note block or the Notes page shows a date
+- **THEN** it is written with `timestamptodate()` (e.g. "23 October 2026 at 01:14"; group dates on the Notes page without the time) and the `datetime` attribute stays machine-readable
 
 #### Scenario: Note with markup
 - **WHEN** an article's note is `<script>alert(1)</script>` followed by a second line
@@ -170,3 +172,14 @@ On touch screens and narrow viewports (`(pointer: coarse), (max-width: 40em)`) t
 #### Scenario: Editor on desktop
 - **WHEN** the user opens the editor at 1440×900 with a mouse
 - **THEN** the Save button keeps its 40px height
+
+### Requirement: Script start independent of load order
+The extension's scripts SHALL wait until FreshRSS has provided the extension configuration before decorating articles, so every article in the list gets its Note action regardless of the order in which the scripts finish loading.
+
+#### Scenario: FreshRSS main script loads late
+- **WHEN** `main.js` finishes after the extension script has executed
+- **THEN** every `.flux` article has a Note action once the page has loaded
+
+#### Scenario: Extension script loads late
+- **WHEN** the extension script finishes after `main.js`
+- **THEN** every `.flux` article has a Note action once the page has loaded

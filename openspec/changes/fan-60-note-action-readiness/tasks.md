@@ -1,0 +1,3 @@
+- [x] E2E: Note action count equals article count with `main.js` or `article-notes.js` delayed
+- [x] Wait for FreshRSS context in `article-notes.js` and `highlights.js`
+- [x] Changelog

@@ -6,6 +6,28 @@
 		return (typeof context !== 'undefined' && context.extensions && context.extensions.ArticleNotes) || null;
 	}
 
+	// The scripts load async, so they may run before FreshRSS's main.js has set up `context`: wait for the config.
+	function whenReady(run) {
+		let done = false;
+		let timer = null;
+		function attempt() {
+			if (done || !document.body || !settings()) {
+				return;
+			}
+			done = true;
+			clearInterval(timer);
+			run();
+		}
+		document.addEventListener('DOMContentLoaded', attempt);
+		document.addEventListener('freshrss:globalContextLoaded', attempt);
+		window.addEventListener('load', attempt);
+		timer = setInterval(attempt, 50);
+		setTimeout(function () {
+			clearInterval(timer);
+		}, 30000);
+		attempt();
+	}
+
 	function element(tag, className, attributes) {
 		const el = document.createElement(tag);
 		if (className) {
@@ -427,9 +449,5 @@
 		});
 	});
 
-	if (document.body) {
-		start();
-	} else {
-		document.addEventListener('DOMContentLoaded', start);
-	}
+	whenReady(start);
 }());
