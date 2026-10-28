@@ -208,3 +208,14 @@ On touch screens and narrow viewports (`(pointer: coarse), (max-width: 40em)`) e
 #### Scenario: Controls on desktop
 - **WHEN** the user selects text and clicks a highlight at 1440×900 with a mouse
 - **THEN** the toolbar's Highlight button and swatches and the popover's Close button keep their 40px height
+
+### Requirement: Script start independent of load order
+The extension's scripts SHALL wait until FreshRSS has provided the extension configuration before decorating articles, so every article in the list gets its highlights and toolbar regardless of the order in which the scripts finish loading.
+
+#### Scenario: FreshRSS main script loads late
+- **WHEN** `main.js` finishes after the extension script has executed
+- **THEN** saved highlights are drawn and the selection toolbar works once the page has loaded
+
+#### Scenario: Extension script loads late
+- **WHEN** the extension script finishes after `main.js`
+- **THEN** saved highlights are drawn and the selection toolbar works once the page has loaded
