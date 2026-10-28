@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- The **Note** action (and highlight toolbar) now appears on every article on every page load, whatever order FreshRSS's `main.js` and the extension's scripts finish loading in.
+
 ## [1.1.3] - 2026-10-26
 
 ### Changed
