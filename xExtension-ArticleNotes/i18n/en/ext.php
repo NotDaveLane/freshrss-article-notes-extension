@@ -18,6 +18,8 @@ return array(
 			'cancel' => 'Cancel',
 			'delete' => 'Delete',
 			'confirm_delete' => 'Delete your note on this article?',
+			'confirm_discard' => 'Discard your unsaved note?',
+			'draft_restored' => 'Unsaved draft restored.',
 			'counter' => '%1$s / %2$s',
 			'saving' => 'Saving…',
 			'highlight_hint' => 'Tip: select text in the article to highlight it.',

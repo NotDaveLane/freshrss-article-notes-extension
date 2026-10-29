@@ -861,3 +861,52 @@ for (const delayed of ['main.js', 'highlights.js']) {
 		await expect(marks(article)).toHaveText('threefold read throughput');
 	});
 }
+
+test('the popover keeps an unsaved note on Escape, Close, an outside click and another popover, and drops it on save', async ({ page, request }) => {
+	const id = await reset(request, articles.note);
+	const article = await open(page, articles.note);
+	await select(article, 'typed interfaces');
+	await toolbar(page).getByRole('button', { name: 'Add note' }).click();
+	const dialog = popover(page);
+	const field = dialog.getByLabel('Note on this highlight');
+	await expect(field).toBeFocused();
+	await expect(dialog.locator('.articlenotes-draft')).toHaveCount(0);
+	const dialogs: string[] = [];
+	page.on('dialog', (d) => {
+		dialogs.push(d.type());
+		void d.dismiss();
+	});
+
+	const reopen = async (): Promise<void> => {
+		await marks(article).first().click();
+		await expect(field).toHaveValue(/draft/);
+		await expect(dialog.locator('.articlenotes-draft')).toHaveText('Unsaved draft restored.');
+	};
+	await field.fill('draft escape');
+	await page.keyboard.press('Escape');
+	await expect(dialog).toHaveCount(0);
+	await reopen();
+	await field.fill('draft close');
+	await dialog.getByRole('button', { name: 'Close' }).click();
+	await expect(dialog).toHaveCount(0);
+	await reopen();
+	await field.fill('draft outside');
+	await article.locator('.text').click({ position: { x: 2, y: 2 } });
+	await expect(dialog).toHaveCount(0);
+	await reopen();
+	expect(dialogs).toEqual([]);
+
+	await dialog.getByRole('button', { name: 'Save' }).click();
+	await expect(dialog).toHaveCount(0);
+	expect((await apiHighlights(request, id))[0].note).toBe('draft outside');
+	await marks(article).first().click();
+	await expect(field).toHaveValue('draft outside');
+	await expect(dialog.locator('.articlenotes-draft')).toHaveCount(0);
+	await page.keyboard.press('Escape');
+	const clean = await page.evaluate(() => {
+		const event = new Event('beforeunload', { cancelable: true });
+		window.dispatchEvent(event);
+		return event.defaultPrevented;
+	});
+	expect(clean).toBe(false);
+});

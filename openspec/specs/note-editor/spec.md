@@ -113,6 +113,26 @@ article text column.
 - **WHEN** the user presses Cancel or Escape, or saves
 - **THEN** the note block is shown again in its place, with the saved text after Save
 
+#### Scenario: Unsaved text kept on Escape
+- **WHEN** the user changes the text and closes the editor with Escape or the "Note" action, then reopens it
+- **THEN** the typed text is restored with an "Unsaved draft restored." hint
+
+#### Scenario: Cancel with changes
+- **WHEN** the user presses Cancel after changing the text
+- **THEN** a confirmation asks to discard it, and dismissing it keeps the editor open with the text
+
+#### Scenario: Leaving with unsaved text
+- **WHEN** the editor holds unsaved text (or a kept draft) and the user leaves the page
+- **THEN** the browser's leave-page prompt appears; with a clean or saved editor it does not
+
+The highlight popover's note field SHALL keep unsaved text when it closes through Escape, Close, a click outside it or
+another popover opening, restore it (with the same hint) when that popover reopens, and drop it once the highlight is
+saved, deleted or rolled back.
+
+#### Scenario: Popover draft
+- **WHEN** the user types in a highlight's note and closes the popover by Escape, Close or clicking elsewhere
+- **THEN** reopening that highlight's popover restores the text with the hint
+
 #### Scenario: Article without a note
 - **WHEN** a user opens the editor on an article with highlights but no note
 - **THEN** the editor opens above the Annotations panel, in the viewport
@@ -124,8 +144,8 @@ closed (Save, Cancel, Delete or Escape), and keep typing from triggering FreshRS
 be focusable, carry a translated "Tap to edit note" label and title, and open the editor on Enter or Space.
 
 #### Scenario: Cancel
-- **WHEN** the user presses Escape or Cancel in the editor
-- **THEN** the editor closes without saving and focus returns to the "Note" action
+- **WHEN** the user presses Escape or Cancel in an unchanged editor
+- **THEN** the editor closes without saving or asking, and focus returns to the "Note" action
 
 #### Scenario: Keyboard on the note block
 - **WHEN** the user focuses the note block and presses Enter

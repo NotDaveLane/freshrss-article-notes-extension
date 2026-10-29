@@ -14,6 +14,28 @@
 	let library = null;
 	let toolbar = null;
 	let popover = null;
+
+	// Unsaved popover note text by highlight uuid, restored when the popover reopens; also warned about on leaving the page.
+	const drafts = new Map();
+
+	/** Drafts of highlights that are gone (deleted, rolled back, article removed) are dropped. */
+	function pruneDrafts() {
+		drafts.forEach(function (text, uuid) {
+			if (!document.querySelector('[data-uuid="' + uuid + '"]')) {
+				drafts.delete(uuid);
+			}
+		});
+	}
+
+	window.addEventListener('beforeunload', function (event) {
+		pruneDrafts();
+		const field = popover && popover.el.querySelector('textarea');
+		if (drafts.size > 0 || (field && field.value !== field.articlenotesInitial)) {
+			event.preventDefault();
+			event.returnValue = '';
+		}
+	});
+
 	let selectionTimer = 0;
 	let pointerDown = false;
 	let lastSelection = '';
@@ -238,6 +260,7 @@
 			draw(state, item, lib);
 			if (item.orphan) {	// cannot happen for a selector that was just described
 				state.items.delete(data.uuid);
+				drafts.delete(data.uuid);
 				return;
 			}
 			syncPanel(state);
@@ -261,6 +284,7 @@
 		item.removed = true;
 		undraw(item);
 		state.items.delete(item.data.uuid);
+		drafts.delete(item.data.uuid);
 		if (popover && popover.item === item) {
 			closePopover(false);
 		}
@@ -459,9 +483,15 @@
 	 * Closes the popover. Unless another popover replaces it, the page goes back to where it was before the popover scrolled
 	 * it above the bottom sheet, if the reader has not scrolled since.
 	 */
-	function closePopover(restoreFocus, replaced) {
+	function closePopover(restoreFocus, replaced, keepDraft) {
 		if (!popover) {
 			return;
+		}
+		const field = popover.el.querySelector('textarea');
+		if (keepDraft && field && field.value !== field.articlenotesInitial) {
+			drafts.set(popover.item.data.uuid, field.value);
+		} else {
+			drafts.delete(popover.item.data.uuid);
 		}
 		let opener = popover.opener;
 		if (opener && !opener.isConnected && popover.state.panel) {	// the panel list was rebuilt
@@ -509,7 +539,7 @@
 	function openPopover(state, item, opener, focusNote) {
 		const config = settings();
 		const t = config.i18n;
-		closePopover(false, true);
+		closePopover(false, true, true);
 		const id = 'articlenotes-pop-' + item.data.uuid;
 		const el = element('div', 'articlenotes-popover', {
 			'data-articlenotes-ui': '', role: 'dialog', 'aria-label': t.popoverTitle, tabindex: '-1',
@@ -524,8 +554,14 @@
 
 		el.appendChild(element('label', 'articlenotes-label', { 'for': id })).textContent = t.noteLabel;
 		const textarea = element('textarea', 'articlenotes-textarea', { id: id, name: 'note', rows: '4' });
-		textarea.value = item.data.note || '';
+		textarea.articlenotesInitial = item.data.note || '';
+		textarea.value = textarea.articlenotesInitial;
 		el.appendChild(textarea);
+		if (drafts.has(item.data.uuid)) {
+			textarea.value = drafts.get(item.data.uuid);
+			drafts.delete(item.data.uuid);
+			el.appendChild(element('p', 'help articlenotes-draft', { role: 'status' })).textContent = t.draftRestored;
+		}
 		const error = element('p', 'articlenotes-error', { role: 'alert' });
 		error.hidden = true;
 		el.appendChild(error);
@@ -606,20 +642,21 @@
 				item.removed = true;
 				undraw(item);
 				state.items.delete(item.data.uuid);
+				drafts.delete(item.data.uuid);
 				closePopover(false);
 				syncPanel(state);
 				return true;
 			});
 		});
 		close.addEventListener('click', function () {
-			closePopover(true);
+			closePopover(true, false, true);
 		});
 		// Keep typing from reaching FreshRSS's keyboard shortcuts.
 		el.addEventListener('keydown', function (event) {
 			event.stopPropagation();
 			if (event.key === 'Escape') {
 				event.preventDefault();
-				closePopover(true);
+				closePopover(true, false, true);
 			}
 		});
 
@@ -872,7 +909,7 @@
 			if (!mark) {
 				if (popover && event.target instanceof Element && event.target.isConnected
 					&& !event.target.closest('.articlenotes-popover, .articlenotes-edit, .articlenotes-toolbar')) {
-					closePopover(false);
+					closePopover(false, false, true);
 				}
 				return;
 			}
