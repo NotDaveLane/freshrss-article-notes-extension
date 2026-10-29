@@ -828,6 +828,67 @@ test('on touch devices the toolbar, the bottom sheet and the Annotations panel h
 	await reset(request, articles.toolbar);	// the note editor spec expects this article without highlights
 });
 
+/** Whether the centre of `locator` receives taps: it is on screen and nothing covers it. */
+async function hittable(locator: Locator): Promise<boolean> {
+	return locator.evaluate((el) => {
+		const rect = el.getBoundingClientRect();
+		return document.elementFromPoint(rect.left + rect.width / 2, rect.top + rect.height / 2) === el;
+	});
+}
+
+test('on a phone the toolbar of a selection near the bottom stays above FreshRSS\'s bottom navigation bar', async ({ browser, request }) => {
+	await reset(request, articles.toolbar);
+	const context = await browser.newContext({ viewport: { width: 390, height: 844 }, hasTouch: true, isMobile: true });
+	const page = await context.newPage();
+	await signIn(page, throwawayUser());
+	const article = await open(page, articles.toolbar);
+	const bar = page.locator('#nav_entries');
+	await expect(bar).toBeVisible();
+	await page.evaluate(() => {
+		document.body.style.paddingTop = '1500px';
+		document.body.style.paddingBottom = '1500px';
+	});
+	// The selection about 100px above the bottom of the screen.
+	await select(article, 'organizational overhead');
+	await page.evaluate(() => {
+		const rect = window.getSelection()!.getRangeAt(0).getBoundingClientRect();
+		window.getSelection()!.removeAllRanges();
+		window.scrollBy(0, rect.bottom - (window.innerHeight - 100));
+	});
+	await expect(toolbar(page)).toHaveCount(0);
+	await select(article, 'organizational overhead');
+	await expect(toolbar(page)).toBeVisible();
+
+	const box = (await toolbar(page).boundingBox())!;
+	const barTop = (await bar.boundingBox())!.y;
+	expect(box.y).toBeGreaterThanOrEqual(0);
+	expect(box.y + box.height).toBeLessThanOrEqual(barTop);
+	for (const name of ['Highlight', 'Add note', 'Yellow', 'Purple']) {
+		expect(await hittable(toolbar(page).getByRole('button', { name, exact: true })), name).toBe(true);
+	}
+
+	// One row for the two text buttons, one for the colours: no row holds a single button beside empty space.
+	const rows = await toolbar(page).locator('button').evaluateAll((buttons) => {
+		const tops = new Map<number, number>();
+		buttons.forEach((b) => {
+			const top = Math.round(b.getBoundingClientRect().top);
+			tops.set(top, (tops.get(top) ?? 0) + 1);
+		});
+		return Array.from(tops.values());
+	});
+	expect(rows.length).toBe(2);
+	expect(Math.min(...rows)).toBeGreaterThan(1);
+	const highlight = (await toolbar(page).getByRole('button', { name: 'Highlight', exact: true }).boundingBox())!;
+	const addNote = (await toolbar(page).getByRole('button', { name: 'Add note', exact: true }).boundingBox())!;
+	expect(addNote.y).toBe(highlight.y);
+	expect(box.height).toBeLessThanOrEqual(2 * 44 + 30);
+
+	await toolbar(page).getByRole('button', { name: 'Add note', exact: true }).tap();
+	await expect(popover(page)).toBeVisible();
+	await context.close();
+	await reset(request, articles.toolbar);
+});
+
 test('on desktop the toolbar and bottom sheet controls keep their size', async ({ page, request }) => {
 	await page.setViewportSize({ width: 1440, height: 900 });
 	const id = await reset(request, articles.toolbar);

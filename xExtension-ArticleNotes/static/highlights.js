@@ -315,10 +315,19 @@
 		const width = el.offsetWidth;
 		const height = el.offsetHeight;
 		const left = Math.max(margin, Math.min(rect.left + window.scrollX, window.scrollX + document.documentElement.clientWidth - width - margin));
-		let top = below ? rect.bottom + window.scrollY + margin : rect.top + window.scrollY - height - margin;
-		if (top < window.scrollY) {
-			top = rect.bottom + window.scrollY + margin;
+		const under = rect.bottom + window.scrollY + margin;
+		const over = rect.top + window.scrollY - height - margin;
+		// The visible area ends above any fixed bar FreshRSS draws over the bottom of the screen.
+		const visible = window.ArticleNotesViewport ? window.ArticleNotesViewport.visibleBottom(left - window.scrollX, left - window.scrollX + width) : window.innerHeight;
+		const bottom = window.scrollY + visible - margin;
+		// The preferred side, unless it does not fit and the other one does; then kept inside the visible area.
+		let top = below ? under : over;
+		if (below && under + height > bottom && over >= window.scrollY) {
+			top = over;
+		} else if (!below && over < window.scrollY) {
+			top = under;
 		}
+		top = Math.max(window.scrollY, Math.min(top, bottom - height));
 		el.style.left = left + 'px';
 		el.style.top = top + 'px';
 	}

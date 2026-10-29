@@ -10,6 +10,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 
 - The **Note** action (and highlight toolbar) now appears on every article on every page load, whatever order FreshRSS's `main.js` and the extension's scripts finish loading in.
+- On phones the note editor's **Save** and **Cancel** and the selection toolbar are no longer hidden under FreshRSS's
+  previous / up / next bar at the bottom of the screen: the editor scrolls clear of it, and the toolbar goes above the
+  selection when there is no room below. At phone width the toolbar shows **Highlight** and **Add note** side by side,
+  with the colours on their own row.
 
 ## [1.1.3] - 2026-10-26
 

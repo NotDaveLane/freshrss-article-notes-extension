@@ -1,0 +1,5 @@
+- [x] E2E: editor's Save and Cancel hittable above `#nav_entries` at 390×844 with touch
+- [x] E2E: toolbar near the bottom inside the viewport, above `#nav_entries`, two rows with Highlight and Add note together
+- [x] Shared `visibleBottom()` helper in `static/viewport.js`
+- [x] Scroll the editor clear of the bar; place and clamp the toolbar into the visible area; toolbar row layout
+- [x] Specs and changelog
