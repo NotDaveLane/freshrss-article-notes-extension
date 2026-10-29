@@ -550,3 +550,38 @@ test('a kept draft no longer warns once its article is gone from the page', asyn
 	await article.evaluate((el) => el.remove());
 	expect(await warns()).toBe(false);
 });
+
+test('on a phone the opened editor is not covered by FreshRSS\'s bottom navigation bar', async ({ browser }) => {
+	const context = await browser.newContext({ viewport: { width: 390, height: 844 }, hasTouch: true, isMobile: true });
+	const phone = await context.newPage();
+	await signIn(phone, throwawayUser());
+	await phone.goto('/i/?state=3');
+	const article = await openArticle(phone, 'Type-safe SQL without an ORM');
+	const bar = phone.locator('#nav_entries');
+	await expect(bar).toBeVisible();
+	// As when the reader has just finished the article: its action bar about 110px above the bottom of the screen.
+	await phone.evaluate(() => {
+		document.body.style.paddingTop = '1500px';
+		document.body.style.paddingBottom = '1500px';
+	});
+	await trigger(article).evaluate((el) => {
+		window.scrollBy(0, el.getBoundingClientRect().top - (window.innerHeight - 110));
+	});
+	await trigger(article).tap();
+	const editor = article.locator('.articlenotes-editor');
+	await expect(editor.getByLabel('Your note on this article')).toBeFocused();
+	const barTop = (await bar.boundingBox())!.y;
+	for (const selector of ['.articlenotes-save', '.articlenotes-cancel']) {
+		const button = editor.locator(selector);
+		const box = (await button.boundingBox())!;
+		expect(box.y, selector).toBeGreaterThanOrEqual(0);
+		expect(box.y + box.height, selector).toBeLessThanOrEqual(barTop);
+		expect(await button.evaluate((el) => {
+			const rect = el.getBoundingClientRect();
+			return document.elementFromPoint(rect.left + rect.width / 2, rect.top + rect.height / 2) === el;
+		}), selector).toBe(true);
+	}
+	await editor.locator('.articlenotes-cancel').tap();
+	await expect(editor).toHaveCount(0);
+	await context.close();
+});

@@ -367,6 +367,11 @@ mark.articlenotes-hl:focus-visible {
 		gap: 0.5rem;
 	}
 
+	/* Highlight and Add note side by side; the colours follow, wrapping to a row of their own as a group when narrow. */
+	.articlenotes-toolbar .articlenotes-colors {
+		order: 1;
+	}
+
 	.articlenotes-colors .articlenotes-swatch {
 		width: 44px;
 		height: 44px;

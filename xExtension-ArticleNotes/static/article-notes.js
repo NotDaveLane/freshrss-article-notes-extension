@@ -257,6 +257,14 @@
 		}
 		updateCounter();
 		form.scrollIntoView({ block: 'nearest' });
+		// Then above any fixed bar FreshRSS draws over the bottom of the screen, so Save and Cancel are not under it.
+		if (window.ArticleNotesViewport) {
+			const box = form.getBoundingClientRect();
+			const hidden = box.bottom + 8 - window.ArticleNotesViewport.visibleBottom(box.left, box.right);
+			if (hidden > 0) {
+				window.scrollBy(0, Math.min(hidden, Math.max(0, box.top - 8)));
+			}
+		}
 		textarea.focus({ preventScroll: true });
 		textarea.setSelectionRange(textarea.value.length, textarea.value.length);
 	}

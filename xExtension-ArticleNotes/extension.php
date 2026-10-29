@@ -58,6 +58,7 @@ final class ArticleNotesExtension extends Minz_Extension {
 		$this->registerController('ArticleNotes');
 		$this->registerViews();
 		Minz_View::appendStyle($this->getFileUrl('article-notes.css'));
+		Minz_View::appendScript($this->getFileUrl('viewport.js'));
 		Minz_View::appendScript($this->getFileUrl('article-notes.js'));
 		Minz_View::appendScript($this->getFileUrl('highlights.js'));
 		$this->registerHooks(FRESHRSS_VERSION);
