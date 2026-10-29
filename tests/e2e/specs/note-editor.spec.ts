@@ -478,3 +478,59 @@ test('on touch devices the editor buttons are 44px tap targets; on desktop they 
 	await trigger(desktop).click();
 	expect((await desktop.locator('.articlenotes-editor').getByRole('button', { name: 'Save' }).boundingBox())!.height).toBe(40);
 });
+
+test('Escape and a second click on Note keep an unsaved draft; Cancel confirms; leaving warns', async ({ page }) => {
+	await page.goto('/i/?state=3');
+	const article = await openArticle(page, 'The hidden costs of microservices');
+	const editor = article.locator('.articlenotes-editor');
+	const textarea = article.getByLabel('Your note on this article');
+	const dialogs: string[] = [];
+	page.on('dialog', (dialog) => {
+		dialogs.push(dialog.type());
+		void dialog.dismiss();
+	});
+
+	await trigger(article).click();
+	await expect(article.locator('.articlenotes-draft')).toHaveCount(0);
+	await page.keyboard.press('Escape');
+	await expect(editor).toHaveCount(0);
+	await expect(trigger(article)).toBeFocused();
+
+	await trigger(article).click();
+	await textarea.fill('Draft one.');
+	await page.keyboard.press('Escape');
+	await expect(editor).toHaveCount(0);
+	await trigger(article).click();
+	await expect(textarea).toHaveValue('Draft one.');
+	await expect(article.locator('.articlenotes-draft')).toHaveText('Unsaved draft restored.');
+
+	await textarea.fill('Draft two.');
+	await trigger(article).click();
+	await expect(editor).toHaveCount(0);
+	await trigger(article).click();
+	await expect(textarea).toHaveValue('Draft two.');
+
+	await article.getByRole('button', { name: 'Cancel' }).click();	// dismissed: stays open with the text
+	await expect(textarea).toHaveValue('Draft two.');
+	expect(dialogs).toEqual(['confirm']);
+
+	page.removeAllListeners('dialog');
+	const prevented = await page.evaluate(() => {
+		const event = new Event('beforeunload', { cancelable: true });
+		window.dispatchEvent(event);
+		return event.defaultPrevented;
+	});
+	expect(prevented).toBe(true);
+
+	page.once('dialog', (dialog) => dialog.accept());
+	await article.getByRole('button', { name: 'Cancel' }).click();
+	await expect(editor).toHaveCount(0);
+	await trigger(article).click();
+	await expect(textarea).toHaveValue('');
+	const clean = await page.evaluate(() => {
+		const event = new Event('beforeunload', { cancelable: true });
+		window.dispatchEvent(event);
+		return event.defaultPrevented;
+	});
+	expect(clean).toBe(false);
+});

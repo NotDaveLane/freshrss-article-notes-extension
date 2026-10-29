@@ -47,9 +47,35 @@
 		return flux.querySelector('.articlenotes-note');
 	}
 
-	function closeEditor(flux, restoreFocus) {
+	// Unsaved text of editors closed with Escape or the Note action, by entry id, restored when the editor reopens.
+	const drafts = new Map();
+
+	function isDirty(textarea) {
+		return textarea.value !== textarea.articlenotesInitial;
+	}
+
+	function hasUnsavedText() {
+		return drafts.size > 0 || Array.from(document.querySelectorAll('.articlenotes-editor textarea')).some(isDirty);
+	}
+
+	// Leave-page warning while an editor holds unsaved text (the draft kept in memory is lost on leaving too).
+	window.addEventListener('beforeunload', function (event) {
+		if (hasUnsavedText()) {
+			event.preventDefault();
+			event.returnValue = '';
+		}
+	});
+
+	function closeEditor(flux, restoreFocus, keepDraft) {
 		const form = flux.querySelector('.articlenotes-editor');
 		if (form) {
+			const textarea = form.querySelector('textarea');
+			const entryId = form.getAttribute('data-entry');
+			if (keepDraft && textarea && isDirty(textarea)) {
+				drafts.set(entryId, textarea.value);
+			} else {
+				drafts.delete(entryId);
+			}
 			form.remove();
 		}
 		const block = noteBlock(flux);
@@ -111,8 +137,16 @@
 		const form = element('form', 'articlenotes-editor', { 'data-entry': entryId });
 		form.appendChild(element('label', 'articlenotes-label', { 'for': textId })).textContent = t.label;
 		const textarea = element('textarea', 'articlenotes-textarea', { id: textId, name: 'note', rows: '6', 'aria-describedby': textId + '-counter' });
-		textarea.value = hasNote ? block.getAttribute('data-articlenotes-text') || '' : '';
+		textarea.articlenotesInitial = hasNote ? block.getAttribute('data-articlenotes-text') || '' : '';
+		textarea.value = textarea.articlenotesInitial;
 		form.appendChild(textarea);
+		if (drafts.has(entryId)) {
+			textarea.value = drafts.get(entryId);
+			drafts.delete(entryId);
+			const restored = element('p', 'help articlenotes-draft', { role: 'status' });
+			restored.textContent = t.draftRestored;
+			form.appendChild(restored);
+		}
 		const counter = element('div', 'articlenotes-counter', { id: textId + '-counter' });
 		form.appendChild(counter);
 		if (!flux.querySelector('mark.articlenotes-hl, .articlenotes-hl-item')) {
@@ -180,6 +214,9 @@
 			submit(config.saveUrl, { note: textarea.value });
 		});
 		cancel.addEventListener('click', function () {
+			if (isDirty(textarea) && !window.confirm(t.confirmDiscard)) {
+				return;
+			}
 			closeEditor(flux, true);
 		});
 		if (remove) {
@@ -195,7 +232,7 @@
 			event.stopPropagation();
 			if (event.key === 'Escape') {
 				event.preventDefault();
-				closeEditor(flux, true);
+				closeEditor(flux, true, true);
 			}
 		});
 
@@ -347,7 +384,7 @@
 				return;
 			}
 			if (flux.querySelector('.articlenotes-editor')) {
-				closeEditor(flux, true);
+				closeEditor(flux, true, true);
 			} else {
 				openEditor(flux, trigger);
 			}

@@ -1,0 +1,2 @@
+- [x] Implement in article-notes.js and highlights.js
+- [x] E2E tests, README, changelog, spec

@@ -459,9 +459,15 @@
 	 * Closes the popover. Unless another popover replaces it, the page goes back to where it was before the popover scrolled
 	 * it above the bottom sheet, if the reader has not scrolled since.
 	 */
-	function closePopover(restoreFocus, replaced) {
+	function closePopover(restoreFocus, replaced, keepDraft) {
 		if (!popover) {
 			return;
+		}
+		const field = popover.el.querySelector('textarea');
+		if (keepDraft && field && field.value !== field.articlenotesInitial) {
+			drafts.set(popover.item.data.uuid, field.value);
+		} else {
+			drafts.delete(popover.item.data.uuid);
 		}
 		let opener = popover.opener;
 		if (opener && !opener.isConnected && popover.state.panel) {	// the panel list was rebuilt
@@ -506,6 +512,16 @@
 		};
 	}
 
+	// Unsaved popover note text by highlight uuid, restored when the popover reopens; also warned about on leaving the page.
+	const drafts = new Map();
+	window.addEventListener('beforeunload', function (event) {
+		const field = popover && popover.el.querySelector('textarea');
+		if (drafts.size > 0 || (field && field.value !== field.articlenotesInitial)) {
+			event.preventDefault();
+			event.returnValue = '';
+		}
+	});
+
 	function openPopover(state, item, opener, focusNote) {
 		const config = settings();
 		const t = config.i18n;
@@ -524,8 +540,14 @@
 
 		el.appendChild(element('label', 'articlenotes-label', { 'for': id })).textContent = t.noteLabel;
 		const textarea = element('textarea', 'articlenotes-textarea', { id: id, name: 'note', rows: '4' });
-		textarea.value = item.data.note || '';
+		textarea.articlenotesInitial = item.data.note || '';
+		textarea.value = textarea.articlenotesInitial;
 		el.appendChild(textarea);
+		if (drafts.has(item.data.uuid)) {
+			textarea.value = drafts.get(item.data.uuid);
+			drafts.delete(item.data.uuid);
+			el.appendChild(element('p', 'help articlenotes-draft', { role: 'status' })).textContent = t.draftRestored;
+		}
 		const error = element('p', 'articlenotes-error', { role: 'alert' });
 		error.hidden = true;
 		el.appendChild(error);
@@ -612,14 +634,14 @@
 			});
 		});
 		close.addEventListener('click', function () {
-			closePopover(true);
+			closePopover(true, false, true);
 		});
 		// Keep typing from reaching FreshRSS's keyboard shortcuts.
 		el.addEventListener('keydown', function (event) {
 			event.stopPropagation();
 			if (event.key === 'Escape') {
 				event.preventDefault();
-				closePopover(true);
+				closePopover(true, false, true);
 			}
 		});
 

@@ -363,6 +363,8 @@ final class ArticleNotesExtension extends Minz_Extension {
 				'delete' => _t('ext.article_notes.note.delete'),
 				'confirmDelete' => _t('ext.article_notes.note.confirm_delete'),
 				'counter' => _t('ext.article_notes.note.counter'),
+				'confirmDiscard' => _t('ext.article_notes.note.confirm_discard'),
+				'draftRestored' => _t('ext.article_notes.note.draft_restored'),
 				'saving' => _t('ext.article_notes.note.saving'),
 				'highlightHint' => _t('ext.article_notes.note.highlight_hint'),
 				'network' => _t('ext.article_notes.error.network'),
