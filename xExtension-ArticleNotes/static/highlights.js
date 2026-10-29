@@ -14,6 +14,28 @@
 	let library = null;
 	let toolbar = null;
 	let popover = null;
+
+	// Unsaved popover note text by highlight uuid, restored when the popover reopens; also warned about on leaving the page.
+	const drafts = new Map();
+
+	/** Drafts of highlights that are gone (deleted, rolled back, article removed) are dropped. */
+	function pruneDrafts() {
+		drafts.forEach(function (text, uuid) {
+			if (!document.querySelector('[data-uuid="' + uuid + '"]')) {
+				drafts.delete(uuid);
+			}
+		});
+	}
+
+	window.addEventListener('beforeunload', function (event) {
+		pruneDrafts();
+		const field = popover && popover.el.querySelector('textarea');
+		if (drafts.size > 0 || (field && field.value !== field.articlenotesInitial)) {
+			event.preventDefault();
+			event.returnValue = '';
+		}
+	});
+
 	let selectionTimer = 0;
 	let pointerDown = false;
 	let lastSelection = '';
@@ -238,6 +260,7 @@
 			draw(state, item, lib);
 			if (item.orphan) {	// cannot happen for a selector that was just described
 				state.items.delete(data.uuid);
+				drafts.delete(data.uuid);
 				return;
 			}
 			syncPanel(state);
@@ -261,6 +284,7 @@
 		item.removed = true;
 		undraw(item);
 		state.items.delete(item.data.uuid);
+		drafts.delete(item.data.uuid);
 		if (popover && popover.item === item) {
 			closePopover(false);
 		}
@@ -512,20 +536,10 @@
 		};
 	}
 
-	// Unsaved popover note text by highlight uuid, restored when the popover reopens; also warned about on leaving the page.
-	const drafts = new Map();
-	window.addEventListener('beforeunload', function (event) {
-		const field = popover && popover.el.querySelector('textarea');
-		if (drafts.size > 0 || (field && field.value !== field.articlenotesInitial)) {
-			event.preventDefault();
-			event.returnValue = '';
-		}
-	});
-
 	function openPopover(state, item, opener, focusNote) {
 		const config = settings();
 		const t = config.i18n;
-		closePopover(false, true);
+		closePopover(false, true, true);
 		const id = 'articlenotes-pop-' + item.data.uuid;
 		const el = element('div', 'articlenotes-popover', {
 			'data-articlenotes-ui': '', role: 'dialog', 'aria-label': t.popoverTitle, tabindex: '-1',
@@ -628,6 +642,7 @@
 				item.removed = true;
 				undraw(item);
 				state.items.delete(item.data.uuid);
+				drafts.delete(item.data.uuid);
 				closePopover(false);
 				syncPanel(state);
 				return true;
@@ -894,7 +909,7 @@
 			if (!mark) {
 				if (popover && event.target instanceof Element && event.target.isConnected
 					&& !event.target.closest('.articlenotes-popover, .articlenotes-edit, .articlenotes-toolbar')) {
-					closePopover(false);
+					closePopover(false, false, true);
 				}
 				return;
 			}

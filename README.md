@@ -95,11 +95,12 @@ The files must be readable by the web server (`www-data` in the Docker image). T
 ## Using notes
 
 Open an article and click **Note** in its action bar (next to the read, favourite and sharing icons; also in the reading
-and global views). Type your note and press **Save**; **Cancel** closes the editor (asking first if you changed the text), Escape or clicking **Note** again closes it but keeps your unsaved text for when you reopen the editor, leaving the page with unsaved text asks for confirmation, and **Delete** removes an
-existing note. Notes are plain text of up to 20,000 characters, shown under the article in a "Your note" block with the
-time of the last update; HTML and Markdown are never rendered. Saving an empty note deletes it. To edit an existing note,
-you can also click or tap the "Your note" block itself (or focus it with Tab and press Enter); selecting text in it to copy
-it does not open the editor.
+and global views). Type your note and press **Save**. **Cancel** closes the editor, asking first if you changed the
+text. Escape or clicking **Note** again also closes it but keeps your unsaved text for when you reopen the editor, and
+leaving the page with unsaved text asks for confirmation. **Delete** removes an existing note. Notes are plain text of up
+to 20,000 characters, shown under the article in a "Your note" block with the time of the last update; HTML and Markdown
+are never rendered. Saving an empty note deletes it. To edit an existing note, you can also click or tap the "Your note"
+block itself (or focus it with Tab and press Enter); selecting text in it to copy it does not open the editor.
 
 ## Using highlights
 
@@ -113,7 +114,8 @@ buttons mark it yellow, green, blue, pink or purple, and **Add note** highlights
 - Highlights are drawn again whenever you open the article — in the normal, reading and global views, and for articles that
   arrive with infinite scroll. A highlight with a note is underlined with a dashed line, so it does not depend on colour.
 - **Click or tap a highlight** (or focus it with Tab and press Enter) to open its popover: edit the note, change the
-  colour, or **Delete** it. Escape closes the popover and returns focus to the highlight.
+  colour, or **Delete** it. Escape closes the popover and returns focus to the highlight; unsaved note text is kept
+  and restored when you reopen that popover.
 - Below the article, the **Annotations** panel lists your article note and all highlights in reading order, with the quote,
   colour and note of each and a **Jump to** button that scrolls to the highlight and focuses it. It is also the way to reach
   every highlight with a keyboard or a screen reader.

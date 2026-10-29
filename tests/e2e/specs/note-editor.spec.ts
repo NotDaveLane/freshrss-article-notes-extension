@@ -534,3 +534,19 @@ test('Escape and a second click on Note keep an unsaved draft; Cancel confirms; 
 	});
 	expect(clean).toBe(false);
 });
+
+test('a kept draft no longer warns once its article is gone from the page', async ({ page }) => {
+	await page.goto('/i/?state=3');
+	const article = await openArticle(page, 'Type-safe SQL without an ORM');
+	await trigger(article).click();
+	await article.getByLabel('Your note on this article').fill('orphan draft');
+	await page.keyboard.press('Escape');
+	const warns = (): Promise<boolean> => page.evaluate(() => {
+		const event = new Event('beforeunload', { cancelable: true });
+		window.dispatchEvent(event);
+		return event.defaultPrevented;
+	});
+	expect(await warns()).toBe(true);
+	await article.evaluate((el) => el.remove());
+	expect(await warns()).toBe(false);
+});

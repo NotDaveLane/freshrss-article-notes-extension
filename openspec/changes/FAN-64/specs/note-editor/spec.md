@@ -10,3 +10,7 @@ The editor SHALL keep changed text when closed with Escape or the "Note" action 
 #### Scenario: Unchanged editor
 - **WHEN** the user presses Escape in an unchanged editor
 - **THEN** it closes immediately without a dialog
+
+#### Scenario: Popover draft
+- **WHEN** the user types in a highlight popover's note and closes it by Escape, Close, an outside click or opening another popover
+- **THEN** reopening it restores the text with the hint; saving or deleting the highlight drops the draft

@@ -55,6 +55,12 @@
 	}
 
 	function hasUnsavedText() {
+		// A draft whose article left the page (removed from the list) is gone with it.
+		drafts.forEach(function (text, entryId) {
+			if (!document.querySelector('.flux[data-entry="' + entryId + '"]')) {
+				drafts.delete(entryId);
+			}
+		});
 		return drafts.size > 0 || Array.from(document.querySelectorAll('.articlenotes-editor textarea')).some(isDirty);
 	}
 

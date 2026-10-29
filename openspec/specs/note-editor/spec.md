@@ -125,7 +125,13 @@ article text column.
 - **WHEN** the editor holds unsaved text (or a kept draft) and the user leaves the page
 - **THEN** the browser's leave-page prompt appears; with a clean or saved editor it does not
 
-The highlight popover's note field SHALL follow the same rule for Escape and Close.
+The highlight popover's note field SHALL keep unsaved text when it closes through Escape, Close, a click outside it or
+another popover opening, restore it (with the same hint) when that popover reopens, and drop it once the highlight is
+saved, deleted or rolled back.
+
+#### Scenario: Popover draft
+- **WHEN** the user types in a highlight's note and closes the popover by Escape, Close or clicking elsewhere
+- **THEN** reopening that highlight's popover restores the text with the hint
 
 #### Scenario: Article without a note
 - **WHEN** a user opens the editor on an article with highlights but no note
