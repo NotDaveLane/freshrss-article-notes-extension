@@ -186,7 +186,7 @@
 		function formatNumber(number) {
 			try {
 				return number.toLocaleString(document.documentElement.lang || undefined);
-			} catch (e) {
+			} catch {
 				return number.toLocaleString();
 			}
 		}
