@@ -587,6 +587,9 @@
 			error.textContent = message || t.highlightFailed;
 			error.hidden = false;
 		};
+		textarea.addEventListener('input', function () {
+			error.hidden = true;
+		});
 		const busy = function (isBusy) {
 			el.querySelectorAll('button, textarea').forEach(function (control) {
 				control.disabled = isBusy;
