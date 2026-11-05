@@ -54,7 +54,8 @@ for (const viewport of viewports) {
 			const noteTime = (await block.locator('.articlenotes-note-meta time').innerText()).trim();
 			const footerTime = (await article.locator('.flux_content .date time, .date time').first().innerText()).trim();
 			expect(noteTime).not.toMatch(/^\d{4}-\d\d-\d\d/);
-			expect(noteTime.replace(/\d+/g, 'N').replace(/[^\sN:]+/g, 'W')).toBe(footerTime.replace(/\d+/g, 'N').replace(/[^\sN:]+/g, 'W'));
+			const shape = (text: string): string => text.replace(/\d+/g, '#').replace(/[^\s#:]+/g, 'W');
+			expect(shape(noteTime)).toBe(shape(footerTime));
 			await expect(trigger(article)).toBeFocused();
 
 			await page.reload();
