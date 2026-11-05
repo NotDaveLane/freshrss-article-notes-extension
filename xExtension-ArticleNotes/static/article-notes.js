@@ -161,7 +161,7 @@
 			form.appendChild(hint);
 			textarea.setAttribute('aria-describedby', textId + '-counter ' + hint.id);
 		}
-		const error = element('p', 'articlenotes-error', { role: 'alert' });
+		const error = element('p', 'articlenotes-error', { id: textId + '-error', role: 'alert' });
 		error.hidden = true;
 		form.appendChild(error);
 
@@ -180,25 +180,53 @@
 		}
 		form.appendChild(actions);
 
+		const describedBy = textarea.getAttribute('aria-describedby');
+		let working = false;
+
+		function formatNumber(number) {
+			try {
+				return number.toLocaleString(document.documentElement.lang || undefined);
+			} catch (e) {
+				return number.toLocaleString();
+			}
+		}
+
 		function updateCounter() {
 			const used = length(textarea.value);
-			counter.textContent = t.counter.replace('%1$s', String(used)).replace('%2$s', String(config.maxLength));
-			counter.classList.toggle('articlenotes-counter-over', used > config.maxLength);
+			const over = used > config.maxLength;
+			counter.textContent = t.counter.replace('%1$s', formatNumber(used)).replace('%2$s', formatNumber(config.maxLength));
+			counter.classList.toggle('articlenotes-counter-over', over);
+			if (over || !error.hidden) {
+				textarea.setAttribute('aria-invalid', 'true');
+			} else {
+				textarea.removeAttribute('aria-invalid');
+			}
+			save.disabled = working || over;
+		}
+
+		function hideError() {
+			error.hidden = true;
+			textarea.setAttribute('aria-describedby', describedBy);
 		}
 
 		function showError(message) {
 			error.textContent = message;
 			error.hidden = false;
+			textarea.setAttribute('aria-describedby', describedBy + ' ' + error.id);
+			updateCounter();
 		}
 
 		function busy(isBusy) {
+			working = isBusy;
 			form.querySelectorAll('button, textarea').forEach(function (el) {
 				el.disabled = isBusy;
 			});
+			updateCounter();
 		}
 
 		function submit(url, extra) {
-			error.hidden = true;
+			hideError();
+			updateCounter();
 			busy(true);
 			post(url, entryId, extra).then(function (result) {
 				if (result.ok) {
@@ -217,6 +245,9 @@
 
 		form.addEventListener('submit', function (event) {
 			event.preventDefault();
+			if (length(textarea.value) > config.maxLength) {
+				return;
+			}
 			submit(config.saveUrl, { note: textarea.value });
 		});
 		cancel.addEventListener('click', function () {
@@ -232,7 +263,12 @@
 				}
 			});
 		}
-		textarea.addEventListener('input', updateCounter);
+		textarea.addEventListener('input', function () {
+			if (!error.hidden) {
+				hideError();
+			}
+			updateCounter();
+		});
 		// Keep typing from reaching FreshRSS's keyboard shortcuts.
 		form.addEventListener('keydown', function (event) {
 			event.stopPropagation();

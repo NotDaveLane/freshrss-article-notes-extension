@@ -1,0 +1,4 @@
+- [x] Hide errors on input (editor, popover)
+- [x] Block over-limit saves client-side, aria-invalid, aria-describedby
+- [x] Format counter numbers
+- [x] Playwright spec

@@ -65,7 +65,7 @@ for (const viewport of viewports) {
 			const editor = article.locator('.articlenotes-editor');
 			const textarea = editor.getByLabel('Your note on this article');
 			await expect(textarea).toHaveValue(`first note ${viewport.width}\nsecond line`);
-			await expect(editor.locator('.articlenotes-counter')).toContainText('/ 20000');
+			await expect(editor.locator('.articlenotes-counter')).toContainText('/ 20,000');
 			await textarea.fill('edited note');
 			await editor.getByRole('button', { name: 'Save' }).click();
 			await expect(article.locator('.articlenotes-note')).toContainText('edited note');
@@ -396,15 +396,14 @@ test('note text is rendered as text, never as HTML', async ({ page }) => {
 	await expect(article.getByLabel('Your note on this article')).toHaveValue(xss);
 });
 
-test('a note over 20,000 characters shows an inline error and is not saved', async ({ page }) => {
+test('a note over 20,000 characters cannot be saved', async ({ page }) => {
 	await page.goto('/i/?state=3');
 	const article = await openArticle(page, 'Why we moved our CI to ephemeral containers');
 	await trigger(article).click();
 	const editor = article.locator('.articlenotes-editor');
 	await editor.getByLabel('Your note on this article').fill('a'.repeat(20001));
-	await expect(editor.locator('.articlenotes-counter')).toContainText('20001 / 20000');
-	await editor.getByRole('button', { name: 'Save' }).click();
-	await expect(editor.getByRole('alert')).toHaveText('The note is too long (20,000 characters at most).');
+	await expect(editor.locator('.articlenotes-counter')).toContainText('20,001 / 20,000');
+	await expect(editor.getByRole('button', { name: 'Save' })).toBeDisabled();
 	await expect(article.locator('.articlenotes-note')).toHaveCount(0);
 
 	await editor.getByLabel('Your note on this article').fill('a'.repeat(20000));
@@ -584,4 +583,48 @@ test('on a phone the opened editor is not covered by FreshRSS\'s bottom navigati
 	await editor.locator('.articlenotes-cancel').tap();
 	await expect(editor).toHaveCount(0);
 	await context.close();
+});
+
+test('editing clears a stale error and an over-limit note cannot be saved', async ({ page }) => {
+	await page.goto('/i/?state=3');
+	const article = await openArticle(page, 'Type-safe SQL without an ORM');
+	await trigger(article).click();
+	const editor = article.locator('.articlenotes-editor');
+	const textarea = editor.getByLabel('Your note on this article');
+	const save = editor.getByRole('button', { name: 'Save' });
+	const error = editor.locator('.articlenotes-error');
+
+	await page.route('**/*c=ArticleNotes*a=save*', (route) => route.abort());
+	await textarea.fill('First try');
+	await save.click();
+	await expect(error).toBeVisible();
+	await expect(textarea).toHaveAttribute('aria-invalid', 'true');
+	const errorId = (await error.getAttribute('id'))!;
+	expect(await textarea.getAttribute('aria-describedby')).toContain(errorId);
+	await textarea.fill('First try, edited after the error');
+	await expect(error).toBeHidden();
+	await expect(textarea).not.toHaveAttribute('aria-invalid', 'true');
+	expect(await textarea.getAttribute('aria-describedby')).not.toContain(errorId);
+	await page.unroute('**/*c=ArticleNotes*a=save*');
+
+	let saveRequests = 0;
+	page.on('request', (request) => {
+		if (request.url().includes('a=save')) {
+			saveRequests++;
+		}
+	});
+	await textarea.fill('x'.repeat(20001));
+	await expect(editor.locator('.articlenotes-counter')).toHaveText('20,001 / 20,000');
+	await expect(editor.locator('.articlenotes-counter-over')).toHaveCount(1);
+	await expect(textarea).toHaveAttribute('aria-invalid', 'true');
+	await expect(save).toBeDisabled();
+	expect(saveRequests).toBe(0);
+
+	await textarea.press('Backspace');
+	await expect(textarea).not.toHaveAttribute('aria-invalid', 'true');
+	await expect(save).toBeEnabled();
+	await expect(editor.locator('.articlenotes-counter')).toHaveText('20,000 / 20,000');
+	await save.click();
+	await expect(editor).toHaveCount(0);
+	await deleteNote(page, article);
 });

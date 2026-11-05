@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- The note editor hides its error as soon as the text is edited, marks the textarea invalid and links the error to it for screen readers, disables **Save** while the note is over 20,000 characters, and writes the counter with thousands separators (`20,001 / 20,000`). The highlight popover also hides its error on edit.
 - Closing the note editor with Escape or the **Note** action no longer discards typed text: the draft is restored, with an "Unsaved draft restored." hint, when the editor reopens (same for the highlight popover's note). **Cancel** asks before discarding a changed note, and leaving the page warns while there is unsaved text.
 - The **Note** action (and highlight toolbar) now appears on every article on every page load, whatever order FreshRSS's `main.js` and the extension's scripts finish loading in.
 - On phones the note editor's **Save** and **Cancel** and the selection toolbar are no longer hidden under FreshRSS's
