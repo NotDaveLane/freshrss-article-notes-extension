@@ -174,7 +174,7 @@
 			form.appendChild(hint);
 			textarea.setAttribute('aria-describedby', textId + '-counter ' + hint.id);
 		}
-		const limit = element('p', 'articlenotes-error articlenotes-limit', { id: textId + '-limit' });
+		const limit = element('p', 'articlenotes-limit', { id: textId + '-limit' });
 		limit.hidden = true;
 		form.appendChild(limit);
 		const error = element('p', 'articlenotes-error', { id: textId + '-error', role: 'alert' });

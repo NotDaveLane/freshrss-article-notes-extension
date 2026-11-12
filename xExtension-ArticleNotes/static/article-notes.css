@@ -81,7 +81,8 @@
 	opacity: 1;
 }
 
-.articlenotes-error {
+.articlenotes-error,
+.articlenotes-limit {
 	margin: 0.5rem 0;
 	padding: 0.5rem 0.75rem;
 	border: 1px solid var(--frss-border-color-error, #c0392b);
@@ -99,7 +100,8 @@
 	white-space: nowrap;
 }
 
-.articlenotes-error[hidden] {
+.articlenotes-error[hidden],
+.articlenotes-limit[hidden] {
 	display: none;
 }
 
