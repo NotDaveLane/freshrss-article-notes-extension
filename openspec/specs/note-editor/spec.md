@@ -51,6 +51,20 @@ textarea, Save and Cancel buttons, a Delete button when a note exists, and a cou
 - **WHEN** more articles are loaded into the stream
 - **THEN** their "Note" action works without reloading the page
 
+### Requirement: Over-limit explanation and status announcements
+
+The editor SHALL show a visible message stating by how many characters the note exceeds the limit while it is over
+20,000 characters, linked to the textarea through `aria-describedby` and hidden once the text is short enough. Saving or
+deleting a note SHALL be announced through a polite `role="status"` element that outlives the editor.
+
+#### Scenario: Note over the limit
+- **WHEN** a user enters 20,050 characters
+- **THEN** "The note is 50 characters too long. Shorten it to save." is shown, Save is disabled, and the message disappears when the text is shortened
+
+#### Scenario: Save and delete announced
+- **WHEN** a note is saved or deleted
+- **THEN** a `role="status"` element reads "Note saved." or "Note deleted."
+
 ### Requirement: Highlight hint in the editor
 
 While the article has no highlight, the note editor SHALL show a help line telling the user to select text in the article

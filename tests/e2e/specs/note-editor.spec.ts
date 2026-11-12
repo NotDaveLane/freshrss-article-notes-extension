@@ -620,12 +620,23 @@ test('editing clears a stale error and an over-limit note cannot be saved', asyn
 	await expect(textarea).toHaveAttribute('aria-invalid', 'true');
 	await expect(save).toBeDisabled();
 	expect(saveRequests).toBe(0);
+	const limit = editor.locator('.articlenotes-limit');
+	await expect(limit).toBeVisible();
+	await expect(limit).toHaveText('The note is 1 character too long. Shorten it to save.');
+	expect(await textarea.getAttribute('aria-describedby')).toContain((await limit.getAttribute('id'))!);
+	await textarea.fill('x'.repeat(20050));
+	await expect(limit).toHaveText('The note is 50 characters too long. Shorten it to save.');
+	await textarea.fill('x'.repeat(20001));
 
 	await textarea.press('Backspace');
+	await expect(limit).toBeHidden();
+	expect(await textarea.getAttribute('aria-describedby')).not.toContain((await limit.getAttribute('id'))!);
 	await expect(textarea).not.toHaveAttribute('aria-invalid', 'true');
 	await expect(save).toBeEnabled();
 	await expect(editor.locator('.articlenotes-counter')).toHaveText('20,000 / 20,000');
 	await save.click();
 	await expect(editor).toHaveCount(0);
+	await expect(page.locator('.articlenotes-status[role="status"]')).toHaveText('Note saved.');
 	await deleteNote(page, article);
+	await expect(page.locator('.articlenotes-status')).toHaveText('Note deleted.');
 });

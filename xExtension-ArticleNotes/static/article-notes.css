@@ -81,7 +81,8 @@
 	opacity: 1;
 }
 
-.articlenotes-error {
+.articlenotes-error,
+.articlenotes-limit {
 	margin: 0.5rem 0;
 	padding: 0.5rem 0.75rem;
 	border: 1px solid var(--frss-border-color-error, #c0392b);
@@ -90,7 +91,17 @@
 	color: inherit;
 }
 
-.articlenotes-error[hidden] {
+.articlenotes-status {
+	position: absolute;
+	width: 1px;
+	height: 1px;
+	overflow: hidden;
+	clip: rect(0 0 0 0);
+	white-space: nowrap;
+}
+
+.articlenotes-error[hidden],
+.articlenotes-limit[hidden] {
 	display: none;
 }
 
