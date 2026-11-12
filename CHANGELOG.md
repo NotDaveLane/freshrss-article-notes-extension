@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- The note editor says why **Save** is disabled: a visible message ("The note is 50 characters too long. Shorten it to save.") appears while the note is over 20,000 characters and is linked to the textarea for screen readers. Saving or deleting a note is announced to screen readers ("Note saved." / "Note deleted.") through a polite status region.
+
 ### Fixed
 
 - The note editor hides its error as soon as the text is edited, marks the textarea invalid and links the error to it for screen readers, disables **Save** while the note is over 20,000 characters, and writes the counter with thousands separators (`20,001 / 20,000`). The highlight popover also hides its error on edit.

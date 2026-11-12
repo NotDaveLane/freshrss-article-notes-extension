@@ -113,6 +113,19 @@
 		flux.dispatchEvent(new CustomEvent('articlenotes:note', { bubbles: true }));
 	}
 
+	// Polite live region that outlives the editor, so a save or delete is announced after the editor closes.
+	function announce(message) {
+		let status = document.querySelector('.articlenotes-status');
+		if (!status) {
+			status = element('div', 'articlenotes-status', { role: 'status' });
+			document.body.appendChild(status);
+		}
+		status.textContent = '';
+		setTimeout(function () {
+			status.textContent = message;
+		}, 50);
+	}
+
 	function post(url, entryId, extra) {
 		const body = new URLSearchParams(extra || {});
 		body.set('id', entryId);
@@ -161,6 +174,9 @@
 			form.appendChild(hint);
 			textarea.setAttribute('aria-describedby', textId + '-counter ' + hint.id);
 		}
+		const limit = element('p', 'articlenotes-error articlenotes-limit', { id: textId + '-limit' });
+		limit.hidden = true;
+		form.appendChild(limit);
 		const error = element('p', 'articlenotes-error', { id: textId + '-error', role: 'alert' });
 		error.hidden = true;
 		form.appendChild(error);
@@ -181,6 +197,7 @@
 		form.appendChild(actions);
 
 		const describedBy = textarea.getAttribute('aria-describedby');
+		let described = describedBy;
 		let working = false;
 
 		function formatNumber(number) {
@@ -196,6 +213,11 @@
 			const over = used > config.maxLength;
 			counter.textContent = t.counter.replace('%1$s', formatNumber(used)).replace('%2$s', formatNumber(config.maxLength));
 			counter.classList.toggle('articlenotes-counter-over', over);
+			const excess = used - config.maxLength;
+			limit.hidden = !over;
+			limit.textContent = !over ? '' : excess === 1 ? t.overLimitOne : t.overLimit.replace('%s', formatNumber(excess));
+			described = describedBy + (over ? ' ' + limit.id : '');
+			textarea.setAttribute('aria-describedby', described + (error.hidden ? '' : ' ' + error.id));
 			if (over || !error.hidden) {
 				textarea.setAttribute('aria-invalid', 'true');
 			} else {
@@ -206,13 +228,12 @@
 
 		function hideError() {
 			error.hidden = true;
-			textarea.setAttribute('aria-describedby', describedBy);
+			textarea.setAttribute('aria-describedby', described);
 		}
 
 		function showError(message) {
 			error.textContent = message;
 			error.hidden = false;
-			textarea.setAttribute('aria-describedby', describedBy + ' ' + error.id);
 			updateCounter();
 		}
 
@@ -231,6 +252,7 @@
 			post(url, entryId, extra).then(function (result) {
 				if (result.ok) {
 					applyHtml(flux, result.html || '');
+					announce(url === config.deleteUrl ? t.deleted : t.saved);
 					closeEditor(flux, true);
 					return;
 				}
