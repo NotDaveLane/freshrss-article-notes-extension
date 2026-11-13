@@ -184,6 +184,39 @@
 	}
 }
 
+/* On phones the footer has no room for the text label: it stays for screen readers (and as the title) while the icon,
+   in a 44x44 tap target, is all that shows; the date may shrink and truncate instead of pushing the bar past the screen. */
+@media (max-width: 40em) {
+	.articlenotes-item {
+		padding-right: 8px;
+	}
+
+	.articlenotes-trigger-label {
+		position: absolute;
+		width: 1px;
+		height: 1px;
+		margin: -1px;
+		padding: 0;
+		overflow: hidden;
+		clip-path: inset(50%);
+		white-space: nowrap;
+	}
+
+	.horizontal-list:has(> .articlenotes-item) > .item.date {
+		flex: 0 1 auto;
+		min-width: 0;
+		overflow: hidden;
+		text-overflow: ellipsis;
+		white-space: nowrap;
+	}
+
+	.horizontal-list:has(> .articlenotes-item) > .item.date .item-element {
+		display: block;
+		overflow: hidden;
+		text-overflow: ellipsis;
+	}
+}
+
 .articlenotes-trigger:focus-visible {
 	outline: 2px solid currentColor;
 	outline-offset: 2px;
