@@ -91,6 +91,12 @@ note to this article"). The indicator SHALL follow saving and deleting the note 
 - **THEN** the Note action has an icon hidden from assistive technology, keeps the accessible name "Note", is at least 8px
   away from the date, and at 390x844 is at least 44x44 px
 
+#### Scenario: Bar fits a phone
+- **WHEN** an article is open at 390x844 or 360x844, with and without a saved note
+- **THEN** the page does not scroll horizontally, no footer item extends past the viewport, the Note action shows only its
+  icon (its "Note" label stays available to assistive technology) as a target of at least 44x44 px, and the date shrinks
+  with an ellipsis rather than pushing items off screen
+
 #### Scenario: Note indicator
 - **WHEN** the user saves a note on an article, reloads, and then deletes the note
 - **THEN** the Note action is marked as having a note after saving and after reloading, and is unmarked after deleting
