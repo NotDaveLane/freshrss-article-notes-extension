@@ -632,3 +632,21 @@ mark.articlenotes-hl:focus-visible {
 .articlenotes-copy-status:empty {
 	display: none;
 }
+
+/* Configure page: the origins field and its error stay inside the content column, whatever the screen width. */
+#articlenotes_allowed_origins {
+	box-sizing: border-box;
+	width: 100%;
+	max-width: 100%;
+}
+
+.articlenotes-origins-error {
+	box-sizing: border-box;
+	max-width: 100%;
+	overflow-wrap: anywhere;
+}
+
+.articlenotes-origins-error ul {
+	margin: 0.5rem 0 0;
+	padding-left: 1.25rem;
+}

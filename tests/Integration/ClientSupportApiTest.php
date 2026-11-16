@@ -240,7 +240,7 @@ final class ClientSupportApiTest extends TestCase {
 		self::assertSame([], self::extension()->allowedOrigins());
 	}
 
-	public function testRefusedLinesAreEscapedInTheNotification(): void {
+	public function testRefusedLinesAreEscapedInTheInlineError(): void {
 		$extension = self::extension();
 		$line = '<img src=x onerror=alert(1)>"\'';
 		self::assertSame([$line], $extension->saveAllowedOrigins($line));
@@ -248,7 +248,7 @@ final class ClientSupportApiTest extends TestCase {
 		Minz_Translate::reset('en');
 		$message = $extension->invalidOriginsMessage([$line]);
 		self::assertStringNotContainsString('<img', $message);
-		self::assertStringContainsString('&lt;img src=x onerror=alert(1)&gt;', $message);
+		self::assertStringContainsString('<code>&lt;img src=x onerror=alert(1)&gt;', $message);
 	}
 
 	public function testTheExtensionAppliesTheStoredOrigins(): void {
