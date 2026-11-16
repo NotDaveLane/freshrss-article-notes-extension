@@ -267,14 +267,14 @@ final class ArticleNotesExtension extends Minz_Extension {
 	}
 
 	/**
-	 * The notification for refused origin lines. FreshRSS prints notifications as HTML, and the lines are what the
+	 * The inline error for refused origin lines (HTML: an intro and a list of `<code>` lines). The lines are what the
 	 * administrator typed: they are escaped here.
 	 *
 	 * @param list<string> $invalid
 	 */
 	public function invalidOriginsMessage(array $invalid): string {
-		$escaped = array_map(static fn (string $line): string => htmlspecialchars($line, ENT_QUOTES, 'UTF-8'), $invalid);
-		return _t('ext.article_notes.cors.invalid', implode(', ', $escaped));
+		$items = array_map(static fn (string $line): string => '<li><code>' . htmlspecialchars($line, ENT_QUOTES, 'UTF-8') . '</code></li>', $invalid);
+		return htmlspecialchars(_t('ext.article_notes.cors.invalid'), ENT_QUOTES, 'UTF-8') . '<ul>' . implode('', $items) . '</ul>';
 	}
 
 	/**
@@ -314,7 +314,7 @@ final class ArticleNotesExtension extends Minz_Extension {
 			Minz_Request::good(_t('ext.article_notes.cors.saved'), $back);
 		}
 		Minz_Session::_param(self::PENDING_ORIGINS_KEY, ['text' => $text, 'invalid' => $invalid]);
-		Minz_Request::bad($this->invalidOriginsMessage($invalid), $back);
+		Minz_Request::forward($back, true);	// the page shows the error inline, next to the field
 	}
 
 	/** Appends the user's note, when there is one, to the article content. */

@@ -32,7 +32,7 @@ test('the administrator page rejects wildcards and keeps the list; exact origins
 
 	await field.fill(`${ORIGIN}\n*`);
 	await page.getByRole('button', { name: 'Submit' }).click();
-	await expect(page.locator('.notification.bad')).toContainText('Not saved');
+	await expect(page.locator('.notification.bad')).toHaveCount(0);
 	await expect(field).toHaveValue(`${ORIGIN}\n*`);
 	await expect(field).toHaveAttribute('aria-invalid', 'true');
 	const inlineError = page.locator('#articlenotes_allowed_origins_error');
@@ -49,14 +49,12 @@ test('the administrator page rejects wildcards and keeps the list; exact origins
 	await expect(page.getByLabel('Allowed client origins')).toHaveValue(`${ORIGIN}\n${EXTENSION_ORIGIN}`);
 });
 
-test('refused lines are shown as text in the notification, never as HTML', async ({ page }) => {
+test('refused lines are shown as text in the inline error, never as HTML', async ({ page }) => {
 	await signIn(page, admin);
 	await page.goto('/i/?c=extension&a=configure&e=ArticleNotes');
 	await page.getByLabel('Allowed client origins').fill('<img src=x onerror="window.__xss=1">');
 	await page.getByRole('button', { name: 'Submit' }).click();
-	const notification = page.locator('.notification.bad');
-	await expect(notification).toContainText('<img src=x onerror="window.__xss=1">');
-	await expect(notification.locator('.msg img')).toHaveCount(0);
+	await expect(page.locator('#articlenotes_allowed_origins_error code')).toHaveText('<img src=x onerror="window.__xss=1">');
 	await expect(page.locator('#articlenotes_allowed_origins_error img')).toHaveCount(0);
 	await expect(page.getByLabel('Allowed client origins')).toHaveValue('<img src=x onerror="window.__xss=1">');
 	await page.reload();
@@ -100,3 +98,34 @@ test('the settings page is for administrators only', async ({ page }) => {
 	expect(response?.status()).toBe(403);
 	await expect(page.getByLabel('Allowed client origins')).toHaveCount(0);
 });
+
+for (const viewport of [{ width: 390, height: 844 }, { width: 1440, height: 900 }]) {
+	test(`the invalid-origin error fits its container at ${viewport.width}px and appears once`, async ({ page }) => {
+		await page.setViewportSize(viewport);
+		await signIn(page, admin);
+		await page.goto('/i/?c=extension&a=configure&e=ArticleNotes');
+		const field = page.getByLabel('Allowed client origins');
+		await field.fill('not a url');
+		await page.getByRole('button', { name: 'Submit' }).click();
+		const error = page.locator('#articlenotes_allowed_origins_error');
+		await expect(error).toBeVisible();
+		await expect(error.locator('code')).toHaveText('not a url');
+		await expect(page.locator('.notification.bad')).toHaveCount(0);
+		await expect(page.getByText('Not saved')).toHaveCount(1);
+		await expect(field).toHaveAttribute('aria-invalid', 'true');
+		await expect(field).toHaveAttribute('aria-describedby', 'articlenotes_allowed_origins_error');
+		const boxes = await page.evaluate(() => {
+			const rect = (element: Element | null) => element?.getBoundingClientRect().right ?? Infinity;
+			const alert = document.querySelector('#articlenotes_allowed_origins_error');
+			return {
+				alert: rect(alert),
+				container: rect(alert?.parentElement ?? null),
+				field: rect(document.querySelector('#articlenotes_allowed_origins')),
+				innerWidth: window.innerWidth,
+			};
+		});
+		expect(boxes.alert).toBeLessThanOrEqual(boxes.innerWidth);
+		expect(boxes.alert).toBeLessThanOrEqual(boxes.container + 0.5);
+		expect(boxes.field).toBeLessThanOrEqual(boxes.container + 0.5);
+	});
+}
