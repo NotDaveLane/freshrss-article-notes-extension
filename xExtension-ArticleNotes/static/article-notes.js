@@ -436,6 +436,13 @@
 			}
 		});
 		document.addEventListener('click', function (event) {
+			const notes = event.target instanceof Element ? event.target.closest('.articlenotes-note a.articlenotes-notes-link') : null;
+			if (notes) {	// FreshRSS cancels clicks on links inside article content: navigate ourselves
+				event.preventDefault();
+				event.stopPropagation();
+				window.location.assign(notes.href);
+				return;
+			}
 			const note = event.target instanceof Element ? event.target.closest('.articlenotes-note') : null;
 			if (note) {
 				// Selecting text in the note (to copy it) ends with a click: leave it alone.

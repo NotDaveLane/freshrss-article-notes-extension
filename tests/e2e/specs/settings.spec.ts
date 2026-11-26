@@ -26,7 +26,7 @@ async function saveNote(article: Locator, text: string): Promise<void> {
 async function openSettings(page: Page): Promise<void> {
 	await page.goto('/i/?c=configure&a=display');
 	await page.locator('#aside_feed a[href*="a=settings"]').click();
-	await expect(page.getByRole('heading', { name: 'Article notes' })).toBeVisible();
+	await expect(page.getByRole('heading', { name: 'Article notes settings' })).toBeVisible();
 }
 
 test.beforeEach(async ({ page }) => {
@@ -118,11 +118,23 @@ for (const viewport of [{ width: 390, height: 844 }, { width: 1440, height: 900 
 			expect(phpDiagnostics(html)).toEqual([]);
 			expect(html.trimStart()).toMatch(/^<!DOCTYPE html>/i);
 			await expect(page.locator('body')).not.toContainText(/(Warning|Notice|Deprecated|Fatal error):/);
-			await expect(page).toHaveTitle(/Article notes/);
+			await expect(page).toHaveTitle(/^Article notes settings · /);
 			await expect(page.locator('header.header')).toBeVisible();
 			await expect(page.locator('header.header button.signout, header.header a.signout').first()).toBeAttached();
 			await expect(page.locator('#aside_feed a[href*="a=settings"]')).toBeAttached();
-			await expect(page.locator('main.post').getByRole('heading', { name: 'Article notes' })).toBeVisible();
+			await expect(page.locator('main.post').getByRole('heading', { name: 'Article notes settings' })).toBeVisible();
+		});
+
+		test('the Configuration menu lists My notes, then Article notes settings', async ({ page }) => {
+			await page.goto('/i/?c=configure&a=display');
+			const entries = page.locator('#aside_feed a[href*="c=ArticleNotes"]');
+			await expect(entries).toHaveText(['My notes', 'Article notes settings']);
+			await expect(entries.nth(0)).toHaveAttribute('href', /a=notes$/);
+			await expect(entries.nth(1)).toHaveAttribute('href', /a=settings$/);
+			await page.goto(new URL((await entries.nth(0).getAttribute('href'))!, page.url()).href);
+			await expect(page.getByRole('heading', { level: 1, name: 'My notes', exact: true })).toBeVisible();
+			await expect(page).toHaveTitle(/^My notes · /);
+			await expect(page.locator('#aside_feed li.active a')).toHaveText('My notes');
 		});
 
 		test('the API endpoint and its Copy button fit without horizontal overflow', async ({ page }) => {

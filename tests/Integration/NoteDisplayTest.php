@@ -69,6 +69,8 @@ final class NoteDisplayTest extends TestCase {
 			. ' aria-labelledby="articlenotes-note-title-(\\d+)" aria-describedby="articlenotes-note-hint-\\1">'
 			. '<h4 class="articlenotes-note-title" id="articlenotes-note-title-\\1">Your note</h4>#', $content);
 		self::assertMatchesRegularExpression('#<span id="articlenotes-note-hint-\\d+" hidden>Edit your note</span></section>$#', $content);
+		self::assertMatchesRegularExpression('#<p class="articlenotes-notes-link-line"><a class="articlenotes-notes-link" href="[^"]*'
+			. 'c=ArticleNotes&amp;a=notes">All my notes</a></p>#', $content);
 	}
 
 	public function testArticleWithoutNoteIsUntouched(): void {

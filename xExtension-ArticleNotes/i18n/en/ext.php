@@ -57,8 +57,8 @@ return array(
 			'edit' => 'Edit',
 		),
 		'settings' => array(
-			'menu' => 'Article notes',
-			'title' => 'Article notes',
+			'menu' => 'Article notes settings',
+			'title' => 'Article notes settings',
 			'intro' => 'Use the Note action under an article to write a note on it, or select text in an article to highlight it and attach a note to the passage.',
 			'label_heading' => 'Label',
 			'label_enabled' => 'Add a label to articles I annotate',
@@ -82,8 +82,8 @@ return array(
 			'copy_failed' => 'Could not copy: select the URL and copy it.',
 		),
 		'notes' => array(
-			'menu' => 'Notes',
-			'title' => 'Notes',
+			'menu' => 'My notes',
+			'title' => 'My notes',
 			'all_my_notes' => 'All my notes',
 			'summary' => '%s annotated articles and pages',
 			'summary_one' => '1 annotated article or page',

@@ -38,7 +38,7 @@ test('README screenshots', async ({ page }) => {
 	await expect(page.locator('.flux').first()).toBeVisible();
 	await page.screenshot({ path: `${dir}/annotated-label.png` });
 
-	// The per-user settings page (Configuration → Article notes).
+	// The per-user settings page (Configuration → Article notes settings).
 	await page.goto('/i/?c=ArticleNotes&a=settings');
 	await page.screenshot({ path: `${dir}/settings.png` });
 

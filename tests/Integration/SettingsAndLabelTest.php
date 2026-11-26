@@ -273,11 +273,8 @@ final class SettingsAndLabelTest extends TestCase {
 
 	public function testMenuEntryLinksToTheSettingsAndNotesPages(): void {
 		$html = $this->extension()->menuEntry();
-		self::assertStringContainsString('c=ArticleNotes&amp;a=notes"', $html);
-		self::assertStringContainsString('>Notes</a>', $html);
-		self::assertStringContainsString('c=ArticleNotes', $html);
-		self::assertStringContainsString('c=ArticleNotes&amp;a=settings"', $html);
-		self::assertStringContainsString('Article notes', $html);
+		self::assertMatchesRegularExpression('#^<li class="item"><a href="[^"]*c=ArticleNotes&amp;a=notes">My notes</a></li>'
+			. '<li class="item"><a href="[^"]*c=ArticleNotes&amp;a=settings">Article notes settings</a></li>$#', $html);
 	}
 
 	public function testApiUrlEndsWithTheExtensionEndpoint(): void {

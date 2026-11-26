@@ -1,0 +1,4 @@
+- [x] Integration and Playwright tests: menu names and order, page headings and titles, link on a note-only article (normal and reader views, desktop and mobile), single link in the panel
+- [x] Rename the menu entries and titles, list My notes first
+- [x] Render the "All my notes" link in the note block; exclude it from the editor's click handler; hide it inside the panel
+- [x] Specs `settings-and-label` and `note-editor`, README and CHANGELOG
