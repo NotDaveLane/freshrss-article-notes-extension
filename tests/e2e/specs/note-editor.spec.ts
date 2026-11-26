@@ -179,6 +179,69 @@ for (const viewport of viewports) {
 			expect(response.ok()).toBe(true);
 		});
 
+		for (const view of [{ name: 'normal', url: '/i/?state=3' }, { name: 'reader', url: '/i/?a=reader&state=3' }]) {
+			test(`a note-only article links to All my notes in the ${view.name} view`, async ({ page, request }) => {
+				const title = 'Building a feed reader that respects your attention';
+				const auth = basicAuth(throwawayUser().user, throwawayApiPassword());
+				const lookup = await request.get(`${API}/lookup`, { headers: auth, params: { url: 'http://fixtures/articles/8' } });
+				const id = ((await lookup.json()) as { matches: { entry_id: string }[] }).matches[0].entry_id;
+				const list = await request.get(`${API}/highlights`, { headers: auth, params: { entry_id: id } });
+				for (const highlight of ((await list.json()) as { highlights: { uuid: string }[] }).highlights) {
+					await request.delete(`${API}/highlights/${highlight.uuid}`, { headers: auth });
+				}
+				const text = `link note ${view.name} ${viewport.width}`;
+				expect((await request.put(`${API}/notes/${id}`, { headers: auth, data: { note: text } })).ok()).toBe(true);
+
+				await page.goto(view.url);
+				let article = page.locator('.flux', { hasText: title }).first();
+				if (view.name === 'normal') {
+					article = await openArticle(page, title);
+				}
+				const block = article.locator('.articlenotes-note');
+				await block.scrollIntoViewIfNeeded();
+				await expect(block).toContainText(text);
+				await expect(article.locator('.articlenotes-panel')).toHaveCount(0);
+				const link = block.getByRole('link', { name: 'All my notes' });
+				await expect(link).toHaveAttribute('href', /c=ArticleNotes&a=notes$/);
+				await expect(link).toHaveClass('articlenotes-notes-link');
+				expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(viewport.width);
+
+				// Elsewhere in the block still opens the editor.
+				await block.locator('.articlenotes-note-title').click();
+				await expect(article.locator('.articlenotes-editor').getByLabel('Your note on this article')).toBeFocused();
+				await article.getByRole('button', { name: 'Cancel' }).click();
+				await expect(article.locator('.articlenotes-editor')).toHaveCount(0);
+
+				await article.locator('.articlenotes-note').getByRole('link', { name: 'All my notes' }).click();
+				await expect(page).toHaveURL(/c=ArticleNotes&a=notes$/);
+				await expect(page.getByRole('heading', { level: 1, name: 'My notes', exact: true })).toBeVisible();
+				expect((await request.delete(`${API}/notes/${id}`, { headers: auth })).ok()).toBe(true);
+			});
+		}
+
+		test('a note saved in the page links to All my notes once, and only outside the Annotations panel', async ({ page, request }) => {
+			const auth = basicAuth(throwawayUser().user, throwawayApiPassword());
+			const lookup = await request.get(`${API}/lookup`, { headers: auth, params: { url: 'http://fixtures/articles/1' } });
+			const id = ((await lookup.json()) as { matches: { entry_id: string }[] }).matches[0].entry_id;
+			await page.goto('/i/?state=3');
+			const article = await openArticle(page, 'Rust 1.90 stabilizes async closures');
+			await saveNote(page, article, `saved link note ${viewport.width}`);
+			await expect(article.locator('.articlenotes-note').getByRole('link', { name: 'All my notes' })).toBeVisible();
+			const created = await request.post(`${API}/highlights`, {
+				headers: { ...auth, 'Content-Type': 'application/json' },
+				data: { entry_id: id, source: 'freshrss', selector: { quote: { exact: 'compile times' } } },
+			});
+			expect(created.status()).toBe(201);
+			await page.reload();
+			const reloaded = await openArticle(page, 'Rust 1.90 stabilizes async closures');
+			await expect(reloaded.locator('.articlenotes-panel .articlenotes-note')).toBeVisible();
+			await expect(reloaded.getByRole('link', { name: 'All my notes' })).toHaveCount(1);
+			await expect(reloaded.locator('.articlenotes-panel > .articlenotes-notes-link-line')).toBeVisible();
+			await deleteNote(page, reloaded);
+			const uuid = ((await created.json()) as { highlight: { uuid: string } }).highlight.uuid;
+			expect((await request.delete(`${API}/highlights/${uuid}`, { headers: auth })).ok()).toBe(true);
+		});
+
 		test('the footer Note action is spaced from the date, has an icon and shows when a note exists', async ({ page }) => {
 			await page.goto('/i/?state=3');
 			const article = await openArticle(page, 'SQLite as an application file format, revisited');

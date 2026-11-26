@@ -100,7 +100,7 @@ function group(page: Page, title: string): Locator {
 
 async function search(page: Page, params: string): Promise<void> {
 	await page.goto(`/i/?c=ArticleNotes&a=notes&${params}`);
-	await expect(page.getByRole('heading', { level: 1, name: 'Notes' })).toBeVisible();
+	await expect(page.getByRole('heading', { level: 1, name: 'My notes', exact: true })).toBeVisible();
 }
 
 async function applyFilters(page: Page, fields: { q?: string; kind?: string; color?: string; feed?: string; hasNote?: boolean }): Promise<void> {
@@ -125,7 +125,7 @@ async function applyFilters(page: Page, fields: { q?: string; kind?: string; col
 		await form.getByLabel('Only with a note').setChecked(fields.hasNote);
 	}
 	await form.getByRole('button', { name: 'Apply filters' }).click();
-	await expect(page.getByRole('heading', { level: 1, name: 'Notes' })).toBeVisible();
+	await expect(page.getByRole('heading', { level: 1, name: 'My notes', exact: true })).toBeVisible();
 }
 
 async function titles(page: Page): Promise<string[]> {
@@ -135,10 +135,10 @@ async function titles(page: Page): Promise<string[]> {
 test('the Configuration menu and the settings page link to the Notes page', async ({ page }) => {
 	await page.goto('/i/?c=configure&a=display');
 	await page.locator('#aside_feed a[href*="a=notes"]').click();
-	await expect(page.getByRole('heading', { level: 1, name: 'Notes' })).toBeVisible();
+	await expect(page.getByRole('heading', { level: 1, name: 'My notes', exact: true })).toBeVisible();
 	await page.goto('/i/?c=ArticleNotes&a=settings');
 	await page.getByRole('link', { name: 'All my notes' }).click();
-	await expect(page.getByRole('heading', { level: 1, name: 'Notes' })).toBeVisible();
+	await expect(page.getByRole('heading', { level: 1, name: 'My notes', exact: true })).toBeVisible();
 });
 
 for (const viewport of viewports) {
@@ -325,9 +325,9 @@ for (const viewport of viewports) {
 			const mark = article.locator('mark.articlenotes-hl', { hasText: 'component model' });
 			await expect(mark).toHaveText('component model');
 			await expect(mark).toBeInViewport();
-			await expect(article.locator('.articlenotes-panel .articlenotes-notes-link')).toHaveText('All my notes');
-			await article.locator('.articlenotes-panel .articlenotes-notes-link').click();
-			await expect(page.getByRole('heading', { level: 1, name: 'Notes' })).toBeVisible();
+			await expect(article.locator('.articlenotes-panel > .articlenotes-notes-link-line .articlenotes-notes-link')).toHaveText('All my notes');
+			await article.locator('.articlenotes-panel > .articlenotes-notes-link-line .articlenotes-notes-link').click();
+			await expect(page.getByRole('heading', { level: 1, name: 'My notes', exact: true })).toBeVisible();
 		});
 	});
 }

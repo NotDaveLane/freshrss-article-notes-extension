@@ -119,7 +119,7 @@ final class ArticleNotesExtension extends Minz_Extension {
 	/** The entries of the Configuration menu that lead to the user's settings page and to the Notes page. */
 	public function menuEntry(): string {
 		$entries = '';
-		foreach (['settings' => 'settings', 'notes' => 'notes'] as $action => $key) {
+		foreach (['notes' => 'notes', 'settings' => 'settings'] as $action => $key) {
 			$active = Minz_Request::controllerName() === 'ArticleNotes' && Minz_Request::actionName() === $action;
 			$entries .= '<li class="item' . ($active ? ' active' : '') . '"><a href="'
 				. Minz_Url::display(['c' => 'ArticleNotes', 'a' => $action]) . '">'

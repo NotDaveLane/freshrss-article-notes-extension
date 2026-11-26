@@ -40,6 +40,15 @@
 	font-size: 0.85rem;
 }
 
+.articlenotes-note .articlenotes-notes-link-line {
+	margin: 0.5rem 0 0;
+}
+
+/* Inside the Annotations panel, the panel's own "All my notes" link stands for the note's. */
+.articlenotes-panel .articlenotes-note .articlenotes-notes-link-line {
+	display: none;
+}
+
 .articlenotes-editor {
 	margin: 1rem 0;
 	padding: 0.75rem 1rem;

@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- The Configuration menu entries say what they open: **My notes** (the Notes page, now listed first) and **Article notes settings** (the settings page); each page's heading and title match. A saved note under an article now ends with an "All my notes" link to the Notes page, so articles with a note but no highlights link there too; clicking it opens the Notes page, not the note editor.
+
 ### Added
 
 - The note editor says why **Save** is disabled: a visible message ("The note is 50 characters too long. Shorten it to save.") appears while the note is over 20,000 characters and is linked to the textarea for screen readers. Saving or deleting a note is announced to screen readers ("Note saved." / "Note deleted.") through a polite status region.

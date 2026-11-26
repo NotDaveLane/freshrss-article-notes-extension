@@ -129,9 +129,9 @@ buttons mark it yellow, green, blue, pink or purple, and **Add note** highlights
 
 ![The Notes page](docs/screenshots/notes-page.png)
 
-Configuration → **Notes** (also linked from the settings page and from the **Annotations** panel under an article, as "All
-my notes") lists everything you annotated, for any signed-in user. Annotations are grouped by article or web page, the most
-recently annotated first, 25 groups per page. A group shows the title (a link to the article in FreshRSS, or to the page in a
+Configuration → **My notes** (also linked, as "All my notes", from the settings page and from the note or the
+**Annotations** panel under an article) lists everything you annotated, for any signed-in user. Annotations are grouped by
+article or web page, the most recently annotated first, 25 groups per page. A group shows the title (a link to the article in FreshRSS, or to the page in a
 new tab), the feed or site, the publication date, your note, and your highlights in document order with their colour, quote
 and note. Articles that FreshRSS has purged are marked "Article no longer in FreshRSS"; highlights whose passage is no longer
 in the article text are marked **Passage not found**. Each highlight of a FreshRSS article has an **Open article at this
@@ -150,7 +150,7 @@ highlight** link that opens the article and scrolls to it. Notes and quotes are 
 
 ## Configuration
 
-Every user has a settings page: Configuration → **Article notes** (no administrator needed).
+Every user has a settings page: Configuration → **Article notes settings** (no administrator needed).
 
 - **Add a label to articles I annotate** (on by default): adding a note applies a FreshRSS label to the article, so annotated
   articles are listed under it in the sidebar. Deleting the note removes the label again, but only if the extension applied
