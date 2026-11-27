@@ -134,6 +134,34 @@ only when the article did not already carry that label. Editing an existing note
 - **WHEN** the label name is "Reading list"
 - **THEN** new notes apply the label "Reading list"
 
+### Requirement: Link to the label's articles
+
+While the label setting is on and the label exists, the settings page and the Notes page SHALL link, as "Show annotated
+articles in FreshRSS (label “<name>”)", to the label's article list with all articles shown (`get=t_<id>&state=3`):
+FreshRSS's sidebar hides labels without unread articles by default. Neither page SHALL show it otherwise.
+
+#### Scenario: Read annotated article
+- **WHEN** a user with FreshRSS's default reading settings annotates an article, marks it read and follows the link on the
+  Notes page
+- **THEN** the label view lists the article
+
+#### Scenario: Label not created yet
+- **WHEN** the configured label does not exist yet
+- **THEN** neither page shows the link
+
+#### Scenario: Label off
+- **WHEN** the user turned the label off
+- **THEN** neither page shows the link
+
+### Requirement: Label help does not promise the sidebar
+
+The help of the label setting SHALL NOT say that annotated articles are always listed in the sidebar; it SHALL say that the
+sidebar shows labels only while they have unread articles, unless read articles are shown.
+
+#### Scenario: Help text
+- **WHEN** a user opens the settings page
+- **THEN** the label help mentions that the sidebar shows labels only while they have unread articles
+
 ### Requirement: Label removal on delete
 
 When a note is deleted, the extension SHALL remove from the article only the label it applied itself, never one the user had

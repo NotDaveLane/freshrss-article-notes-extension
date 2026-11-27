@@ -14,8 +14,8 @@ fetch and analyze them later.
   [Using notes](#using-notes). Notes are plain Markdown-ish text of up to 20,000 characters, always displayed escaped.
 - **Snapshots**: every note keeps a copy of its article's title, link, author, date and feed, so it stays meaningful after
   FreshRSS purges the article.
-- **An "Annotated" label** on the articles you annotate (optional and renamable per user), so you can browse them in the
-  sidebar and FreshRSS keeps them when it archives old articles — see [Configuration](#configuration).
+- **An "Annotated" label** on the articles you annotate (optional and renamable per user), so you can list them in
+  FreshRSS (linked from the Notes and settings pages) and FreshRSS keeps them when it archives old articles — see [Configuration](#configuration).
 - **A JSON [API](#api)** to fetch and sync your notes (deletions included), find the article behind any page URL, and
   create, update and delete notes from other tools such as a browser extension, with your FreshRSS API password.
 - **Highlights**: select text in an article to highlight it in one of five colours, with an optional note; they come
@@ -152,12 +152,17 @@ highlight** link that opens the article and scrolls to it. Notes and quotes are 
 
 Every user has a settings page: Configuration → **Article notes settings** (no administrator needed).
 
-- **Add a label to articles I annotate** (on by default): adding a note applies a FreshRSS label to the article, so annotated
-  articles are listed under it in the sidebar. Deleting the note removes the label again, but only if the extension applied
-  it (a label you had added yourself stays).
+- **Add a label to articles I annotate** (on by default): adding a note applies a FreshRSS label to the article, so you can
+  list annotated articles in FreshRSS. Deleting the note removes the label again, but only if the extension applied it (a
+  label you had added yourself stays).
 - **Label name** (default `Annotated`, 1–63 characters): the label is created the first time it is needed.
 
 Turning the label off or renaming it affects notes you add from then on; already labelled articles keep their label.
+Once the label exists (and while it is on), the settings page and the Notes page link to it: **Show annotated articles in
+FreshRSS** opens the label's article list with read articles included. With FreshRSS's defaults (show unread articles only,
+*Hide categories & feeds with no unread articles*) the sidebar hides labels whose articles are all read, and annotated
+articles nearly always are, so this link is the way to reach them; showing read articles also brings the label back to the
+sidebar.
 Labelled articles are kept by FreshRSS's default archiving setting "keep labelled articles" (Configuration → Archiving),
 so annotated articles are not purged. The page also shows your API endpoint, `<FreshRSS base URL>/api/misc.php/ArticleNotes/`,
 with a **Copy** button, a link to the Profile page where you set the [API password](#authentication) clients sign in with,

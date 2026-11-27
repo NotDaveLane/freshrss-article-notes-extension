@@ -222,7 +222,7 @@ for (const viewport of viewports) {
 			await search(page, `q=no-such-text-${MARK}-anywhere`);
 			await expect(page.getByText('Nothing matches these filters.')).toBeVisible();
 			await expect(summary).toHaveCount(0);
-			await expect(page.getByText(/annotated/)).toHaveCount(0);
+			await expect(page.getByText(/annotated articles? (and|or) pages?/)).toHaveCount(0);
 			await expect(exports).toHaveCount(0);
 			await expect(page.getByText('Export:')).toHaveCount(0);
 		});

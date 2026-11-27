@@ -509,6 +509,10 @@ mark.articlenotes-hl:focus-visible {
 	gap: 0.5rem;
 }
 
+.articlenotes-label-link {
+	overflow-wrap: anywhere;
+}
+
 .articlenotes-notes-group {
 	margin: 1.5rem 0;
 	padding: 0.75rem 1rem;
@@ -602,7 +606,7 @@ mark.articlenotes-hl:focus-visible {
 		margin: 0;
 	}
 
-	.articlenotes-notes-export a {
+	.articlenotes-notes-export a, .articlenotes-label-link a {
 		display: inline-flex;
 		align-items: center;
 		min-height: 44px;

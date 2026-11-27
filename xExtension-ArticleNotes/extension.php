@@ -136,6 +136,25 @@ final class ArticleNotesExtension extends Minz_Extension {
 		);
 	}
 
+	/** The id of the current user's annotation label, null when the label is off or has not been created yet. */
+	public function annotatedLabelId(): ?int {
+		$settings = $this->settings();
+		if (!$settings->labelEnabled()) {
+			return null;
+		}
+		return FreshRSS_Factory::createTagDao()->searchByName($settings->labelName())?->id();
+	}
+
+	/**
+	 * The (HTML-escaped) URL of the label's article list with read articles shown: FreshRSS's sidebar hides labels without
+	 * unread articles, and annotated articles are nearly always read. Null when there is no label to show.
+	 */
+	public function annotatedLabelUrl(): ?string {
+		$id = $this->annotatedLabelId();
+		return $id === null ? null : Minz_Url::display(['c' => 'index', 'a' => 'normal', 'params' => [
+			'get' => 't_' . $id, 'state' => (string)FreshRSS_Entry::STATE_ALL]]);
+	}
+
 	/**
 	 * Stores one value of the current user's extension configuration, on every supported FreshRSS version.
 	 *

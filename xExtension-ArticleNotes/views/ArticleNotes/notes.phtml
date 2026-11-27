@@ -12,6 +12,11 @@
 	$back = http_build_query($filter->toParams() + ($page->page > 1 ? ['page' => (string)$page->page] : []));
 	$colors = ArticleNotes\Highlight::COLORS;
 	$colorName = static fn (string $color): string => $e(_t('ext.article_notes.highlight.color_' . $color));
+	$extension = Minz_ExtensionManager::findExtension('ArticleNotes');
+	if (!$extension instanceof ArticleNotesExtension) {
+		throw new RuntimeException('ArticleNotes extension is not loaded');
+	}
+	$labelUrl = $extension->annotatedLabelUrl();
 
 	/** The hidden fields and the buttons of the form that edits one annotation. */
 	$editForm = static function (array $fields, string $note, ?string $color, string $labelKey, string $confirmKey, string $editLabel) use ($e, $t, $back, $colors, $colorName): void {
@@ -111,6 +116,10 @@
 					rel="nofollow"><?= $t('export_json') ?></a>
 			</span>
 		</p>
+	<?php } ?>
+
+	<?php if ($labelUrl !== null) { ?>
+		<p class="articlenotes-label-link"><a href="<?= $labelUrl ?>"><?= $e(_t('ext.article_notes.settings.label_link', $extension->settings()->labelName())) ?></a></p>
 	<?php } ?>
 
 	<?php if ($page->groups === []) { ?>
