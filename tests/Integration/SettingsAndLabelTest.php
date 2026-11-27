@@ -101,6 +101,25 @@ final class SettingsAndLabelTest extends TestCase {
 		self::assertSame('Annotated', $settings->labelName());
 	}
 
+	public function testAnnotatedLabelIdIsNullUntilTheLabelExistsAndWhileItIsOff(): void {
+		$name = 'Lookup ' . random_int(1000, 9999);
+		$this->settings()->save(true, $name);
+		self::assertNull($this->extension()->annotatedLabelId(), 'the label has not been created yet');
+		self::assertNull($this->extension()->annotatedLabelUrl());
+
+		$this->extension()->noteService()->save($this->addEntry(), 'note');
+		$id = $this->labelId($name);
+		self::assertSame($id, $this->extension()->annotatedLabelId());
+		$url = $this->extension()->annotatedLabelUrl();
+		self::assertIsString($url);
+		self::assertStringContainsString('get=t_' . $id, $url);
+		self::assertStringContainsString('state=' . FreshRSS_Entry::STATE_ALL, $url);
+
+		$this->settings()->save(false, $name);
+		self::assertNull($this->extension()->annotatedLabelId(), 'the label is off');
+		self::assertNull($this->extension()->annotatedLabelUrl());
+	}
+
 	public function testFirstNoteCreatesTheLabelAndAppliesIt(): void {
 		$name = 'Annotated first ' . random_int(1000, 9999);
 		$this->settings()->save(true, $name);
