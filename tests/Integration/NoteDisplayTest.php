@@ -65,12 +65,13 @@ final class NoteDisplayTest extends TestCase {
 		self::assertDoesNotMatchRegularExpression('#>\d{4}-\d\d-\d\d \d\d:\d\d</time>#', $content);
 		self::assertStringNotContainsString('Tap', $content);
 		self::assertStringNotContainsString('aria-label=', $content);
-		self::assertMatchesRegularExpression('#<section class="articlenotes-note" [^>]*tabindex="0" title="Edit your note"'
+		self::assertMatchesRegularExpression('#<section class="articlenotes-note" [^>]*title="Edit your note"'
 			. ' aria-labelledby="articlenotes-note-title-(\\d+)" aria-describedby="articlenotes-note-hint-\\1">'
 			. '<h4 class="articlenotes-note-title" id="articlenotes-note-title-\\1">Your note</h4>#', $content);
 		self::assertMatchesRegularExpression('#<span id="articlenotes-note-hint-\\d+" hidden>Edit your note</span></section>$#', $content);
-		self::assertMatchesRegularExpression('#<p class="articlenotes-notes-link-line"><a class="articlenotes-notes-link" href="[^"]*'
-			. 'c=ArticleNotes&amp;a=notes">All my notes</a></p>#', $content);
+		self::assertMatchesRegularExpression('#<div class="articlenotes-actions articlenotes-note-actions">'
+			. '<button type="button" class="btn articlenotes-note-edit">Edit</button>'
+			. '<a class="articlenotes-notes-link" href="[^"]*c=ArticleNotes&amp;a=notes">All my notes</a></div>#', $content);
 	}
 
 	public function testArticleWithoutNoteIsUntouched(): void {

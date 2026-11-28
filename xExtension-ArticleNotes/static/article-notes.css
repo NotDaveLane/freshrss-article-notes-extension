@@ -20,11 +20,6 @@
 	}
 }
 
-.articlenotes-note:focus-visible {
-	outline: 2px solid currentColor;
-	outline-offset: 2px;
-}
-
 .articlenotes-note-title {
 	margin: 0 0 0.5rem;
 	font-size: 1rem;
@@ -40,12 +35,12 @@
 	font-size: 0.85rem;
 }
 
-.articlenotes-note .articlenotes-notes-link-line {
-	margin: 0.5rem 0 0;
+.articlenotes-note .articlenotes-note-actions {
+	align-items: center;
 }
 
 /* Inside the Annotations panel, the panel's own "All my notes" link stands for the note's. */
-.articlenotes-panel .articlenotes-note .articlenotes-notes-link-line {
+.articlenotes-panel .articlenotes-note .articlenotes-notes-link {
 	display: none;
 }
 
