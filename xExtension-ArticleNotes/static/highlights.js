@@ -579,8 +579,8 @@
 		const remove = button(t.highlightDelete, 'btn btn-attention articlenotes-pop-delete');
 		const close = button(t.close, 'btn articlenotes-pop-close');
 		actions.appendChild(save);
-		actions.appendChild(remove);
 		actions.appendChild(close);
+		actions.appendChild(remove);
 		el.appendChild(actions);
 
 		const showError = function (message) {

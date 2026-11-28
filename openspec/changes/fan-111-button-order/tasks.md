@@ -1,0 +1,2 @@
+- [x] Reorder buttons in notes.phtml and highlights.js
+- [x] Assert the order in the e2e specs

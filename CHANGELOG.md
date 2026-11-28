@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- The article note editor, the Notes page edit form and the highlight popover now all order their buttons **Save**, **Cancel**/**Close**, **Delete** (Delete was second in the last two).
 - A saved note under an article (also inside the Annotations panel) now has a visible **Edit** button, like the highlights do, so touch users can tell it is editable; Cancel or Escape returns focus to it. The block itself is no longer a tab stop; clicking it still opens the editor.
 - The Configuration menu entries say what they open: **My notes** (the Notes page, now listed first) and **Article notes settings** (the settings page); each page's heading and title match. A saved note under an article now ends with an "All my notes" link to the Notes page, so articles with a note but no highlights link there too; clicking it opens the Notes page, not the note editor.
 

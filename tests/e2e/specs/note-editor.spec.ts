@@ -546,6 +546,7 @@ test('on touch devices the editor buttons are 44px tap targets; on desktop they 
 	await trigger(article).click();
 	const editor = article.locator('.articlenotes-editor');
 	await expect(editor.getByRole('button', { name: 'Delete' })).toBeVisible();
+	await expect(editor.locator('.articlenotes-actions button')).toHaveText(['Save', 'Cancel', 'Delete']);
 	const buttons = editor.locator('button:visible, a:visible');
 	expect(await buttons.count()).toBe(3);
 	for (const button of await buttons.all()) {
