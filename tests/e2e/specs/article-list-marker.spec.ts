@@ -22,6 +22,11 @@ async function clear(request: APIRequestContext, id: string): Promise<void> {
 	}
 }
 
+/** The list URL with a throwaway parameter: FreshRSS answers a repeated request with 304 though a note changed. */
+function listUrl(): string {
+	return `/i/?state=3&r=${Date.now()}`;
+}
+
 test.beforeEach(async ({ page, request }) => {
 	await clear(request, await entryId(request));
 	await signIn(page, throwawayUser());
@@ -35,7 +40,7 @@ test.afterAll(async ({ playwright }) => {
 
 test('rows of annotated articles carry a marker that follows saves and deletes', async ({ page, request }) => {
 	const id = await entryId(request);
-	await page.goto('/i/?state=3');
+	await page.goto(listUrl());
 	const row = page.locator('.flux', { hasText: TITLE }).first();
 	await expect(row.locator('.flux_header .articlenotes-header-mark')).toHaveCount(0);
 
@@ -44,7 +49,7 @@ test('rows of annotated articles carry a marker that follows saves and deletes',
 	await request.post(`${API}/highlights`, {
 		headers: auth(), data: { entry_id: id, source: 'freshrss', selector: { quote: { exact: 'costs' } } },
 	});
-	await page.goto('/i/?state=3');
+	await page.goto(listUrl());
 	const mark = page.locator('.flux', { hasText: TITLE }).first().locator('.flux_header .articlenotes-header-mark');
 	await expect(mark).toHaveCount(1);
 	await expect(mark).toContainText('Has a note');
@@ -62,12 +67,12 @@ test('rows of annotated articles carry a marker that follows saves and deletes',
 	await expect(mark).toContainText('1 highlight');
 
 	await clear(request, id);
-	await page.goto('/i/?state=3');
+	await page.goto(listUrl());
 	await expect(page.locator('.flux', { hasText: TITLE }).first().locator('.flux_header .articlenotes-header-mark')).toHaveCount(0);
 });
 
 test('saving a note adds the marker without a reload', async ({ page }) => {
-	await page.goto('/i/?state=3');
+	await page.goto(listUrl());
 	const article = await openArticle(page, TITLE);
 	await expect(article.locator('.flux_header .articlenotes-header-mark')).toHaveCount(0);
 	await article.locator('.articlenotes-trigger').click();
@@ -80,6 +85,6 @@ test('the marker fits on a phone without horizontal overflow', async ({ page, re
 	const id = await entryId(request);
 	await request.put(`${API}/notes/${id}`, { headers: auth(), data: { note: 'x' } });
 	await page.setViewportSize({ width: 390, height: 844 });
-	await page.goto('/i/?state=3');
+	await page.goto(listUrl());
 	expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
 });

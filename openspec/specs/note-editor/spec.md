@@ -258,3 +258,18 @@ elsewhere in the block SHALL still open the editor.
 #### Scenario: Following the link
 - **WHEN** a user clicks the block's title, cancels the editor, then clicks the block's "All my notes" link
 - **THEN** the title opens the editor, and the link opens the Notes page without opening it
+
+### Requirement: Collapsed article rows mark annotated articles
+
+The normal view SHALL show a non-interactive mark in the collapsed row of every article that has a note or highlights, and
+no mark on other rows. The server SHALL emit a hidden `articlenotes-marker` element (`data-note`, `data-highlights`) in the
+article content, counting highlights with one query per request. The mark SHALL be labelled for screen readers ("Has a note",
+"1 highlight", "N highlights") and SHALL follow saves and deletes of the note and of highlights without a reload.
+
+#### Scenario: Annotated article listed
+- **WHEN** the article list renders an article with a note and one highlight
+- **THEN** its row header contains a mark labelled "Has a note, 1 highlight", and rows of other articles have none
+
+#### Scenario: Annotations removed
+- **WHEN** the user deletes the note and all highlights of an article
+- **THEN** the mark disappears from its row, without a reload for edits made in the page
