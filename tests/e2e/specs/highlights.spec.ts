@@ -189,6 +189,7 @@ for (const viewport of viewports) {
 			await expect(marks(article)).toHaveAttribute('data-has-note', 'true');
 			await marks(article).click();
 			await expect(dialog.getByLabel('Note on this highlight')).toHaveValue('first <b>note</b>');
+			await expect(dialog.locator('.articlenotes-actions button')).toHaveText(['Save', 'Close', 'Delete']);
 			await dialog.getByLabel('Note on this highlight').fill('edited');
 			await dialog.getByRole('button', { name: 'Save' }).click();
 			await expect(article.locator('.articlenotes-hl-note')).toHaveText('edited');

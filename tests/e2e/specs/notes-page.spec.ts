@@ -355,6 +355,7 @@ for (const viewport of [{ width: 1440, height: 900 }, { width: 390, height: 844 
 			}
 			await edit.click();
 			const form = item.locator('form');
+			await expect(form.locator('.articlenotes-actions button')).toHaveText(['Save', 'Cancel', 'Delete']);
 			const quote = (await item.locator('.articlenotes-hl-quote').boundingBox())!;
 			const formBox = (await form.boundingBox())!;
 			expect(formBox.y).toBeGreaterThan(quote.y + quote.height - 1);
