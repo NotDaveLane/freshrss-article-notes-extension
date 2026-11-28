@@ -100,7 +100,7 @@ text. Escape or clicking **Note** again also closes it but keeps your unsaved te
 leaving the page with unsaved text asks for confirmation. **Delete** removes an existing note. Notes are plain text of up
 to 20,000 characters, shown under the article in a "Your note" block with the time of the last update; HTML and Markdown
 are never rendered. Saving an empty note deletes it. To edit an existing note, you can also click or tap the "Your note"
-block itself (or focus it with Tab and press Enter); selecting text in it to copy it does not open the editor.
+block itself or its **Edit** button (reachable with Tab, then Enter or Space); selecting text in it to copy it does not open the editor.
 
 ## Using highlights
 

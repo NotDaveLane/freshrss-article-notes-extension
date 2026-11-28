@@ -74,6 +74,7 @@
 
 	function closeEditor(flux, restoreFocus, keepDraft) {
 		const form = flux.querySelector('.articlenotes-editor');
+		const opener = form ? form.articlenotesOpener : null;
 		if (form) {
 			const textarea = form.querySelector('textarea');
 			const entryId = form.getAttribute('data-entry');
@@ -91,8 +92,12 @@
 		const trigger = flux.querySelector('.articlenotes-trigger');
 		if (trigger) {
 			trigger.setAttribute('aria-expanded', 'false');
-			if (restoreFocus) {
-				trigger.focus();
+		}
+		if (restoreFocus) {
+			// Back to the note's Edit button when the editor was opened from it and the block is still there.
+			const target = opener && opener.isConnected ? opener : trigger;
+			if (target) {
+				target.focus();
 			}
 		}
 	}
@@ -398,10 +403,14 @@
 	}
 
 	/** The note block opens the same editor as the "Note" action, in place of the block (under the article or in the Annotations panel). */
-	function openFromNote(note) {
+	function openFromNote(note, opener) {
 		const flux = note.closest('.flux');
 		if (flux && !flux.querySelector('.articlenotes-editor')) {
 			openEditor(flux, flux.querySelector('.articlenotes-trigger'));
+			const form = flux.querySelector('.articlenotes-editor');
+			if (form && opener) {
+				form.articlenotesOpener = opener;
+			}
 		}
 	}
 
@@ -447,8 +456,9 @@
 			if (note) {
 				// Selecting text in the note (to copy it) ends with a click: leave it alone.
 				const selection = window.getSelection();
-				if (!selection || selection.isCollapsed) {
-					openFromNote(note);
+				const button = event.target.closest('.articlenotes-note-edit');
+				if (button || !selection || selection.isCollapsed) {
+					openFromNote(note, button);
 				}
 				return;
 			}
@@ -469,13 +479,7 @@
 			}
 		}, true);
 		document.addEventListener('keydown', function (event) {
-			if ((event.key === 'Enter' || event.key === ' ') && event.target instanceof Element && event.target.matches('.articlenotes-note')) {
-				event.preventDefault();
-				event.stopPropagation();
-				openFromNote(event.target);
-				return;
-			}
-			if (event.key === ' ' && event.target instanceof Element && event.target.closest('.articlenotes-trigger')) {
+			if (event.key === ' ' && event.target instanceof Element && event.target.closest('.articlenotes-trigger, .articlenotes-note-edit')) {
 				event.preventDefault();
 				event.stopPropagation();
 				event.target.click();

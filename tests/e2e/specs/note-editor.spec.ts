@@ -110,6 +110,29 @@ for (const viewport of viewports) {
 			await deleteNote(page, article);
 		});
 
+		test('the saved note has a visible Edit button that opens the editor', async ({ page }) => {
+			await page.goto('/i/?state=3');
+			const article = await openArticle(page, 'The hidden costs of microservices');
+			await saveNote(page, article, `edit button ${viewport.width}`);
+			const edit = article.locator('.articlenotes-note').getByRole('button', { name: 'Edit' });
+			await expect(edit).toBeVisible();
+			expect((await edit.boundingBox())!.height).toBeGreaterThanOrEqual(viewport.width < 600 ? 44 : 40);
+
+			await edit.click();
+			const textarea = article.locator('.articlenotes-editor').getByLabel('Your note on this article');
+			await expect(textarea).toBeFocused();
+			await expect(textarea).toHaveValue(`edit button ${viewport.width}`);
+			await article.getByRole('button', { name: 'Cancel' }).click();
+			await expect(article.locator('.articlenotes-editor')).toHaveCount(0);
+			await expect(edit).toBeFocused();
+
+			await page.keyboard.press('Enter');
+			await expect(textarea).toBeFocused();
+			await page.keyboard.press('Escape');
+			await expect(edit).toBeFocused();
+			await deleteNote(page, article);
+		});
+
 		test('the editor hints at highlighting only while the article has no highlight', async ({ page, request }) => {
 			const auth = basicAuth(throwawayUser().user, throwawayApiPassword());
 			const lookup = await request.get(`${API}/lookup`, { headers: auth, params: { url: 'http://fixtures/articles/1' } });
@@ -382,19 +405,18 @@ test('the note opens its editor from the keyboard', async ({ page }) => {
 	await saveNote(page, article, 'keyboard note');
 	const block = article.getByRole('region', { name: 'Your note', exact: true });
 	await expect(block).toHaveClass(/articlenotes-note/);
-	await expect(block).toHaveAttribute('tabindex', '0');
 	await expect(block).toHaveAttribute('title', 'Edit your note');
 	await expect(block).toHaveAccessibleDescription('Edit your note');
-	await block.focus();
+	const edit = block.getByRole('button', { name: 'Edit' });
+	await edit.focus();
 	await page.keyboard.press('Enter');
 	const textarea = article.getByLabel('Your note on this article');
 	await expect(textarea).toBeFocused();
 	await expect(textarea).toHaveValue('keyboard note');
 	await page.keyboard.press('Escape');
 	await expect(article.locator('.articlenotes-editor')).toHaveCount(0);
-	await expect(trigger(article)).toBeFocused();
+	await expect(edit).toBeFocused();
 
-	await block.focus();
 	await page.keyboard.press(' ');
 	await expect(textarea).toBeFocused();
 	await deleteNote(page, article);

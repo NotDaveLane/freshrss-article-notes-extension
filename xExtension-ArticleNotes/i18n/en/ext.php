@@ -12,6 +12,7 @@ return array(
 			'action' => 'Note',
 			'action_title' => 'Add a note to this article',
 			'action_title_edit' => 'Edit your note on this article',
+			'edit' => 'Edit',
 			'edit_hint' => 'Edit your note',
 			'label' => 'Your note on this article',
 			'save' => 'Save',

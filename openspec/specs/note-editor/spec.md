@@ -161,15 +161,21 @@ saved, deleted or rolled back.
 
 The editor SHALL be keyboard accessible, move focus into the textarea when opened, return focus to the "Note" action when
 closed (Save, Cancel, Delete or Escape), and keep typing from triggering FreshRSS keyboard shortcuts. The note block SHALL
-be focusable, carry a translated "Tap to edit note" label and title, and open the editor on Enter or Space.
+show a visible, translated "Edit" button (`button.articlenotes-note-edit`, next to the "All my notes" link, at least 44 px
+tall on touch screens) that opens the editor on click, tap, Enter or Space; when the editor was opened from it and the
+block is still there afterwards (Cancel, Escape), focus returns to that button. The block itself is not focusable.
 
 #### Scenario: Cancel
 - **WHEN** the user presses Escape or Cancel in an unchanged editor
 - **THEN** the editor closes without saving or asking, and focus returns to the "Note" action
 
-#### Scenario: Keyboard on the note block
-- **WHEN** the user focuses the note block and presses Enter
-- **THEN** the editor opens with focus in the textarea, and Escape closes it and moves focus to the "Note" action
+#### Scenario: Keyboard on the note's Edit button
+- **WHEN** the user focuses the note block's "Edit" button and presses Enter or Space
+- **THEN** the editor opens with focus in the textarea, and Escape closes it and moves focus back to the "Edit" button
+
+#### Scenario: Visible Edit button
+- **WHEN** an article with a saved note is shown (normal, reading or global view, or inside the Annotations panel)
+- **THEN** the note block shows an "Edit" button that opens the editor prefilled with the note
 
 ### Requirement: Save and delete endpoints
 
@@ -237,7 +243,7 @@ When the note editor opens, its Save and Cancel buttons SHALL be fully visible a
 
 ### Requirement: Notes page link in the note block
 
-The note block SHALL end with an "All my notes" link to the Notes page (`?c=ArticleNotes&a=notes`), with the same
+The note block SHALL end with an actions row holding its "Edit" button and an "All my notes" link to the Notes page (`?c=ArticleNotes&a=notes`), with the same
 `a.articlenotes-notes-link` markup and styling as the Annotations panel's link, both when the page is rendered and after
 the note is saved in the editor. Inside the Annotations panel the block's link SHALL be hidden, so the panel shows its own
 link only once.
