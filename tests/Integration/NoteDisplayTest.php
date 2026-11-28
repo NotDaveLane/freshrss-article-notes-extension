@@ -69,7 +69,8 @@ final class NoteDisplayTest extends TestCase {
 			. ' aria-labelledby="articlenotes-note-title-(\\d+)" aria-describedby="articlenotes-note-hint-\\1">'
 			. '<h4 class="articlenotes-note-title" id="articlenotes-note-title-\\1">Your note</h4>#', $content);
 		self::assertMatchesRegularExpression('#<span id="articlenotes-note-hint-\\d+" hidden>Edit your note</span></section>$#', $content);
-		self::assertMatchesRegularExpression('#<div class="articlenotes-actions articlenotes-note-actions"><button type="button" class="btn articlenotes-note-edit">Edit</button>'
+		self::assertMatchesRegularExpression('#<div class="articlenotes-actions articlenotes-note-actions">'
+			. '<button type="button" class="btn articlenotes-note-edit">Edit</button>'
 			. '<a class="articlenotes-notes-link" href="[^"]*c=ArticleNotes&amp;a=notes">All my notes</a></div>#', $content);
 	}
 
