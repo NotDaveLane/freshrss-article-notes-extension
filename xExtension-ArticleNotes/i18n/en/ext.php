@@ -6,6 +6,11 @@ return array(
 	'article_notes' => array(
 		'name' => 'ArticleNotes',
 		'description' => 'Attach personal notes and highlights to articles and fetch them through the FreshRSS API.',
+		'mark' => array(
+			'note' => 'Has a note',
+			'highlight' => '1 highlight',
+			'highlights' => '%s highlights',
+		),
 		'note' => array(
 			'title' => 'Your note',
 			'updated' => 'Last updated %s',

@@ -707,6 +707,8 @@
 	/** Creates, refreshes or removes the panel: it exists while the article has highlights, and holds the article note. */
 	function syncPanel(state) {
 		const t = settings().i18n;
+		state.flux.dataset.articlenotesHighlights = String(state.items.size);	// the row marker reads it
+		state.flux.dispatchEvent(new CustomEvent('articlenotes:highlights', { bubbles: true }));
 		const block = state.flux.querySelector('.articlenotes-note');
 		if (state.items.size === 0) {
 			if (state.panel) {

@@ -1,0 +1,3 @@
+- [x] Emit a hidden marker with note/highlight counts in the entry content (one highlight query per request)
+- [x] Decorate the row header with a mark, kept current on note and highlight changes
+- [x] PHPUnit and Playwright coverage, changelog

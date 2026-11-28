@@ -49,6 +49,8 @@ final class ArticleNotesExtension extends Minz_Extension {
 
 	/** @var array<string,bool> per-request memo: user => migrated successfully */
 	private array $migrated = [];
+	/** @var array<string,int>|null live highlight counts by article id, loaded on first use */
+	private ?array $highlightCounts = null;
 
 	#[\Override]
 	public function init(): void {
@@ -347,10 +349,31 @@ final class ArticleNotesExtension extends Minz_Extension {
 			Minz_Log::error('ArticleNotes cannot load the note of article ' . $entry->id() . ': ' . $exception->getMessage());
 			return $entry;
 		}
-		if ($note !== null) {
-			$entry->_content($entry->originalContent() . ArticleNotes\NoteBlock::html($note));
+		$highlights = $this->highlightCounts()[$entry->id()] ?? 0;
+		if ($note !== null || $highlights > 0) {
+			// The marker lets the script flag the collapsed row; it comes before the note block, which ends the content.
+			$entry->_content($entry->originalContent()
+				. '<span class="articlenotes-marker" data-note="' . ($note !== null ? '1' : '0') . '" data-highlights="' . $highlights
+				. '" hidden></span>' . ($note !== null ? ArticleNotes\NoteBlock::html($note) : ''));
 		}
 		return $entry;
+	}
+
+	/**
+	 * Live highlight counts by article id, loaded with one query for the whole page of articles.
+	 *
+	 * @return array<string,int>
+	 */
+	private function highlightCounts(): array {
+		if ($this->highlightCounts === null) {
+			try {
+				$this->highlightCounts = $this->highlightService()->countsByEntry();
+			} catch (\Throwable $exception) {
+				Minz_Log::error('ArticleNotes cannot count highlights: ' . $exception->getMessage());
+				$this->highlightCounts = [];
+			}
+		}
+		return $this->highlightCounts;
 	}
 
 	/**
@@ -374,6 +397,9 @@ final class ArticleNotesExtension extends Minz_Extension {
 			'colors' => ArticleNotes\Highlight::COLORS,
 			'maxQuoteLength' => 2000,
 			'i18n' => [
+				'markNote' => _t('ext.article_notes.mark.note'),
+				'markHighlight' => _t('ext.article_notes.mark.highlight'),
+				'markHighlights' => _t('ext.article_notes.mark.highlights'),
 				'action' => _t('ext.article_notes.note.action'),
 				'actionTitle' => _t('ext.article_notes.note.action_title'),
 				'actionTitleEdit' => _t('ext.article_notes.note.action_title_edit'),
