@@ -101,6 +101,22 @@ final class HighlightDAO {
 		return $this->countLive('entry_id=:target', [':target' => $entryId]);
 	}
 
+	/**
+	 * The number of live highlights of every article that has some, in one query.
+	 *
+	 * @return array<string,int> by article id
+	 */
+	public function liveCountsByEntry(): array {
+		$statement = $this->run('SELECT entry_id, COUNT(*) AS total FROM ' . $this->table
+			. ' WHERE entry_id IS NOT NULL AND deleted_at IS NULL GROUP BY entry_id', []);
+		$counts = [];
+		while (is_array($row = $statement->fetch(\PDO::FETCH_ASSOC))) {
+			/** @var array{entry_id:string,total:int|string} $row */
+			$counts[(string)$row['entry_id']] = (int)$row['total'];
+		}
+		return $counts;
+	}
+
 	/** The number of live highlights of the page (no article) at a normalized URL. */
 	public function countLiveForPage(string $normalizedUrl): int {
 		return $this->countLive('entry_id IS NULL AND url_hash=:target', [':target' => UrlNormalizer::hash($normalizedUrl)]);

@@ -14,6 +14,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Collapsed rows of the article list mark articles that have a note or highlights with a small icon labelled "Has a note" / "2 highlights" (also for screen readers); it updates when you save or delete a note or highlight.
 - The settings page and the Notes page link to the "Annotated" label's article list with read articles shown (**Show annotated articles in FreshRSS**), once the label exists. With FreshRSS's default reading settings the sidebar hides labels whose articles are all read, so annotated articles were hard to reach; the label help no longer says they are always listed in the sidebar.
 - The note editor says why **Save** is disabled: a visible message ("The note is 50 characters too long. Shorten it to save.") appears while the note is over 20,000 characters and is linked to the textarea for screen readers. Saving or deleting a note is announced to screen readers ("Note saved." / "Note deleted.") through a polite status region.
 

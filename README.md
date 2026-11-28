@@ -102,6 +102,9 @@ to 20,000 characters, shown under the article in a "Your note" block with the ti
 are never rendered. Saving an empty note deletes it. To edit an existing note, you can also click or tap the "Your note"
 block itself or its **Edit** button (reachable with Tab, then Enter or Space); selecting text in it to copy it does not open the editor.
 
+In the article list, a small icon in the row of every article that has a note or highlights tells you which ones you
+annotated (labelled "Has a note" or "2 highlights" for screen readers); it updates as you save or delete.
+
 ## Using highlights
 
 ![A highlight with a note in an article](docs/screenshots/highlights.png)

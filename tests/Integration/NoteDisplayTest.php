@@ -87,6 +87,37 @@ final class NoteDisplayTest extends TestCase {
 		self::assertSame('<p>Body</p>', $this->extension->appendNote($entry)->content(false));
 	}
 
+	public function testMarkerCountsNoteAndHighlights(): void {
+		$entry = $this->entry();
+		self::assertStringNotContainsString('articlenotes-marker', $this->extension->appendNote($entry)->content(false));
+
+		$highlights = $this->extension->highlightService();
+		foreach (['one', 'two'] as $exact) {
+			$highlights->create(['entry_id' => $entry->id(), 'source' => 'freshrss', 'selector' => ['quote' => ['exact' => $exact]]]);
+		}
+		$extension = $this->freshExtension();
+		$content = $extension->appendNote($entry)->content(false);
+		self::assertStringContainsString('<span class="articlenotes-marker" data-note="0" data-highlights="2" hidden></span>', $content);
+
+		$this->extension->noteService()->save($entry->id(), 'note');
+		$content = $this->freshExtension()->appendNote($entry)->content(false);
+		self::assertStringContainsString('<span class="articlenotes-marker" data-note="1" data-highlights="2" hidden></span>', $content);
+		self::assertStringEndsWith('</section>', $content);
+	}
+
+	public function testMarkerForNoteOnly(): void {
+		$entry = $this->entry();
+		$this->extension->noteService()->save($entry->id(), 'note');
+		self::assertStringContainsString('data-note="1" data-highlights="0" hidden></span>',
+			$this->freshExtension()->appendNote($entry)->content(false));
+	}
+
+	private function freshExtension(): ArticleNotesExtension {
+		return new ArticleNotesExtension([
+			'name' => 'ArticleNotes', 'entrypoint' => 'ArticleNotes', 'path' => $this->extension->getPath(), 'type' => 'system',
+		]);
+	}
+
 	public function testJsVarsExposeSettingsAndTranslations(): void {
 		$vars = $this->extension->jsVars(['other' => 1]);
 		self::assertSame(1, $vars['other']);
@@ -95,6 +126,9 @@ final class NoteDisplayTest extends TestCase {
 		self::assertSame(20000, $config['maxLength']);
 		self::assertIsArray($config['i18n']);
 		self::assertSame('Note', $config['i18n']['action']);
+		self::assertSame('Has a note', $config['i18n']['markNote']);
+		self::assertSame('%s highlights', $config['i18n']['markHighlights']);
+		self::assertSame('1 highlight', $config['i18n']['markHighlight']);
 	}
 
 	public function testJsVarsExposeTheHighlightUi(): void {

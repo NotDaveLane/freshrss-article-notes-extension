@@ -159,6 +159,15 @@ final class HighlightService {
 	}
 
 	/**
+	 * The number of live highlights of every article that has some.
+	 *
+	 * @return array<string,int> by article id
+	 */
+	public function countsByEntry(): array {
+		return $this->dao()->liveCountsByEntry();
+	}
+
+	/**
 	 * The live highlights of the page (no article) at a normalized URL in document order.
 	 *
 	 * @return list<Highlight>

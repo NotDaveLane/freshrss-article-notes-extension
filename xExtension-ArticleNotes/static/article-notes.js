@@ -371,6 +371,76 @@
 		});
 	}
 
+	/** Number of highlights of the article: live once its highlights are loaded, else what the server counted. */
+	function highlightCount(flux) {
+		const live = flux.dataset.articlenotesHighlights;
+		const marker = flux.querySelector('.articlenotes-marker');
+		return parseInt(live !== undefined ? live : (marker ? marker.getAttribute('data-highlights') : '0'), 10) || 0;
+	}
+
+	/** A highlighter swatch in currentColor, drawn beside the note icon when the article has highlights. */
+	function swatch() {
+		const ns = 'http://www.w3.org/2000/svg';
+		const svg = document.createElementNS(ns, 'svg');
+		svg.setAttribute('class', 'articlenotes-icon articlenotes-icon-highlight');
+		svg.setAttribute('viewBox', '0 0 16 16');
+		svg.setAttribute('width', '16');
+		svg.setAttribute('height', '16');
+		svg.setAttribute('aria-hidden', 'true');
+		svg.setAttribute('focusable', 'false');
+		const pen = document.createElementNS(ns, 'path');
+		pen.setAttribute('fill', 'currentColor');
+		pen.setAttribute('d', 'M10.5 1.5l4 4-6.5 6.5-4-4zM3.2 9l4 4-2.7 1H2l-.5-.5V12z');
+		svg.appendChild(pen);
+		return svg;
+	}
+
+	/** Shows, updates or removes the non-interactive "has a note / N highlights" mark in the article's collapsed row. */
+	function updateRowMark(flux) {
+		const config = settings();
+		const header = flux.querySelector('ul.flux_header');
+		if (!config || !header) {
+			return;
+		}
+		const hasNote = noteBlock(flux) !== null;
+		const highlights = highlightCount(flux);
+		let item = header.querySelector('.articlenotes-header-mark');
+		if (!hasNote && highlights === 0) {
+			if (item) {
+				item.remove();
+			}
+			return;
+		}
+		const parts = [];
+		if (hasNote) {
+			parts.push(config.i18n.markNote);
+		}
+		if (highlights > 0) {
+			parts.push(highlights === 1 ? config.i18n.markHighlight : config.i18n.markHighlights.replace('%s', String(highlights)));
+		}
+		const label = parts.join(', ');
+		if (!item) {
+			item = element('li', 'item articlenotes-header-mark');
+			const anchor = header.querySelector('li.titleAuthorSummaryDate');
+			if (anchor && anchor.nextSibling) {
+				header.insertBefore(item, anchor.nextSibling);
+			} else {
+				header.appendChild(item);
+			}
+		}
+		item.setAttribute('title', label);
+		item.setAttribute('data-has-note', hasNote ? 'true' : 'false');
+		item.setAttribute('data-highlights', String(highlights));
+		item.textContent = '';
+		if (hasNote) {
+			item.appendChild(icon());
+		}
+		if (highlights > 0) {
+			item.appendChild(swatch());
+		}
+		item.appendChild(element('span', 'articlenotes-sr-only')).textContent = label;
+	}
+
 	function decorate(list) {
 		if (list.querySelector('.articlenotes-item')) {
 			return;
@@ -396,6 +466,18 @@
 		if (root.nodeType !== 1) {
 			return;
 		}
+		if (root.matches('.articlenotes-marker')) {
+			const flux = root.closest('.flux');
+			if (flux) {
+				updateRowMark(flux);
+			}
+		}
+		root.querySelectorAll('.articlenotes-marker').forEach(function (marker) {
+			const flux = marker.closest('.flux');
+			if (flux) {
+				updateRowMark(flux);
+			}
+		});
 		if (root.matches('ul.bottom')) {
 			decorate(root);
 		}
@@ -442,6 +524,12 @@
 		document.addEventListener('articlenotes:note', function (event) {
 			if (event.target instanceof Element) {
 				updateState(event.target);
+				updateRowMark(event.target);
+			}
+		});
+		document.addEventListener('articlenotes:highlights', function (event) {
+			if (event.target instanceof Element) {
+				updateRowMark(event.target);
 			}
 		});
 		document.addEventListener('click', function (event) {
